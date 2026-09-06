@@ -1,0 +1,26 @@
+# Build
+bin/
+obj/
+publish/
+Releases/
+*.user
+*.suo
+.vs/
+.vscode/
+*.swp
+TestResults/
+
+# Packages / tools
+packages/
+.tools/
+
+# Runtime data (never in the repo)
+*.log
+planner-session.json
+WebView2/
+
+# Secrets: only *.example files belong here
+*.secret
+*.secret.*
+secrets/
+!*.example

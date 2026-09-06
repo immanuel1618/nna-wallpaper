@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Authors>NNA1618</Authors>
+    <Company>NNA1618</Company>
+    <Product>NNA Wallpaper</Product>
+    <Copyright>Copyright (c) 2026 NNA1618</Copyright>
+    <RepositoryUrl>https://github.com/immanuel1618/nna-wallpaper</RepositoryUrl>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+</Project>
