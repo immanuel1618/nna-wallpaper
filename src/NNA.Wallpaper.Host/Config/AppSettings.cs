@@ -1,0 +1,125 @@
+using System.Text.Json.Nodes;
+
+namespace NNA.Wallpaper.Host.Config;
+
+/// <summary>app.json — general settings (see docs/SETTINGS.md).</summary>
+public sealed class AppSettings
+{
+    public int Version { get; set; } = 1;
+    public int ApiPort { get; set; } = 1618;
+    public string ApiToken { get; set; } = "";
+    public string Language { get; set; } = "ru";
+    public bool Autostart { get; set; } = false;
+    public UpdateSettings Updates { get; set; } = new();
+    public bool PauseOnFullscreen { get; set; } = true;
+    public int FpsCap { get; set; } = 30;
+    public ThemeSettings Theme { get; set; } = new();
+    public AudioSettings Audio { get; set; } = new();
+
+    /// <summary>Drive root (e.g. "H:") -> editor command line used by /open.</summary>
+    public Dictionary<string, string[]> OpenWith { get; set; } = new();
+    /// <summary>Roots that /open may touch. Empty on a clean install.</summary>
+    public List<string> OpenRoots { get; set; } = new();
+    /// <summary>Graph id (e.g. "h") -> path to graphify graph.json.</summary>
+    public Dictionary<string, string> Graphs { get; set; } = new();
+    public GraphLimits GraphLimits { get; set; } = new();
+    public WeatherSettings Weather { get; set; } = new();
+    public PlannerSettings Planner { get; set; } = new();
+}
+
+public sealed class UpdateSettings
+{
+    public bool Check { get; set; } = true;
+    public string Channel { get; set; } = "stable";
+}
+
+public sealed class ThemeSettings
+{
+    public string Preset { get; set; } = "nna1618";
+    public Dictionary<string, string> Palette { get; set; } = new()
+    {
+        ["bgPage"] = "#050505",
+        ["bgSurface"] = "#000000",
+        ["fg"] = "#FFFFFF",
+        ["fgBody"] = "#C8C8C8",
+        ["fgMuted"] = "#808080",
+        ["fgGhost"] = "#1D1D1D",
+        ["border"] = "#434343",
+        ["glass"] = "rgba(139,139,139,0.03)",
+    };
+    public Dictionary<string, string> Fonts { get; set; } = new()
+    {
+        ["display"] = "Kharkiv Tone",
+        ["mono"] = "DM Mono",
+    };
+    public int Radius { get; set; } = 32;
+    public int Gap { get; set; } = 24;
+    public int Pad { get; set; } = 48;
+    public int Blur { get; set; } = 14;
+    public double Dim { get; set; } = 0.4;
+}
+
+public sealed class AudioSettings
+{
+    public bool Enabled { get; set; } = true;
+    /// <summary>Render device id for loopback capture; null = default device.</summary>
+    public string? Device { get; set; }
+}
+
+public sealed class GraphLimits
+{
+    public int MaxNodes { get; set; } = 100;
+    public int MaxLinks { get; set; } = 450;
+}
+
+public sealed class WeatherSettings
+{
+    public double Lat { get; set; } = 55.7558;
+    public double Lon { get; set; } = 37.6173;
+    public string Tz { get; set; } = "Europe/Moscow";
+    public string Name { get; set; } = "MOSCOW";
+}
+
+public sealed class PlannerSettings
+{
+    public string SupabaseUrl { get; set; } = "https://tvpmtjidonohpgwhyssm.supabase.co";
+    public string PublishableKey { get; set; } = "sb_publishable_HYka0T2lxZndnMainWUNXg_YPWy2dy8";
+    public string LoginUrl { get; set; } = "https://planner.nna1618.com/desktop/login.html";
+    public List<string> Show { get; set; } = new() { "tasks", "meetings", "habits", "money", "briefing" };
+}
+
+/// <summary>monitors.json — per-monitor layouts.</summary>
+public sealed class MonitorsConfig
+{
+    public int Version { get; set; } = 1;
+    public List<MonitorLayout> Monitors { get; set; } = new();
+}
+
+public sealed class MonitorLayout
+{
+    /// <summary>"{DeviceName}|{Width}x{Height}", e.g. "\\.\DISPLAY2|3440x1440".</summary>
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool Enabled { get; set; } = true;
+    public GridSpec Grid { get; set; } = new();
+    public List<BlockSpec> Blocks { get; set; } = new();
+}
+
+public sealed class GridSpec
+{
+    public int Cols { get; set; } = 3;
+    public int Rows { get; set; } = 16;
+    public List<double>? ColWeights { get; set; }
+    public int Gap { get; set; } = 24;
+    public int Pad { get; set; } = 48;
+}
+
+public sealed class BlockSpec
+{
+    public string Widget { get; set; } = "";
+    public int Col { get; set; } = 1;
+    public int ColSpan { get; set; } = 1;
+    public int Row { get; set; } = 1;
+    public int RowSpan { get; set; } = 1;
+    public JsonObject? SettingsOverride { get; set; }
+}
