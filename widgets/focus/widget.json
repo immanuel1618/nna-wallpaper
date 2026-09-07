@@ -1,0 +1,24 @@
+{
+  "id": "focus",
+  "name": "Focus timer",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "focus" },
+  "defaultSize": { "cols": 1, "rows": 8 },
+  "minSize": { "cols": 1, "rows": 2 },
+  "needs": [],
+  "settings": [
+    { "key": "work", "type": "number", "label": "Работа, мин", "default": 25, "min": 1, "max": 180 },
+    { "key": "rest", "type": "number", "label": "Отдых, мин", "default": 5, "min": 1, "max": 60 },
+    { "key": "longRest", "type": "number", "label": "Длинный отдых, мин", "default": 15, "min": 1, "max": 90 },
+    { "key": "sessionsBeforeLong", "type": "number", "label": "Сессий до длинного отдыха", "default": 4, "min": 1, "max": 8 },
+    { "key": "autoNext", "type": "bool", "label": "Автопереход", "default": false },
+    { "key": "presets", "type": "list", "label": "Пресеты",
+      "item": { "id": "string", "label": "string", "work": "number", "rest": "number", "longRest": "number", "per": "number" },
+      "default": [
+        { "id": "classic", "label": "25 / 5 ×4", "work": 25, "rest": 5, "longRest": 15, "per": 4 },
+        { "id": "deep", "label": "50 / 10 ×2", "work": 50, "rest": 10, "longRest": 20, "per": 2 },
+        { "id": "flow", "label": "90 / 20 ×1", "work": 90, "rest": 20, "longRest": 30, "per": 1 }
+      ] }
+  ]
+}
