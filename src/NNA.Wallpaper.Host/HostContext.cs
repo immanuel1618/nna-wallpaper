@@ -19,6 +19,8 @@ public interface IHostApp
     /// <summary>Send a JSON message to every wallpaper page (or one monitor when id is given).</summary>
     void PostToPages(string json, string? monitorId = null);
     void RequestExit();
+    /// <summary>Show the top-level text input window near a screen point; the result is delivered by the caller's own flow.</summary>
+    void RequestTextInput(string target, int screenX, int screenY, string? placeholder, Action<string> onSubmit);
 }
 
 public sealed class NullHostApp : IHostApp
@@ -30,6 +32,7 @@ public sealed class NullHostApp : IHostApp
     public void OpenPlannerLogin() { }
     public void PostToPages(string json, string? monitorId = null) { }
     public void RequestExit() { }
+    public void RequestTextInput(string target, int screenX, int screenY, string? placeholder, Action<string> onSubmit) { }
 }
 
 /// <summary>Everything a host service needs: paths, config, log, port, app callbacks.</summary>

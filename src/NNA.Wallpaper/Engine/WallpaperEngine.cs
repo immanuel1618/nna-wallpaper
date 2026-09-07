@@ -39,6 +39,8 @@ public sealed class WallpaperEngine : IHostApp, IDisposable
     public event Action? ExitRequested;
     public event Action<string?>? SettingsRequested;
     public event Action? LoginRequested;
+    /// <summary>(target, screenX, screenY, placeholder, onSubmit) — the app shows InputWindow.</summary>
+    public event Action<string, int, int, string?, Action<string>>? InputRequested;
 
     public WallpaperEngine(HostContext ctx, Dispatcher dispatcher, bool testMode)
     {
@@ -212,6 +214,8 @@ public sealed class WallpaperEngine : IHostApp, IDisposable
     public void OpenSettings(string? tab) => _dispatcher.BeginInvoke(() => SettingsRequested?.Invoke(tab));
     public void OpenPlannerLogin() => _dispatcher.BeginInvoke(() => LoginRequested?.Invoke());
     public void RequestExit() => _dispatcher.BeginInvoke(() => ExitRequested?.Invoke());
+    public void RequestTextInput(string target, int screenX, int screenY, string? placeholder, Action<string> onSubmit) =>
+        _dispatcher.BeginInvoke(() => InputRequested?.Invoke(target, screenX, screenY, placeholder, onSubmit));
 
     public void ReloadWallpaper() => _dispatcher.BeginInvoke(() =>
     {
