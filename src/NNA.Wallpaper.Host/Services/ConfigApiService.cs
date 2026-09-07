@@ -90,6 +90,21 @@ public sealed class ConfigApiService : IHostService
     /// Applies any of app (partial merge), monitors (full replace, validated), widgetSettings,
     /// launch, events. Validates everything first: on any error nothing is written.
     /// </summary>
+    /// <summary>
+    /// Recursive merge of a JSON patch into the current settings: nested objects are merged key by
+    /// key (so `{taskbar:{windows:{mode:"win-only"}}}` keeps every other taskbar and windows field),
+    /// arrays and scalars replace, an explicit null clears the field.
+    /// </summary>
+    private static void DeepMerge(JsonObject target, string key, JsonNode? patch)
+    {
+        if (patch is JsonObject patchObj && target[key] is JsonObject targetObj)
+        {
+            foreach (var kv in patchObj) DeepMerge(targetObj, kv.Key, kv.Value);
+            return;
+        }
+        target[key] = patch?.DeepClone();
+    }
+
     private async Task PutConfig(ApiRequest req)
     {
         var body = await req.ReadBodyAsync().ConfigureAwait(false);
@@ -115,7 +130,7 @@ public sealed class ConfigApiService : IHostService
                 foreach (var kv in appPatch)
                 {
                     if (string.Equals(kv.Key, "apiToken", StringComparison.OrdinalIgnoreCase)) continue;
-                    current[kv.Key] = kv.Value?.DeepClone();
+                    DeepMerge(current, kv.Key, kv.Value);
                 }
                 mergedApp = current.Deserialize<AppSettings>(Json.Config);
                 if (mergedApp is null) errors.Add("app: could not parse");

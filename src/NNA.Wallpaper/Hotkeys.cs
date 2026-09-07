@@ -199,6 +199,7 @@ public sealed class Hotkeys : IDisposable
         }
 
         _finishing = 0;
+        _ctx.Log.Info("hotkey: capture started");
         BroadcastRec(true);
         _pollTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = TimeSpan.FromMilliseconds(50) };
         _pollTimer.Tick += (_, _) => PollKeyState();
@@ -248,6 +249,7 @@ public sealed class Hotkeys : IDisposable
         byte[]? bytes = null;
         try { bytes = _voice?.Stop(); }
         catch (Exception ex) { _ctx.Log.Error("voice capture stop failed", ex); }
+        _ctx.Log.Info("hotkey: capture finished (" + (bytes?.Length ?? 0) + " bytes, " + source + ")");
         BroadcastRec(false);
         SendCaptured(bytes, source);
     }

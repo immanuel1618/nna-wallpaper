@@ -237,18 +237,18 @@ try {
         Start-Sleep -Seconds 3
         $rects = Get-TrayRects
         $covered = $true
+        $screenBottom = $s.Bounds.Y + $s.Bounds.Height
         foreach ($r in $rects) {
-            $height = $r.Bottom - $r.Top
-            if ($height -gt 4) { $covered = $false }
+            if ($r.Top -lt ($screenBottom - 4)) { $covered = $false }
         }
         if ($covered) { Write-Pass 'taskbar stayed hidden with the cursor held at the bottom edge for 3s' }
-        else { Write-Fail 'taskbar stayed hidden with the cursor held at the bottom edge for 3s' "tray rect height(s): $(($rects | ForEach-Object { $_.Bottom - $_.Top }) -join ',')" }
+        else { Write-Fail 'taskbar stayed hidden with the cursor held at the bottom edge for 3s' "tray top(s): $(($rects | ForEach-Object { $_.Top }) -join ',') screenBottom=$screenBottom" }
 
         # ---- Win tap: panel + Start visible within 500ms ----
         Tap-Win
         Start-Sleep -Milliseconds 500
         $rects2 = Get-TrayRects
-        $visible = ($rects2 | Where-Object { ($_.Bottom - $_.Top) -gt 4 }).Count -gt 0
+        $visible = ($rects2 | Where-Object { $_.Top -lt ($screenBottom - 4) }).Count -gt 0
         $startOpen = [TaskbarLockProbeNative]::IsStartMenuOpen()
         if ($visible -and $startOpen) { Write-Pass 'Win tap shows the taskbar and opens Start within 500ms' }
         else { Write-Fail 'Win tap shows the taskbar and opens Start within 500ms' "visible=$visible startOpen=$startOpen" }
@@ -257,16 +257,16 @@ try {
         Tap-Esc
         Start-Sleep -Seconds 2
         $rects3 = Get-TrayRects
-        $hiddenAgain = -not (($rects3 | Where-Object { ($_.Bottom - $_.Top) -gt 4 }).Count -gt 0)
+        $hiddenAgain = -not (($rects3 | Where-Object { $_.Top -lt ($screenBottom - 4) }).Count -gt 0)
         if ($hiddenAgain) { Write-Pass 'taskbar hides again ~2s after Esc closes Start' }
-        else { Write-Fail 'taskbar hides again ~2s after Esc closes Start' "tray rect height(s): $(($rects3 | ForEach-Object { $_.Bottom - $_.Top }) -join ',')" }
+        else { Write-Fail 'taskbar hides again ~2s after Esc closes Start' "tray top(s): $(($rects3 | ForEach-Object { $_.Top }) -join ',')" }
 
         # ---- Win+E opens Explorer without showing the panel ----
         Combo-WinE
         Start-Sleep -Milliseconds 900
         $cabinet = [TaskbarLockProbeNative]::FindCabinet()
         $rects4 = Get-TrayRects
-        $panelShown = ($rects4 | Where-Object { ($_.Bottom - $_.Top) -gt 4 }).Count -gt 0
+        $panelShown = ($rects4 | Where-Object { $_.Top -lt ($screenBottom - 4) }).Count -gt 0
         if ($cabinet -ne [IntPtr]::Zero -and -not $panelShown) { Write-Pass 'Win+E opens Explorer and does not show the taskbar' }
         else { Write-Fail 'Win+E opens Explorer and does not show the taskbar' "explorerWindow=$($cabinet -ne [IntPtr]::Zero) panelShown=$panelShown" }
         if ($cabinet -ne [IntPtr]::Zero) { [TaskbarLockProbeNative]::CloseWindow($cabinet) }
