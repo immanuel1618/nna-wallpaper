@@ -16,7 +16,8 @@
       "small": null,
       "transparency": null,
       "oledTransparency": null,
-      "autoHide": false
+      "autoHide": false,
+      "mode": "win-only"
     },
     "secondary": true
   },

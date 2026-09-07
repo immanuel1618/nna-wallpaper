@@ -8,6 +8,7 @@ ABM_SETSTATE
 ABS_ALWAYSONTOP
 ABS_AUTOHIDE
 APPBARDATA
+CallNextHookEx
 DCompositionCreateDevice
 DCompositionCreateDevice2
 DwmGetWindowAttribute
@@ -23,6 +24,7 @@ GetClassName
 GetCursorPos
 GetDpiForMonitor
 GetForegroundWindow
+GetModuleHandle
 GetMonitorInfo
 GetParent
 GetRawInputData
@@ -39,6 +41,7 @@ IsIconic
 IsWindow
 IsWindowVisible
 IsZoomed
+KBDLLHOOKSTRUCT
 MODIFIERKEYS_FLAGS
 MONITORINFOEXW
 MONITORINFOF_PRIMARY
@@ -60,11 +63,16 @@ SetParent
 SetWindowLong
 SetWindowLongPtr
 SetWindowPos
+SetWindowsHookEx
 ShowWindow
 SystemParametersInfo
+UnhookWindowsHookEx
 UpdateWindow
+WH_KEYBOARD_LL
 WM_DISPLAYCHANGE
 WM_INPUT
+WM_KEYDOWN
+WM_KEYUP
 WM_LBUTTONDBLCLK
 WM_LBUTTONDOWN
 WM_LBUTTONUP
@@ -82,4 +90,6 @@ WM_RBUTTONDOWN
 WM_RBUTTONUP
 WM_SETTINGCHANGE
 WM_SIZE
+WM_SYSKEYDOWN
+WM_SYSKEYUP
 WindowFromPoint

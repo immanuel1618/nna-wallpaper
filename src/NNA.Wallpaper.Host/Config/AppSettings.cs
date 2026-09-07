@@ -65,6 +65,22 @@ public sealed class TaskbarWindowsSettings
     public bool? Transparency { get; set; }
     public bool? OledTransparency { get; set; }
     public bool? AutoHide { get; set; }
+
+    /// <summary>
+    /// "normal" (default) leaves auto-hide alone (see <see cref="AutoHide"/>); "autohide" turns on the
+    /// stock Windows ABM_SETSTATE auto-hide only; "win-only" (owner decision D11) keeps the taskbar
+    /// hidden always and shows it only for Win/Win+Start — see Taskbar/TaskbarLock.cs.
+    /// </summary>
+    public string Mode { get; set; } = "normal";
+
+    /// <summary>
+    /// Resolves <see cref="Mode"/> against the legacy <see cref="AutoHide"/> toggle: a config saved
+    /// before this field existed has no "mode" key, so deserialization leaves <see cref="Mode"/> at its
+    /// "normal" default while the old <c>autoHide: true</c> value is still present — treat that
+    /// combination as "autohide" so old configs keep behaving the way they did.
+    /// </summary>
+    public string EffectiveMode() =>
+        Mode is "autohide" or "win-only" ? Mode : (AutoHide == true ? "autohide" : "normal");
 }
 
 /// <summary>Taskbar styling (Windows taskbar): per-state styles plus Windows toggles.</summary>
