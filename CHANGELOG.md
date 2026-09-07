@@ -4,6 +4,25 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-08
+
+### Changed
+- Wallpaper block titles and service labels follow the app language (`wallpaper/i18n.js`, manifest
+  titles); switching the language updates the desktop without a reload.
+- One control system in the settings: legacy `.btn`/`.field` styles removed, radii from tokens,
+  block typography on the type scale, plain-language names for accent and palette swatches.
+- SYSTEM block: value next to its label; empty LAUNCH shows a hint; empty layout page shows one message.
+- Popups: text columns truncate with an ellipsis, sliders keep a fixed width; rounded through DWM.
+- Backend notes are localized by code.
+
+### Security
+- `X-Frame-Options: DENY` on every response; login page sends no referrer.
+
+### Fixed
+- Popup web messages and hotkey handlers never throw out of their callbacks.
+- Dragging inside the top bar or dock no longer sends a Leave to the page.
+- Event broadcasts go to clients in parallel; a slow client does not delay the others.
+
 ## [0.3.4] - 2026-09-08
 
 ### Security
