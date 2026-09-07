@@ -1,0 +1,44 @@
+/* settings/planner.css — Planner page (θ): profile card, stat tiles, hotkey capture, mic level.
+   Injected on demand by settings/pages/planner.js (ensureCss()) since settings/index.html only
+   links design-system.css by default and is out of this stage's edit scope. Every class is
+   prefixed pl- to stay isolated from the shared design system. */
+
+.pl-profile-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+
+.pl-avatar-wrap { flex: 0 0 auto; width: 55px; height: 55px; }
+.pl-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; display: block; background: var(--surface); }
+.pl-avatar-fallback {
+  width: 55px; height: 55px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 16px; letter-spacing: 1px; color: var(--muted);
+}
+
+.pl-profile-info { flex: 1 1 auto; min-width: 0; }
+.pl-profile-name { font-size: 15px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-profile-username { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pl-profile-meta { display: flex; align-items: center; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+.pl-profile-expiry { font-family: var(--mono); font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* ── stat tiles: number in Roboto Flex 33, label in mono uppercase ────────────────────────── */
+.pl-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 10px; margin-top: 10px; }
+.pl-stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); padding: 14px 10px; text-align: center; }
+.pl-stat-num {
+  font-family: var(--text); font-variation-settings: "wdth" 145, "wght" 380;
+  font-size: 33px; line-height: 1.1; color: var(--fg);
+}
+.pl-stat-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 5px; }
+.pl-stats-head { display: flex; align-items: center; margin-bottom: 2px; }
+
+/* ── hotkey capture field ──────────────────────────────────────────────────────────────────── */
+.pl-hotkey-btn { min-width: 168px; font-family: var(--mono); }
+.pl-hotkey-btn.is-listening { border-color: var(--fg); color: var(--fg); }
+.pl-hotkey-status { font-size: 11px; color: var(--muted); margin-top: 8px; }
+.pl-hotkey-status.ok { color: var(--ok); }
+.pl-hotkey-status.err { color: var(--bad); }
+
+/* ── mic level meter (getUserMedia test, 3s) ───────────────────────────────────────────────── */
+.pl-level-row { display: flex; align-items: center; gap: 10px; }
+.pl-level { width: 120px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; flex: 0 0 auto; }
+.pl-level-fill { width: 0%; height: 100%; background: var(--fg); transition: width .08s linear; }
+
+.pl-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }

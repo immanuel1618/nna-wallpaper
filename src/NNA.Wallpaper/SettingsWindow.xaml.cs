@@ -95,6 +95,16 @@ public partial class SettingsWindow : Window
             settings.AreDefaultContextMenusEnabled = false;
             settings.AreDevToolsEnabled = App.Args.DevTools;
 
+            // Microphone for the planner page's "test microphone" control (settings/pages/planner.js);
+            // everything else denied. Same allow/deny split as the wallpaper window's own handler
+            // (Engine/WallpaperWindow.cs), just for this separate WebView2 environment/window.
+            Browser.CoreWebView2.PermissionRequested += (_, e) =>
+            {
+                e.State = e.PermissionKind == CoreWebView2PermissionKind.Microphone
+                    ? CoreWebView2PermissionState.Allow
+                    : CoreWebView2PermissionState.Deny;
+            };
+
             var lang = string.IsNullOrEmpty(_ctx.Config.App.Language) ? "ru" : _ctx.Config.App.Language;
             var query = "?token=" + Uri.EscapeDataString(_ctx.Config.App.ApiToken)
                         + "&lang=" + Uri.EscapeDataString(lang)

@@ -417,4 +417,48 @@
     el.addEventListener('click', function () { ctx.openPopup('nna'); });
     return { start: function () {}, stop: function () {} };
   };
+
+  /* ---- rec: push-to-talk indicator — a pulsing Signal dot plus mm:ss, hidden until the host
+     broadcasts {"type":"voice-rec","on":true|false} over /events (NNA.Wallpaper.Hotkeys, on hotkey
+     press/release; see docs/PLANNER.md). Not in bar.js's DEFAULT_MODULES (out of this stage's file
+     scope) — add {"id":"rec","side":"right"} to app.json's topbar.modules (or the top bar settings
+     page's module editor) to show it. -------------------------------------------------------- */
+  window.TopBarModules.rec = function (el, ctx) {
+    el.classList.add('tb-rec');
+    // Inline-styled (not a topbar/bar.css class: bar.css is out of this stage's edit scope) — a
+    // small red Signal-red dot plus mm:ss, animated with a plain CSS custom property-free pulse via
+    // opacity so it needs no external keyframes rule either.
+    var dot = document.createElement('span');
+    dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#b3261e;flex:0 0 auto;';
+    var pulseOn = true;
+    var pulseTimer = setInterval(function () { pulseOn = !pulseOn; dot.style.opacity = pulseOn ? '1' : '.35'; }, 500);
+    var timeEl = document.createElement('span');
+    el.appendChild(dot);
+    el.appendChild(timeEl);
+    ctx.setVisible(false);
+
+    var startedAt = 0, timer = null;
+
+    function render() {
+      var s = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      timeEl.textContent = Math.floor(s / 60) + ':' + pad2(s % 60);
+    }
+    function onRec(msg) {
+      var on = !!(msg && msg.on);
+      ctx.setVisible(on);
+      clearInterval(timer);
+      timer = null;
+      if (on) {
+        startedAt = Date.now();
+        render();
+        timer = setInterval(render, 1000);
+      }
+    }
+    ctx.on('voice-rec', onRec);
+
+    return {
+      start: function () {},
+      stop: function () { clearInterval(timer); timer = null; clearInterval(pulseTimer); }
+    };
+  };
 })();
