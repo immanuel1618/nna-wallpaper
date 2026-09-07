@@ -34,6 +34,7 @@
   <ItemGroup>
     <Resource Include="Assets\mark-white-32.png" />
     <Resource Include="Assets\mark-white-64.png" />
+    <Resource Include="Assets\tray-white.ico" />
   </ItemGroup>
 
   <!-- Web assets (wallpaper page, built-in widgets, settings window) travel with the exe. -->

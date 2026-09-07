@@ -1,0 +1,41 @@
+[
+  {
+    "id": "linen",
+    "title": {
+      "ru": "Тёмный лён",
+      "en": "Dark linen"
+    },
+    "files": {
+      "21x9": "linen-21x9.jpg",
+      "9x16": "linen-9x16.jpg"
+    },
+    "source": "generated",
+    "license": "CC0 by NNA1618 (own generation)"
+  },
+  {
+    "id": "basalt",
+    "title": {
+      "ru": "Мокрый базальт",
+      "en": "Wet basalt"
+    },
+    "files": {
+      "21x9": "basalt-21x9.jpg",
+      "9x16": "basalt-9x16.jpg"
+    },
+    "source": "generated",
+    "license": "CC0 by NNA1618 (own generation)"
+  },
+  {
+    "id": "fog",
+    "title": {
+      "ru": "Туман над водой",
+      "en": "Fog over water"
+    },
+    "files": {
+      "21x9": "fog-21x9.jpg",
+      "9x16": "fog-9x16.jpg"
+    },
+    "source": "generated",
+    "license": "CC0 by NNA1618 (own generation)"
+  }
+]

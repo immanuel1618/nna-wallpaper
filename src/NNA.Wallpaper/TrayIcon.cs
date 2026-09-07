@@ -115,6 +115,23 @@ public sealed class TrayIcon : IDisposable
 
     private static System.Drawing.Icon? LoadIcon()
     {
+        // Prefer the dedicated tray mark (White on transparent, sized for 16..32 px trays) over
+        // the app icon (White on Base) so the glyph reads on both dark and light taskbars.
+        try
+        {
+            var uri = new Uri("pack://application:,,,/Assets/tray-white.ico", UriKind.Absolute);
+            var info = Application.GetResourceStream(uri);
+            if (info is not null)
+            {
+                using var stream = info.Stream;
+                return new System.Drawing.Icon(stream, 16, 16);
+            }
+        }
+        catch
+        {
+            // fall through to the exe icon below
+        }
+
         try
         {
             var path = Environment.ProcessPath;

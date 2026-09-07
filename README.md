@@ -1,3 +1,5 @@
+![NNA Wallpaper](docs/assets/readme-banner.png)
+
 # NNA Wallpaper
 
 Live interactive HTML wallpapers for Windows — without Wallpaper Engine.
