@@ -106,6 +106,80 @@ export function findFreeSlot(layout, cols, rows, size) {
   return null;
 }
 
+/**
+ * Adds a block for `widget` at the first free slot (row-major scan) sized `size` ({colSpan,
+ * rowSpan}, default 1x1). Returns { layout, added, index }: on success `layout` is a new layout
+ * with the block appended and `index` is its position in `blocks`; when there is no room, `added`
+ * is false and `layout` is the input unchanged (not cloned — callers should keep using the
+ * original reference).
+ */
+export function addBlock(layout, widget, size) {
+  const colSpan = Math.max(1, (size && size.colSpan) || 1);
+  const rowSpan = Math.max(1, (size && size.rowSpan) || 1);
+  const slot = findFreeSlot(layout, layout.cols, layout.rows, { colSpan, rowSpan });
+  if (!slot) return { layout, added: false, index: -1 };
+  const next = cloneLayout(layout);
+  next.blocks.push({ widget, col: slot.col, row: slot.row, colSpan, rowSpan });
+  return { layout: next, added: true, index: next.blocks.length - 1 };
+}
+
+/** Removes the block at `index`. Returns a new layout; out-of-range index is a no-op clone. */
+export function removeBlock(layout, index) {
+  const next = cloneLayout(layout);
+  if (index >= 0 && index < next.blocks.length) next.blocks.splice(index, 1);
+  return next;
+}
+
+/** Alias of validateLayout — same structural + overlap validation, named to match the editor's
+ * addBlock/removeBlock/validate trio (settings/layout-canvas.js, docs/SETTINGS.md). */
+export const validate = validateLayout;
+
+/**
+ * A bounded undo/redo stack of plain-data snapshots (deep-cloned via JSON so callers can pass
+ * mutable layout objects without aliasing bugs). `push` truncates any redo branch, same as a
+ * normal editor undo stack. Limit defaults to 55 (Fibonacci — see ui/tokens.css --sp-55) past
+ * states; the current state does not count against the limit.
+ */
+export function createHistory(limit = 55) {
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  const past = [];
+  const future = [];
+  let current = null;
+
+  return {
+    /** Sets the current state without recording an undo step (call once, on load/select). */
+    init(state) {
+      current = clone(state);
+      past.length = 0;
+      future.length = 0;
+    },
+    /** Records `current` onto the past stack (capped at `limit`) and makes `state` current. */
+    push(state) {
+      if (current !== null) {
+        past.push(current);
+        if (past.length > limit) past.shift();
+      }
+      current = clone(state);
+      future.length = 0;
+    },
+    undo() {
+      if (!past.length) return current;
+      future.push(current);
+      current = past.pop();
+      return clone(current);
+    },
+    redo() {
+      if (!future.length) return current;
+      past.push(current);
+      current = future.pop();
+      return clone(current);
+    },
+    canUndo() { return past.length > 0; },
+    canRedo() { return future.length > 0; },
+    get current() { return current === null ? null : clone(current); },
+  };
+}
+
 /** Same defaults as LayoutResolver.cs: landscape -> "main", portrait -> "vertical". */
 export function defaultLayoutFor(width, height, id) {
   return height > width ? defaultVertical(id) : defaultMain(id);
