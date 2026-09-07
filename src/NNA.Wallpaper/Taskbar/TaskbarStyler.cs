@@ -43,11 +43,15 @@ public sealed class TaskbarStyler : IDisposable
 
     private readonly HostContext _ctx;
     private readonly Log _log;
+    private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _timer;
     private readonly Dictionary<nint, string> _appliedKey = new();
     private readonly string _backupFile;
     private bool _accentEverApplied;
     private bool _disposed;
+    /// <summary>D11 "win-only" mode: hidden taskbar shown only for Win. See TaskbarLock.cs. Created on
+    /// demand by Apply() and torn down by Apply()/Reset()/Dispose() when the mode is not win-only.</summary>
+    private TaskbarLock? _lock;
     public string? LastNote { get; private set; }
     public bool AccentSupported { get; private set; } = true;
 
@@ -55,6 +59,7 @@ public sealed class TaskbarStyler : IDisposable
     {
         _ctx = ctx;
         _log = ctx.Log;
+        _dispatcher = dispatcher;
         _backupFile = Path.Combine(ctx.Paths.DataDir, "taskbar-backup.json");
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Background, (_, _) => Tick(), dispatcher);
     }
@@ -188,6 +193,7 @@ public sealed class TaskbarStyler : IDisposable
         if (!cfg.Enabled)
         {
             if (_accentEverApplied) ClearAccent();
+            _lock?.Stop();
             if (!_timer.IsEnabled) _timer.Start();
             return;
         }
@@ -202,7 +208,21 @@ public sealed class TaskbarStyler : IDisposable
         changed |= WriteToggle(AdvancedKey, "TaskbarSi", w.Small, onValue: 0, offValue: 1);
         changed |= WriteToggle(PersonalizeKey, "EnableTransparency", w.Transparency, onValue: 1, offValue: 0);
         changed |= WriteToggle(AdvancedKey, "UseOLEDTaskbarTransparency", w.OledTransparency, onValue: 1, offValue: 0);
-        if (w.AutoHide is bool autoHide) SetAutoHide(autoHide);
+        // Auto-hide: "win-only" drives ABM_SETSTATE itself (TaskbarLock keeps re-asserting it against
+        // its own shields and the Win-tap show/hide cycle); "autohide" is the plain Windows behaviour;
+        // "normal" keeps the old nullable toggle (null = leave the Windows setting untouched).
+        var effMode = w.EffectiveMode();
+        if (effMode == "win-only")
+        {
+            _lock ??= new TaskbarLock(_ctx, _dispatcher);
+            _lock.Start();
+        }
+        else
+        {
+            _lock?.Stop();
+            if (effMode == "autohide") SetAutoHide(true);
+            else if (w.AutoHide is bool autoHide) SetAutoHide(autoHide);
+        }
         if (changed) Broadcast();
         LastNote = AccentSupported ? null : "accent policy is ignored by this Windows build";
         if (!_timer.IsEnabled) _timer.Start();
@@ -236,9 +256,12 @@ public sealed class TaskbarStyler : IDisposable
         _log.Info("taskbar: backup written " + _backupFile);
     }
 
-    /// <summary>Put the Windows settings back exactly as they were before the first Apply.</summary>
+    /// <summary>Put the Windows settings back exactly as they were before the first Apply. Always
+    /// stops win-only mode first (drops the keyboard hook, closes the shields) even if there is no
+    /// backup yet, so /taskbar/reset is a reliable "get my taskbar back" button either way.</summary>
     public bool Reset()
     {
+        _lock?.Stop();
         ClearAccent();
         var node = Json.LoadFile(_backupFile) as JsonObject;
         if (node is null) return false;
@@ -324,6 +347,7 @@ public sealed class TaskbarStyler : IDisposable
             ["taskbars"] = TaskbarWindows(true).Count,
             ["backup"] = File.Exists(_backupFile),
             ["explorerPid"] = Process.GetProcessesByName("explorer").FirstOrDefault()?.Id,
+            ["lock"] = _lock?.Status() ?? new JsonObject { ["mode"] = "off", ["hookActive"] = false, ["shields"] = 0, ["trayVisible"] = true },
         };
     }
 
@@ -332,6 +356,7 @@ public sealed class TaskbarStyler : IDisposable
         if (_disposed) return;
         _disposed = true;
         _timer.Stop();
+        try { _lock?.Dispose(); } catch { }
         try { if (_accentEverApplied) ClearAccent(); } catch { }
     }
 }
