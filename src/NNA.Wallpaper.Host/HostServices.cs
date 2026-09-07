@@ -88,6 +88,7 @@ public sealed class HostServices : IDisposable
             ["media"] = extra.ContainsKey("media") ? extra["media"]?.DeepClone() : false,
             ["media_error"] = extra.ContainsKey("media_error") ? extra["media_error"]?.DeepClone() : null,
             ["gpu"] = extra.ContainsKey("gpu") ? extra["gpu"]?.DeepClone() : false,
+            ["audio"] = extra.ContainsKey("audio") ? extra["audio"]?.DeepClone() : false,
             ["monitors"] = new JsonArray(_ctx.App.Monitors.Select(m => (JsonNode)new JsonObject
             {
                 ["id"] = m.id, ["name"] = m.name, ["width"] = m.width, ["height"] = m.height,
