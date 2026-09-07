@@ -1,4 +1,5 @@
 using System.Windows;
+using NNA.Wallpaper.Engine;
 using NNA.Wallpaper.Host;
 using NNA.Wallpaper.Host.Config;
 
@@ -9,9 +10,10 @@ public partial class App : Application
     public static CliArgs Args { get; private set; } = CliArgs.Parse(Array.Empty<string>());
     public static HostContext? Host { get; private set; }
     public static HostServices? Services { get; private set; }
+    public static WallpaperEngine? Engine { get; private set; }
     public static Log? Log { get; private set; }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         Args = CliArgs.Parse(e.Args);
@@ -24,8 +26,7 @@ public partial class App : Application
         config.Load();
         var port = Args.Port ?? config.App.ApiPort;
 
-        IHostApp hostApp = new NullHostApp();
-        Host = new HostContext(paths, config, log, port, hostApp);
+        Host = new HostContext(paths, config, log, port, new NullHostApp());
         try
         {
             Services = new HostServices(Host);
@@ -37,18 +38,31 @@ public partial class App : Application
             Shutdown(3);
             return;
         }
-        log.Info($"{HostInfo.AppName} {HostInfo.Version} started, port {port}, data {paths.DataDir}, headless={Args.Headless}");
+        log.Info($"{HostInfo.AppName} {HostInfo.Version} started, port {port}, data {paths.DataDir}, headless={Args.Headless} test={Args.TestEngine}");
 
         if (Args.Headless)
         {
             return; // API only; the engine is not started (used by tests and the stage 2/3 gates)
         }
 
-        // Engine and tray arrive in later stages; until then a non-headless start behaves like headless.
+        try
+        {
+            Engine = new WallpaperEngine(Host, Dispatcher, Args.TestEngine) { DevTools = Args.DevTools };
+            Engine.ExitRequested += () => Shutdown(0);
+            Host.App = Engine;
+            await Engine.StartAsync();
+            log.Info($"engine started: {Engine.Windows.Count} monitor(s), desktop {Engine.DesktopMode}");
+        }
+        catch (Exception ex)
+        {
+            log.Error("engine start failed", ex);
+            Shutdown(4);
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        try { Engine?.Dispose(); } catch { }
         Services?.Dispose();
         Log?.Info("exit " + e.ApplicationExitCode);
         base.OnExit(e);

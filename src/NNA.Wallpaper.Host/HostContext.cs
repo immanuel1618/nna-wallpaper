@@ -39,7 +39,7 @@ public sealed class HostContext
     public ConfigStore Config { get; }
     public Log Log { get; }
     public int Port { get; }
-    public IHostApp App { get; }
+    public IHostApp App { get; set; }
     public DateTime Started { get; } = DateTime.UtcNow;
 
     /// <summary>Extra /health fields contributed by services (e.g. "gpu", "media").</summary>
