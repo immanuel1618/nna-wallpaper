@@ -7,6 +7,7 @@ using NNA.Wallpaper.Engine;
 using NNA.Wallpaper.Host;
 using NNA.Wallpaper.Host.Config;
 using NNA.Wallpaper.Taskbar;
+using NNA.Wallpaper.TopBar;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
@@ -19,19 +20,17 @@ namespace NNA.Wallpaper.Dock;
 /// Modelled on <see cref="TopBar.TopBarWindow"/> (AppBar plumbing, surface style, WS_EX_TOOLWINDOW)
 /// with two differences: the window is sized to its content (the page posts
 /// <c>{"type":"size","width":..,"height":..}</c> in CSS px == WPF DIUs, since WebView2 runs at the
-/// window's own per-monitor DPI) and stays centred on the bottom edge instead of spanning it, and
-/// it takes WS_EX_NOACTIVATE so a click on it never steals focus from the foreground app — the
-/// click still reaches WebView2 (child HWND gets mouse input regardless of NOACTIVATE on the
-/// top-level owner).
+/// window's own per-monitor DPI) and stays centred on the bottom edge instead of spanning it.
 ///
-/// Window transparency: WebView2's own transparent background only composes correctly with
-/// DirectComposition hosting, not the WPF child-HWND control used here, so true window
-/// transparency was not attempted. Instead the window is exactly content-sized (dock/dock.js
-/// reports its real size, padding already baked into the page's own layout) with an opaque Base
-/// background — the page draws the rounded dock bar; the plain rectangle around it blends with the
-/// Base-coloured wallpaper behind it. This is an approximation, not true transparency (see
-/// docs/DOCK.md); with an acrylic/blur style the blur material covers the whole rectangle, not
-/// just the rounded bar, which is a known visual seam.
+/// Hosting: like <see cref="TopBar.TopBarWindow"/>, WebView2 is attached through
+/// <see cref="CompositionHost"/> straight onto this window's own HWND instead of the WPF WebView2
+/// control, and mouse input is forwarded by <see cref="CompositionInput"/> (see that class for why:
+/// the WPF control's own child HWND is what stole foreground activation on click, not
+/// WM_MOUSEACTIVATE — WS_EX_NOACTIVATE alone did not stop it). This also gets proper WebView2
+/// transparency for free (composition hosting supports a truly transparent DefaultBackgroundColor,
+/// unlike the windowed WPF control) — the window is still sized exactly to content as before
+/// (dock/dock.js reports its real size), so this does not change the known blur-covers-the-whole-
+/// rectangle seam described in docs/DOCK.md, only the focus-stealing behaviour.
 /// </summary>
 public partial class DockWindow : Window
 {
@@ -48,6 +47,9 @@ public partial class DockWindow : Window
     private bool _hiddenByRule;
     private double _widthDip;
     private double _heightDip;
+    private CompositionHost? _compHost;
+    private CoreWebView2CompositionController? _comp;
+    private CompositionInput? _input;
 
     public MonitorInfo Monitor { get; private set; }
 
@@ -66,7 +68,7 @@ public partial class DockWindow : Window
         Height = _heightDip;
         SourceInitialized += OnSourceInitialized;
         Loaded += async (_, _) => await InitBrowserAsync();
-        Closing += (_, _) => { _closing = true; Unregister(); };
+        Closing += (_, _) => { _closing = true; Unregister(); DisposeComposition(); };
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -100,6 +102,12 @@ public partial class DockWindow : Window
                 SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
         }
         if (_registered) SetPos(heightPx);
+        if (_comp is not null)
+        {
+            _comp.RasterizationScale = scale;
+            _comp.Bounds = new System.Drawing.Rectangle(0, 0, widthPx, heightPx);
+            _comp.NotifyParentWindowPositionChanged();
+        }
     }
 
     /// <summary>Called from the WebView2 "size" message: the page's real content size in CSS px
@@ -174,6 +182,12 @@ public partial class DockWindow : Window
         {
             if ((int)wParam == 1) PositionOnMonitor(); // ABN_POSCHANGED
             handled = true;
+            return 0;
+        }
+        if (_input is not null && _input.Handle(msg, wParam, lParam, out var result))
+        {
+            handled = true;
+            return result;
         }
         return 0;
     }
@@ -187,17 +201,45 @@ public partial class DockWindow : Window
             var userDataDir = _ctx.Paths.WebView2UserDataDir + "-dock";
             Directory.CreateDirectory(userDataDir);
             var env = await CoreWebView2Environment.CreateAsync(null, userDataDir).ConfigureAwait(true);
-            await Browser.EnsureCoreWebView2Async(env).ConfigureAwait(true);
-            Browser.DefaultBackgroundColor = System.Drawing.Color.Transparent;
-            var s = Browser.CoreWebView2.Settings;
+            if (_closing) return;
+
+            var host = CompositionHost.Create(_hwnd);
+            CoreWebView2CompositionController comp;
+            try
+            {
+                comp = await env.CreateCoreWebView2CompositionControllerAsync((nint)_hwnd).ConfigureAwait(true);
+            }
+            catch
+            {
+                host.Dispose();
+                throw;
+            }
+            if (_closing) { comp.Close(); host.Dispose(); return; }
+
+            comp.RootVisualTarget = host.RootVisual;
+            host.Commit(); // required right after RootVisualTarget or nothing renders (see CompositionHost.Commit)
+            _compHost = host;
+            _comp = comp;
+
+            comp.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+            var scale = Monitor.Scale <= 0 ? 1.0 : Monitor.Scale;
+            comp.RasterizationScale = scale;
+            var widthPx = Math.Max(1, (int)Math.Round(_widthDip * scale));
+            var heightPx = Math.Max(1, (int)Math.Round(_heightDip * scale));
+            comp.Bounds = new System.Drawing.Rectangle(0, 0, widthPx, heightPx);
+
+            var s = comp.CoreWebView2.Settings;
             s.AreDefaultContextMenusEnabled = false;
             s.AreDevToolsEnabled = App.Args.DevTools;
             s.IsStatusBarEnabled = false;
             s.IsZoomControlEnabled = false;
             s.AreBrowserAcceleratorKeysEnabled = false;
-            Browser.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
-            Browser.CoreWebView2.WebMessageReceived += OnWebMessage;
-            Browser.CoreWebView2.Navigate(_ctx.BaseUrl + "/dock/?monitor=" + Uri.EscapeDataString(Monitor.Id));
+            comp.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
+            comp.CoreWebView2.WebMessageReceived += OnWebMessage;
+
+            _input = new CompositionInput(_hwnd, comp);
+
+            comp.CoreWebView2.Navigate(_ctx.BaseUrl + "/dock/?monitor=" + Uri.EscapeDataString(Monitor.Id));
         }
         catch (Exception ex)
         {
@@ -225,14 +267,23 @@ public partial class DockWindow : Window
         }
     }
 
+    private void DisposeComposition()
+    {
+        _input = null;
+        try { _comp?.Close(); } catch { }
+        _comp = null;
+        try { _compHost?.Dispose(); } catch { }
+        _compHost = null;
+    }
+
     public void Reload()
     {
-        try { Browser.CoreWebView2?.Reload(); } catch { }
+        try { _comp?.CoreWebView2?.Reload(); } catch { }
     }
 
     public void PostJson(string json)
     {
-        try { Browser.CoreWebView2?.PostWebMessageAsJson(json); } catch { }
+        try { _comp?.CoreWebView2?.PostWebMessageAsJson(json); } catch { }
     }
 
     /// <summary>Hide under fullscreen apps (and for auto-hide when the pointer is away from the bottom edge).</summary>

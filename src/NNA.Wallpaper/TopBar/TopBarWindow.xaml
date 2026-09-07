@@ -1,11 +1,13 @@
 <Window x:Class="NNA.Wallpaper.TopBar.TopBarWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="NNA Wallpaper Top Bar" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
         Topmost="True" ShowActivated="False" AllowsTransparency="False" Background="#0B0B0B"
         WindowStartupLocation="Manual">
-    <Grid x:Name="Root">
-        <wv2:WebView2 x:Name="Browser" />
-    </Grid>
+    <!-- No WebView2 control here on purpose: WebView2 is hosted through DirectComposition straight
+         onto this window's own HWND (see CompositionInput / InitBrowserAsync) instead of the WPF
+         WebView2 control, whose internal Chrome_WidgetWin_1 child HWND is what stole foreground
+         activation on click (docs/TOPBAR.md "хостинг и фокус"). This Grid stays as the empty root
+         visual WPF needs for the window; it never paints anything of its own. -->
+    <Grid x:Name="Root" />
 </Window>

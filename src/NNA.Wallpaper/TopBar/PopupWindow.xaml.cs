@@ -76,6 +76,7 @@ public partial class PopupWindow : Window
     {
         try
         {
+            _ctx.Log.Info("popup: init " + module + " on " + monitorId + " anchor=" + anchorCenterXPhysical);
             var userDataDir = _ctx.Paths.WebView2UserDataDir + "-topbar-popup";
             Directory.CreateDirectory(userDataDir);
             var env = await CoreWebView2Environment.CreateAsync(null, userDataDir).ConfigureAwait(true);
@@ -140,6 +141,9 @@ public partial class PopupWindow : Window
         Height = cssHeight;
         Left = leftPhysical / _scale;
         Top = topPhysical / _scale;
+
+        _ctx.Log.Info("popup: shown at " + (int)Math.Round(leftPhysical) + "," + topPhysical
+            + " " + (int)Math.Round(wPhysical) + "x" + (int)Math.Round(hPhysical) + " (" + Module + ")");
 
         // No SWP_NOACTIVATE: the popup must hold keyboard focus (sliders, Esc) unlike the topbar
         // itself. The window is already active after the first Show(); re-asserting activation on

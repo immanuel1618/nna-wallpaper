@@ -15,6 +15,9 @@ topbar/popup/index.html, popup.css, popup.js      the four popover pages (?modul
 src/NNA.Wallpaper/TopBar/TopBarWindow.xaml(.cs)    the bar's WPF window (AppBar, WebView2)
 src/NNA.Wallpaper/TopBar/TopBarManager.cs          creates bars per monitor, owns the popovers
 src/NNA.Wallpaper/TopBar/PopupWindow.xaml(.cs)     one popover's WPF window
+src/NNA.Wallpaper/TopBar/CompositionInput.cs       stage 8C: composition-hosting + mouse forwarding
+                                                    shared by TopBarWindow and Dock/DockWindow
+tests/TopBarPreview/                               stage 8C: live click-through probe (see Testing)
 ```
 
 `ui/tokens.css` + `ui/components.css` + `ui/components.js` (`window.NNAUI`) — see
@@ -25,11 +28,13 @@ through `wallpaper/nna-brand.css`'s `@import`, which is where its own CSS variab
 
 ## Windows
 
-**TopBarWindow** (unchanged shape from before this stage): `WindowStyle=None`, `AllowsTransparency
-=False`, `Topmost=True`, `ShowActivated=False`, `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` — it never
-takes keyboard focus, registered as a Windows AppBar (`SHAppBarMessage`) so maximized windows start
-below it. New in this stage: it listens for `CoreWebView2.WebMessageReceived` and re-raises
-`{type:'popup', module, anchorX, anchorW}` as the C# event `PopupRequested`.
+**TopBarWindow**: `WindowStyle=None`, `AllowsTransparency=False`, `Topmost=True`,
+`ShowActivated=False`, `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` — it never takes keyboard focus,
+registered as a Windows AppBar (`SHAppBarMessage`) so maximized windows start below it. It listens
+for `CoreWebView2.WebMessageReceived` and re-raises `{type:'popup', module, anchorX, anchorW}` as
+the C# event `PopupRequested`. Since stage 8C it is hosted through `CompositionInput`/
+`CompositionHost` instead of the WPF `Microsoft.Web.WebView2.Wpf.WebView2` control — see "Хостинг и
+фокус" below.
 
 **PopupWindow** (new): also `WindowStyle=None`, `AllowsTransparency=False`, `Topmost=True`,
 `WS_EX_TOOLWINDOW` — but *without* `WS_EX_NOACTIVATE` and with `ShowActivated` left at its default
@@ -58,6 +63,73 @@ converted once, in `TogglePopup`, to a physical screen X:
 `monitor.Top + bar.HeightPx` (also physical — `HeightPx` already is). `PopupWindow` does not
 position or size itself until the page reports a size (see below): it starts off-screen
 (`Left=Top=-32000`) so nothing flashes at the wrong place while WebView2 is still loading.
+
+## Хостинг и фокус (stage 8C)
+
+Two field bugs from the owner's live desk (0.3.1, `monitors:"primary"`, `height:25`) drove this
+stage: (1) clicking the clock did not open the calendar popover, no trace in `app.log`; (2) clicking
+anywhere on the bar made `NNA Wallpaper Top Bar` the foreground window (`GetForegroundWindow()`),
+stealing focus from whatever the owner had active, even though the window carries
+`WS_EX_NOACTIVATE`.
+
+**Popover not opening — root cause.** The C#↔JS wiring itself (`WebMessageReceived` subscribed
+before `Navigate`, `WebMessageAsJson` not `AsString`, `ctx.openPopup(moduleId)` → `TB.openPopup`
+passing the anchor element, `TogglePopup`'s try/catch already logging on failure) was already
+correct — every one of the brief's hypotheses (а)–(д) checks out clean on inspection, and adding the
+logging below and driving the exact same code end-to-end through `tests/TopBarPreview` opens the
+popover every time (see Testing). The actual cause is a **click-target/config-layout collision**,
+confirmed by reading the owner's live `/config` (read-only `GET`, port 1618): their saved
+`topbar.modules` has `date` *and* `clock` sharing the same `"center"` side —
+`[…, {id:"date",side:"center"}, {id:"clock",side:"center"}, …]`. `.tb-center{flex:0 0 auto}` is
+horizontally centred as a *zone*, but with two modules inside it the zone's own midpoint falls
+wherever their combined width places it — `date` (`"ПН · 07 СЕН"`, ~11 characters) is wider than
+`clock` (`"23:17"`, 5 characters), so the true centre pixel of a 3440px-wide monitor (the owner's
+click target, screen x=1720 — exactly `3440/2`) lands inside `date`'s own box, not `clock`'s. `date`
+posts `/app/settings?tab=layout` (fire-and-forget, no popup, nothing logged) — which is exactly the
+observed symptom: no popup, and (before this stage's logging existed) nothing in `app.log` either.
+This is config data, not code, and out of this stage's scope to change (`settings/*` is off-limits
+and the owner's live `app.json` was never written to — see Testing); `tests/TopBarPreview`'s own bar
+config keeps `clock` alone on `"center"` so its click target is unambiguous. Diagnostic logging was
+still added throughout the chain since the brief asked for it and it is useful regardless:
+`TopBarWindow.OnWebMessage` logs every message received (`"top bar: web message " + json`) and any
+JSON-parse failure; `TopBarManager.TogglePopup` logs `"popup: toggle <module> on <monitor>"`;
+`PopupWindow` logs `"popup: init <module> on <monitor> anchor=<x>"` and, on every `{type:'size'}`
+message, `"popup: shown at <x>,<y> <w>x<h> (<module>)"`.
+
+**Focus steal — root cause and fix.** The WPF `Microsoft.Web.WebView2.Wpf.WebView2` control hosts
+Chromium in *windowed* mode, which creates its own `Chrome_WidgetWin_1` child HWND to receive mouse
+input. `WS_EX_NOACTIVATE` on the owner window only vetoes the *default* click-to-activate path
+(`WM_MOUSEACTIVATE` → `MA_NOACTIVATE`); Chromium's own input handling calls `SetFocus` on its child
+HWND on pointer-down regardless (for IME/accessibility), and giving a child window keyboard focus
+forces its top-level owner active no matter what ex-style the owner carries — that is the bug.
+`TopBarWindow` and `Dock/DockWindow` (hosting only — `DockManager.cs` untouched) no longer use the
+WPF WebView2 control at all: `TopBar/CompositionInput.cs` hosts WebView2 through
+`Engine/CompositionHost.cs` (the same DirectComposition device/target/visual plumbing the wallpaper
+windows already use, reused as-is) straight onto the window's own top-level HWND. Composition
+hosting has no Chromium-owned HWND, so there is nothing left that can call `SetFocus`/steal
+activation: `CompositionInput.Handle(msg, wParam, lParam, out result)` is called from each window's
+own `WndProc` and forwards `WM_MOUSEMOVE`/`WM_LBUTTONDOWN`/`WM_LBUTTONUP`/`WM_MBUTTONDOWN`/
+`WM_MBUTTONUP`/`WM_MOUSEWHEEL` to `CoreWebView2CompositionController.SendMouseInput` (client
+coordinates throughout; `WM_MOUSEWHEEL`'s screen coordinates are converted via `ScreenToClient`
+first — unlike every other `WM_MOUSE*` message, wheel lParam is screen-relative), arms
+`TrackMouseEvent(TME_LEAVE)` on first move so a real `WM_MOUSELEAVE` produces exactly one
+`CoreWebView2MouseEventKind.Leave`, answers `WM_SETCURSOR` with `SetCursor` from the controller's own
+`CursorChanged`/`Cursor` (so clickable modules still show a hand cursor), and answers
+`WM_MOUSEACTIVATE` with `MA_NOACTIVATE` explicitly — belt-and-braces alongside the window's own
+`WS_EX_NOACTIVATE`, though composition hosting alone already removes the actual mechanism that broke
+it. Right-click is intentionally not forwarded (same convention as `Engine/InputBridge.cs` for the
+wallpaper windows); neither the bar nor the dock take keyboard input, so none is forwarded either.
+`PopupWindow` is unchanged (still windowed WPF `WebView2`, still `WS_EX_TOOLWINDOW` without
+`WS_EX_NOACTIVATE`) — it is a normal focusable window on purpose (sliders, Esc need real focus), and
+closes itself on `Deactivated`/`{type:'close'}` same as before; it was only renamed
+(`Title="NNA Wallpaper Popup"`, was `"NNA Wallpaper Top Bar Popup"`) so `tests/TopBarPreview` can
+`FindWindow` it.
+
+Composition hosting also gets working WebView2 transparency for free (`DefaultBackgroundColor =
+Color.Transparent`, alpha 0 — composition hosting supports a truly transparent background; windowed
+hosting does not) — for `DockWindow` this does not change the known blur-covers-the-whole-rectangle
+seam (`docs/DOCK.md`), only the focus-stealing behaviour; the window is still sized exactly to
+content as before.
 
 ## Window ↔ page messages
 
@@ -210,17 +282,57 @@ production pages hit the real routes exclusively.
    screenshots; that space is purely an artifact of giving Edge a fixed capture window.
 5. Stops the instance by PID (never by process name — that would risk the owner's :1618 process).
 
-### Что не проверено (what this script cannot cover)
+### `tests/TopBarPreview` + `tests/topbar-live-probe.ps1` (stage 8C)
 
-A real `TopBar/PopupWindow` needs an interactive desktop session and a real WebView2 host process;
-`--headless` (`HeadlessHostApp`) creates neither a `TopBarWindow` nor a `PopupWindow` — there is
-nothing to click, position, or screenshot through that mode. What *is* verified instead:
-`dotnet build NNA.Wallpaper.sln -c Release` (0 warnings/errors) proves `TopBarWindow.PopupRequested`,
-`TopBarManager.TogglePopup`/`_popups` tracking, and `PopupWindow` (`Reposition`, `SafeClose`,
-`WebMessageReceived` handling) all compile and wire together correctly; the popover *pages*
-(`topbar/popup/*`) are verified to actually render, under the `?mock=1` contract, via the headless
-Edge screenshots above. Live window behaviour that was not exercised by any of this: `Deactivated`
-actually closing the window when a real user clicks elsewhere, the AppBar-anchored bar actually
-receiving the `{type:'popup'}` postMessage and `TogglePopup` actually creating/positioning/showing a
-`PopupWindow` HWND next to it, and the popover actually taking keyboard focus (sliders/Esc) on a
-real desktop.
+A real `TopBar/PopupWindow` needs an interactive desktop session and real WebView2 windows —
+`--headless` cannot exercise any of this, which is exactly the gap stage 8B's script above left open
+("Что не проверено"). `tests/TopBarPreview` (own `.csproj`, deliberately not in the `.sln`, same
+shape as `tests/WindowPreview`) closes it: it builds a real, composition-hosted `TopBarWindow` +
+`PopupWindow` pair and drives it with genuine `SendInput`.
+
+- Pages are served **read-only** from the owner's already-running instance on :1618
+  (`Paths.Resolve(null)` — the owner's real data dir, `HostContext` pointed at port 1618 as a
+  client, no server of its own) — only `GET`s (`/topbar/`, `/topbar/popup/`, `/config`), nothing is
+  ever posted or saved, and the owner's process (whatever PID it currently has — it auto-updated to
+  0.3.2 mid-stage; this stage's build never touched or restarted it) is left running throughout.
+- Shows on the owner's real vertical monitor (`\\.\DISPLAY1`, 1440×2560, screen x −1440..0, y
+  −603..1957 — see `/health`) — never where the owner's own bar renders (`monitors:"primary"`, i.e.
+  the 3440×1440 monitor only) — with `TopBarSettings.ReserveSpace=false` so it never registers as an
+  AppBar there (the owner had real windows — VS Code — open on that monitor; AppBar registration
+  would have resized them).
+- Clicks two modules that open a popover — `clock` (bar centre) and `nna` (leftmost, first in the
+  *left* zone) — using each element's **live** `getBoundingClientRect()` (`TopBarWindow
+  .ExecuteScriptAsync`, a small debug-only hook added for this), fetched fresh immediately before
+  each click, not guessed from CSS/flex math or the bar's geometric centre (see "Хостинг и фокус"
+  above for why that guess is unreliable — it is literally the field bug). `nna`, not `volume`: at
+  1440px the owner's real right zone (`control, volume, network, battery, layout, media, weather,
+  stats` — the owner's saved config plus what `normalizeModules()` injects) does not fit, and
+  `.tb-right{overflow:hidden}` clips its earliest items (`volume` included) off-screen — confirmed
+  live: `getBoundingClientRect()` still reports a plausible rect for a clipped element, but
+  `elementFromPoint()` at that same point resolves to the zone's own empty trailing space, not the
+  module. A pre-existing bar.js/CSS capacity issue on narrow monitors, unrelated to this stage's
+  fix — `nna` sits in the *left* zone (`justify-content:flex-start`, packed at a small fixed offset
+  from the bar's own edge) and is never affected by it.
+- After each click: `FindWindow(null, "NNA Wallpaper Popup")` (renamed for exactly this — see
+  "Хостинг и фокус") and `GetForegroundWindow()`'s title, printed as
+  `RESULT <name>: popup=<bool> bar-stole-focus=<bool>` (`bar-stole-focus` = the foreground title was
+  literally `"NNA Wallpaper Top Bar"` — the pre-fix symptom). One screenshot of the area under the
+  bar (`H:\night-runs\nna-wallpaper-2\shots\stage8c-popup-live.png`) with the first (`calendar`)
+  popover open.
+- `tests/topbar-live-probe.ps1 [-Exe <path>] [-ShotsDir <dir>]` runs it and turns the `RESULT` lines
+  (plus the screenshot's existence) into PASS/FAIL — via `Start-Process
+  -RedirectStandardOutput/-RedirectStandardError` to files, not `&`/`2>&1`:
+  `TopBarPreview.exe` is a `WinExe` (GUI subsystem) and Windows does not attach a console to it, so a
+  plain `& $Exe` capture is silently empty even though the process runs fine (confirmed: `Start-
+  Process`'s own `.ExitCode` was also unreliable for this — empty even after `HasExited=True` and
+  `Refresh()` — so the script does not gate on it, only on the parsed `RESULT`/`PASS` text).
+
+What is still not covered live: `Deactivated` actually closing a popover on a real user's click
+elsewhere (the helper's own process could not reliably take/lose Win32 foreground ownership at all —
+`GetForegroundWindow()` stayed on a third-party window throughout every run here, a `Start-Process`/
+foreground-lock artifact of a freshly-started, non-interactively-used process, not a code issue: the
+bar itself never became foreground even so, which is the thing actually being tested — so `Escape`
+closing the popover was exercised but not asserted on), and dock hosting was not click-tested live at
+all (no `DockPreview` helper — only `dotnet build`/`dotnet test` prove `DockWindow`'s composition
+wiring compiles; it shares 100% of the mouse-forwarding code (`CompositionInput`) that the bar's live
+run does exercise, but its own AppBar/content-sizing paths were not).
