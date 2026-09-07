@@ -21,4 +21,12 @@
     <ProjectReference Include="..\NNA.Wallpaper.Host\NNA.Wallpaper.Host.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- PointerState<T> (InputBridge's capture/hover state machine) is pure C# with no Win32/WPF/
+         WebView2 dependency, so it is linked straight into this project rather than pulling in the
+         whole win-x64 WinExe via a ProjectReference just to unit-test one file. Keep this in sync
+         with src/NNA.Wallpaper/Engine/PointerState.cs — do not fork the logic. -->
+    <Compile Include="..\NNA.Wallpaper\Engine\PointerState.cs" Link="Engine\PointerState.cs" />
+  </ItemGroup>
+
 </Project>

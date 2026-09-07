@@ -132,6 +132,36 @@ async function main() {
         fail("PUT /config triggers config-changed what=app within 2s", err.message);
     }
 
+    // ---- storm: 200 rapid PUT /config + parallel GET /events/stats, client must survive --------
+    try {
+        let stormMessages = 0;
+        const onStormMsg = (ev) => { if (typeof ev.data === "string") stormMessages++; };
+        ws.addEventListener("message", onStormMsg);
+
+        const cfg = await getJson("/config?monitor=main");
+        const token = cfg.token;
+        const theme = cfg.theme || {};
+
+        const ops = [];
+        for (let i = 0; i < 200; i++) {
+            const dim = 0.2 + (i % 61) / 300; // vary the value so ConfigStore writes each time
+            ops.push(putConfig(token, { ...theme, dim }).catch(() => {}));
+            ops.push(getJson("/events/stats").catch(() => {}));
+        }
+        await Promise.all(ops);
+        // Let the 50ms per-key debounce and any in-flight sends settle.
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        ws.removeEventListener("message", onStormMsg);
+        if (ws.readyState === WebSocket.OPEN && stormMessages >= 1) {
+            pass("storm: 200 concurrent PUT /config + GET /events/stats keeps client connected", `messages=${stormMessages}`);
+        } else {
+            fail("storm: 200 concurrent PUT /config + GET /events/stats keeps client connected", `readyState=${ws.readyState} messages=${stormMessages}`);
+        }
+    } catch (err) {
+        fail("storm: 200 concurrent PUT /config + GET /events/stats keeps client connected", err.message);
+    }
+
     try { ws.close(); } catch { /* ignore */ }
 
     // ---- foreign Origin must be refused before upgrade -----------------------------------------

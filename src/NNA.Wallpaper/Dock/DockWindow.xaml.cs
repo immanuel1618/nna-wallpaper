@@ -42,11 +42,16 @@ public partial class DockWindow : Window
     private DockSettings _cfg;
     private HWND _hwnd;
     private uint _callbackMsg;
+    private uint _taskbarCreatedMsg;
     private bool _registered;
     private bool _closing;
     private bool _hiddenByRule;
     private double _widthDip;
     private double _heightDip;
+    /// <summary>Last rect actually granted by the shell in <see cref="SetPos"/> (ABM_QUERYPOS). The
+    /// ABN_POSCHANGED handler only re-applies this via SetWindowPos — see TopBarWindow.SetPos for why
+    /// it must never re-issue ABM_QUERYPOS/SETPOS itself.</summary>
+    private RECT _lastRect;
     private CompositionHost? _compHost;
     private CoreWebView2CompositionController? _comp;
     private CompositionInput? _input;
@@ -76,6 +81,9 @@ public partial class DockWindow : Window
         _hwnd = (HWND)new WindowInteropHelper(this).Handle;
         var ex = PInvoke.GetWindowLong(_hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
         PInvoke.SetWindowLong(_hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        // Broadcast whenever Explorer (re)starts — see TopBarWindow.OnSourceInitialized for why the
+        // dock must listen for this too (an explorer crash/restart drops every AppBar registration).
+        _taskbarCreatedMsg = PInvoke.RegisterWindowMessage("TaskbarCreated");
         PositionOnMonitor();
         ApplyStyle();
         if (_cfg.ReserveSpace) Register();
@@ -84,7 +92,12 @@ public partial class DockWindow : Window
 
     /// <summary>Recomputes window placement (physical px via SetWindowPos) from the current
     /// <see cref="_widthDip"/>/<see cref="_heightDip"/> and <see cref="Monitor"/>: centred
-    /// horizontally, flush to the bottom edge.</summary>
+    /// horizontally, flush to the bottom edge. Also re-queries the AppBar reservation (SetPos) — call
+    /// this only for an actual change in monitor/size/registration (<see cref="Register"/>,
+    /// <see cref="UpdateMonitor"/>, <see cref="ApplyContentSize"/>), never from the ABN_POSCHANGED
+    /// handler, which must only replay <see cref="_lastRect"/> (<see cref="ApplyLastRect"/>) — see
+    /// TopBarWindow.SetPos for why re-querying there causes a ping-pong between this process's own
+    /// two AppBars.</summary>
     private void PositionOnMonitor()
     {
         var scale = Monitor.Scale <= 0 ? 1.0 : Monitor.Scale;
@@ -96,10 +109,10 @@ public partial class DockWindow : Window
         var top = Monitor.Top + Monitor.Height - heightPx;
         Left = left / scale;
         Top = top / scale;
+        _lastRect = new RECT { left = left, top = top, right = left + widthPx, bottom = top + heightPx };
         if (_hwnd != HWND.Null)
         {
-            PInvoke.SetWindowPos(_hwnd, new HWND(-1), left, top, widthPx, heightPx,
-                SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
+            ApplyLastRect();
         }
         if (_registered) SetPos(heightPx);
         if (_comp is not null)
@@ -110,12 +123,30 @@ public partial class DockWindow : Window
         }
     }
 
+    /// <summary>ABN_POSCHANGED handler's half of placement: just re-asserts the last window rect this
+    /// window computed for itself in <see cref="PositionOnMonitor"/> — no ABM_QUERYPOS/SETPOS round
+    /// trip, and no dependency on Monitor/_widthDip/_heightDip having stayed the same in the
+    /// meantime (they have not changed just because another AppBar moved).</summary>
+    private void ApplyLastRect()
+    {
+        PInvoke.SetWindowPos(_hwnd, new HWND(-1), _lastRect.left, _lastRect.top,
+            _lastRect.right - _lastRect.left, _lastRect.bottom - _lastRect.top,
+            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
+    }
+
     /// <summary>Called from the WebView2 "size" message: the page's real content size in CSS px
-    /// (== WPF DIUs at this window's own per-monitor DPI, unlike the physical-pixel Monitor rect).</summary>
+    /// (== WPF DIUs at this window's own per-monitor DPI, unlike the physical-pixel Monitor rect).
+    /// Ignores a non-numeric/NaN report outright (a malformed or adversarial page message must not
+    /// blow up window placement), and clamps to the monitor's own DIU size on top of the existing
+    /// floor — a page reporting a bogus huge size must not grow the dock past its monitor.</summary>
     public void ApplyContentSize(double widthDip, double heightDip)
     {
-        _widthDip = Math.Max(21, widthDip);
-        _heightDip = Math.Max(21, heightDip);
+        if (double.IsNaN(widthDip) || double.IsNaN(heightDip) || double.IsInfinity(widthDip) || double.IsInfinity(heightDip)) return;
+        var scale = Monitor.Scale <= 0 ? 1.0 : Monitor.Scale;
+        var monitorWidthDiu = Monitor.Width / scale;
+        var monitorHeightDiu = Monitor.Height / scale;
+        _widthDip = Math.Clamp(widthDip, 21, Math.Max(21, monitorWidthDiu));
+        _heightDip = Math.Clamp(heightDip, 21, Math.Max(21, monitorHeightDiu));
         PositionOnMonitor();
     }
 
@@ -180,7 +211,30 @@ public partial class DockWindow : Window
     {
         if (_callbackMsg != 0 && msg == (int)_callbackMsg)
         {
-            if ((int)wParam == 1) PositionOnMonitor(); // ABN_POSCHANGED
+            // ABN_POSCHANGED = 1: replay our own last rect only — never re-query the shell here (see
+            // PositionOnMonitor/ApplyLastRect).
+            if ((int)wParam == 1) ApplyLastRect();
+            handled = true;
+            return 0;
+        }
+        if (_taskbarCreatedMsg != 0 && msg == (int)_taskbarCreatedMsg)
+        {
+            // Explorer just (re)started: it forgot every AppBar registration — see
+            // TopBarWindow.WndProc for the same handling and the reason for the 1s delay.
+            _registered = false;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (!_closing && _cfg.ReserveSpace) Register();
+            };
+            timer.Start();
+            handled = true;
+            return 0;
+        }
+        if ((uint)msg == PInvoke.WM_DPICHANGED)
+        {
+            PositionOnMonitor();
             handled = true;
             return 0;
         }

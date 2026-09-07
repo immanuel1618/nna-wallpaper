@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Threading;
 
 namespace NNA.Wallpaper.Host.Services;
 
@@ -32,6 +33,12 @@ public sealed class DockService : IHostService, IDisposable
     private readonly System.Threading.Timer _pollTimer;
     private string _lastWindowSignature = "";
     private bool _disposed;
+    /// <summary>0 = idle, 1 = a PollWindows tick is in flight. System.Threading.Timer can fire the
+    /// next tick before the previous callback returns (a slow WindowsService.Snapshot() enumeration,
+    /// or a thread-pool stall); without this guard the two overlapping ticks race on
+    /// <see cref="_lastWindowSignature"/> and can double up "dock-changed" broadcasts.</summary>
+    private int _polling;
+    private DateTime _lastPollErrorLogUtc = DateTime.MinValue;
 
     public DockService(HostContext ctx)
     {
@@ -583,6 +590,7 @@ public sealed class DockService : IHostService, IDisposable
 
     private void PollWindows()
     {
+        if (Interlocked.CompareExchange(ref _polling, 1, 0) != 0) return; // previous tick still running
         try
         {
             var ws = WindowsService.Current;
@@ -596,7 +604,18 @@ public sealed class DockService : IHostService, IDisposable
         }
         catch (Exception ex)
         {
-            _ctx.Log.Warn("dock poll failed: " + ex.Message);
+            // Throttled to once a minute: an exception here would otherwise repeat every 1s poll
+            // tick (e.g. a persistent WindowsService failure) and flood the log.
+            var now = DateTime.UtcNow;
+            if (now - _lastPollErrorLogUtc >= TimeSpan.FromMinutes(1))
+            {
+                _lastPollErrorLogUtc = now;
+                _ctx.Log.Warn("dock poll failed: " + ex.Message);
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _polling, 0);
         }
     }
 }

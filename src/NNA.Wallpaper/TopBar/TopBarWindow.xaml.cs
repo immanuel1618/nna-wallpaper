@@ -37,9 +37,15 @@ public partial class TopBarWindow : Window
     private readonly TopBarSettings _cfg;
     private HWND _hwnd;
     private uint _callbackMsg;
+    private uint _taskbarCreatedMsg;
     private bool _registered;
     private bool _closing;
     private bool _hiddenByRule;
+    /// <summary>Last rect this window was actually placed at by <see cref="SetPos"/> (ABM_QUERYPOS
+    /// result), physical screen px. ABN_POSCHANGED re-asserts exactly this rect via SetWindowPos
+    /// only — it must never re-issue ABM_QUERYPOS/SETPOS itself, or two app bars in this one process
+    /// (top bar and dock) ping-pong POSCHANGED notifications back and forth at each other forever.</summary>
+    private RECT _lastRect;
     private CompositionHost? _compHost;
     private CoreWebView2CompositionController? _comp;
     private CompositionInput? _input;
@@ -71,6 +77,10 @@ public partial class TopBarWindow : Window
         _hwnd = (HWND)new WindowInteropHelper(this).Handle;
         var ex = PInvoke.GetWindowLong(_hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
         PInvoke.SetWindowLong(_hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        // Broadcast whenever Explorer (re)starts — a crash/restart of explorer.exe forgets every
+        // AppBar registration, so without this the top bar would silently stop reserving space
+        // (ABM_SETPOS would still "succeed" locally but the shell no longer knows about it).
+        _taskbarCreatedMsg = PInvoke.RegisterWindowMessage("TaskbarCreated");
         Place();
         ApplyStyle();
         if (_cfg.ReserveSpace) Register();
@@ -127,6 +137,15 @@ public partial class TopBarWindow : Window
         SetPos();
     }
 
+    /// <summary>
+    /// Asks the shell where this AppBar's strip should actually go (ABM_QUERYPOS/SETPOS) and moves
+    /// the window there. Only ever called from <see cref="Register"/> and <see cref="UpdateMonitor"/>
+    /// (monitor/config change) — never from the ABN_POSCHANGED handler in <see cref="WndProc"/>,
+    /// which must only replay <see cref="_lastRect"/> via SetWindowPos. Re-querying on every
+    /// POSCHANGED would make the top bar and the dock (both AppBars, both living in this one
+    /// process) perpetually re-notify each other: each SETPOS triggers a POSCHANGED broadcast to
+    /// every other registered AppBar, and both handlers used to answer it with another SETPOS.
+    /// </summary>
     private unsafe void SetPos()
     {
         if (!_registered) return;
@@ -135,8 +154,16 @@ public partial class TopBarWindow : Window
         PInvoke.SHAppBarMessage(PInvoke.ABM_QUERYPOS, &d);
         d.rc.bottom = d.rc.top + HeightPx;
         PInvoke.SHAppBarMessage(PInvoke.ABM_SETPOS, &d);
-        PInvoke.SetWindowPos(_hwnd, new HWND(-1), d.rc.left, d.rc.top, d.rc.right - d.rc.left, d.rc.bottom - d.rc.top,
-            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+        _lastRect = d.rc;
+        ApplyLastRect();
+    }
+
+    /// <summary>ABN_POSCHANGED handler's half of placement: just re-asserts the last rect the shell
+    /// actually granted us via SetWindowPos — no ABM_QUERYPOS/SETPOS round trip (see <see cref="SetPos"/>).</summary>
+    private void ApplyLastRect()
+    {
+        PInvoke.SetWindowPos(_hwnd, new HWND(-1), _lastRect.left, _lastRect.top,
+            _lastRect.right - _lastRect.left, _lastRect.bottom - _lastRect.top, SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
     }
 
     private unsafe void Unregister()
@@ -151,8 +178,35 @@ public partial class TopBarWindow : Window
     {
         if (_callbackMsg != 0 && msg == (int)_callbackMsg)
         {
-            // ABN_POSCHANGED = 1: another app bar or the taskbar moved; re-assert our strip.
-            if ((int)wParam == 1) SetPos();
+            // ABN_POSCHANGED = 1: another app bar or the taskbar moved; re-assert our own last
+            // granted rect only (see ApplyLastRect) — never re-query the shell here.
+            if ((int)wParam == 1) ApplyLastRect();
+            handled = true;
+            return 0;
+        }
+        if (_taskbarCreatedMsg != 0 && msg == (int)_taskbarCreatedMsg)
+        {
+            // Explorer just (re)started: every AppBar registration it knew about is gone. Re-register
+            // after a short delay — explorer.exe is still finishing its own startup (taskbar HWNDs not
+            // necessarily up yet) right when it broadcasts this.
+            _registered = false;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (!_closing && _cfg.ReserveSpace) Register();
+            };
+            timer.Start();
+            handled = true;
+            return 0;
+        }
+        if ((uint)msg == PInvoke.WM_DPICHANGED)
+        {
+            // Per-monitor DPI changed under this window (moved to another monitor, or the user
+            // changed scaling): re-derive the composition scale and re-place from Monitor's own
+            // Scale (kept in sync with the OS by DisplayMonitors.Enumerate/OnDisplayChanged), rather
+            // than trusting a one-off value out of wParam that Monitor would disagree with later.
+            Place();
             handled = true;
             return 0;
         }

@@ -150,6 +150,9 @@ public sealed class WallpaperEngine : IHostApp, ICapturesPreview, IDisposable
     public void SetUserPause(bool paused)
     {
         _userPause = paused;
+        // A press held down at the exact moment of pausing must not stay "captured" against a window
+        // that will ignore all further input until resumed — see InputBridge.Reset.
+        if (paused) _input?.Reset();
         CheckPause();
     }
 
@@ -194,6 +197,10 @@ public sealed class WallpaperEngine : IHostApp, ICapturesPreview, IDisposable
             _log.Warn("reattach: " + reason);
             foreach (var w in _windows) w.Dispose();
             _windows.Clear();
+            // The old WallpaperWindow instances are gone: drop any stale capture/hover state that
+            // pointed at them, or InputBridge would post/send into disposed windows once new ones
+            // come up (or a phantom Leave would silently vanish since the old target is dead).
+            _input?.Reset();
             if (!_desktop.Attach())
             {
                 _log.Error("reattach: desktop layer not found, retrying later");
