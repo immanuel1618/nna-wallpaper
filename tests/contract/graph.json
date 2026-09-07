@@ -1,0 +1,13 @@
+{
+  "src": "",
+  "root": "",
+  "total_nodes": 0,
+  "total_links": 0,
+  "nodes": [
+    { "id": "", "label": "", "type": "", "file": "", "community": 0, "degree": 0 }
+  ],
+  "links": [
+    { "source": "", "target": "", "w": 0 }
+  ],
+  "mtime": 0
+}

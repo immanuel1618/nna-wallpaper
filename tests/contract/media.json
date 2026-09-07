@@ -1,0 +1,16 @@
+{
+  "active": true,
+  "ts": 0,
+  "source": "",
+  "status": "",
+  "playing": true,
+  "title": "",
+  "artist": "",
+  "album": "",
+  "position_s": 0,
+  "duration_s": 0,
+  "can_seek": true,
+  "can_next": true,
+  "can_prev": true,
+  "thumbnail": ""
+}
