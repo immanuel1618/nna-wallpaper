@@ -1,0 +1,18 @@
+{
+  "id": "photos",
+  "name": "Photos",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "photos" },
+  "needs": ["pins"],
+  "defaultSize": { "cols": 1, "rows": 12 },
+  "minSize": { "cols": 1, "rows": 3 },
+  "settings": [
+    { "key": "folder", "type": "path", "label": "Папка с фото", "default": "" },
+    { "key": "intervalMin", "type": "number", "label": "Смена, мин", "default": 10, "min": 1, "max": 1440 },
+    { "key": "order", "type": "select", "label": "Порядок", "options": ["sequential", "random"], "default": "sequential" },
+    { "key": "fadeMs", "type": "number", "label": "Затухание, мс", "default": 1400 },
+    { "key": "zoom", "type": "bool", "label": "Медленный зум", "default": true },
+    { "key": "zoomScale", "type": "number", "label": "Масштаб зума", "default": 1.08 }
+  ]
+}
