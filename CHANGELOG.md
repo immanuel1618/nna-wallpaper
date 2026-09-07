@@ -4,6 +4,36 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-07
+
+### Added
+- Composition hosting for the wallpaper windows (`engine.hosting`, default `composition`): mouse goes
+  through WebView2 `SendMouseInput`, so hover no longer flickers behind the desktop icons.
+- Windows service: `GET /windows`, `POST /windows/activate|minimize|close`, `GET /windows/icon`.
+  Launch raises the existing window; `newInstance` (Shift-click) opens a new one.
+- Audio control: `/audio/volume`, `/audio/outputs`, `/audio/output`, `/audio/sessions`, `/audio/session`,
+  `/audio/mic`; capture device pick `/audio/devices`, `/audio/capture-device`.
+- System info: `/system/network`, `/system/battery`, `/system/layout`, `/system/brightness` (DDC/CI),
+  `/system/power`.
+- Top bar v2: popovers (volume mixer, calendar, NNA menu, control center), modules network, battery,
+  keyboard layout, volume; wheel over the volume icon changes volume, middle click mutes.
+- Cursors: three brand cursor sets (mark, line, mono), `/cursor/status|apply|reset` with registry backup.
+- Brand title bar for the settings and login windows (WindowChrome, dark DWM, snap layouts),
+  remembered window size.
+- Voice capture in TASKS: microphone pick, level ring, recording timer, click outside cancels,
+  recognised text with a 5 second undo (`POST /planner/undo`).
+- Planner login returns first name, username and photo (server function v2).
+
+### Changed
+- Focus timer model: WORK / CHILL / CYCLES, phases advance automatically, done after the last cycle.
+- Appearance tab: single brand theme; palette editor removed.
+
+### Fixed
+- Focus tool buttons rendered dark text on a transparent background when active.
+- Appearance tab duplicated its fields on every re-render.
+- Licenses link pointed to the wrong GitHub owner.
+- Launch icons keep a specific transition instead of `all`.
+
 ## [0.3.0] - 2026-09-07
 
 ### Added
