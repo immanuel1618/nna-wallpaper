@@ -1,0 +1,86 @@
+/* NNA1618 — верхняя строка (topbar): тонкая полоса поверх всех окон, macOS-like menu bar.
+   Фон страницы прозрачный — фон/материал даёт само окно хоста. Тема (цвета, шрифты) приходит
+   CSS-переменными из /config, см. bar.js:setThemeVars. ES5-стиль, без сборщика. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  font-family: var(--font-mono);
+  color: var(--fg-body);
+}
+
+.tb-bar {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tb-zone {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.tb-left { flex: 1 1 0; justify-content: flex-start; }
+.tb-center { flex: 0 0 auto; justify-content: center; }
+.tb-right { flex: 1 1 0; justify-content: flex-end; }
+
+/* ---- модуль -------------------------------------------------------------- */
+.tb-mod {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 18px;
+  font: 500 var(--tb-font-size, 12px)/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-body);
+  white-space: nowrap;
+  transition: color 0.12s;
+}
+.tb-mod.tb-first { margin-left: 0; }
+.tb-mod[hidden] { display: none !important; }
+
+/* разделитель « · » между соседними модулями внутри зоны */
+.tb-mod.tb-sep::before {
+  content: '\00b7';
+  display: inline-block;
+  margin-right: 18px;
+  color: var(--fg-muted);
+}
+
+.tb-mod.tb-clickable { cursor: pointer; }
+.tb-mod.tb-clickable:hover { color: var(--fg); }
+
+.tb-brand { font-family: var(--font-display); letter-spacing: 0.04em; font-size: calc(var(--tb-font-size, 12px) + 3px); }
+.tb-clock { font-family: var(--font-display); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; font-size: calc(var(--tb-font-size, 12px) + 2px); }
+
+/* внутренние точки составных строк (stats/media) */
+.tb-dot { color: var(--fg-muted); margin: 0 2px; }
+
+/* пустой растяжимый модуль */
+.tb-spacer { flex: 1 1 auto; min-width: 0; margin-left: 0; }
+
+.tb-icon { display: inline-flex; align-items: center; justify-content: center; width: 1em; height: 1em; flex: none; }
+.tb-icon svg { width: 100%; height: 100%; fill: currentColor; }
+
+.tb-media-icon { display: inline-flex; cursor: pointer; }
+.tb-media-icon:hover { color: var(--fg); }
+.tb-media-text {
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 34vw;
+}
