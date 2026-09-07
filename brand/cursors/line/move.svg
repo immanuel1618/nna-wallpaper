@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="16.00,16.00">
+  <line x1="5.50" y1="16.00" x2="26.50" y2="16.00" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
+  <line x1="16.00" y1="5.50" x2="16.00" y2="26.50" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
+  <polygon points="26.50,16.00 18.90,12.40 18.90,19.60" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.0" stroke-linejoin="round"/>
+  <polygon points="16.00,26.50 19.60,18.90 12.40,18.90" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.0" stroke-linejoin="round"/>
+  <polygon points="5.50,16.00 13.10,19.60 13.10,12.40" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.0" stroke-linejoin="round"/>
+  <polygon points="16.00,5.50 12.40,13.10 19.60,13.10" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.0" stroke-linejoin="round"/>
+  <circle cx="16.00" cy="16.00" r="1.60" fill="#8C1A25" stroke="none" stroke-width="1.0"/>
+</svg>

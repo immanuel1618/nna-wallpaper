@@ -29,3 +29,8 @@ secrets/
 .pubbin/
 publish*/
 Releases-*/
+
+# Generated cursor binaries (rebuilt by build/cursors.py from brand/cursors/*.svg + shapes.json)
+build/out/
+__pycache__/
+*.pyc
