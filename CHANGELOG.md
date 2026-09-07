@@ -4,6 +4,11 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-07
+
+### Changed
+- Maintenance release used to verify the direct-feed update path.
+
 ## [0.1.4] - 2026-09-07
 
 ### Changed
