@@ -7,5 +7,8 @@
   "needs": ["planner"],
   "defaultSize": { "cols": 1, "rows": 1 },
   "minSize": { "cols": 1, "rows": 1 },
-  "settings": []
+  "settings": [
+    { "key": "refreshSec", "type": "number", "label": "Обновление, сек", "default": 60, "min": 15, "max": 600 },
+    { "key": "voice", "type": "bool", "label": "Кнопка голосового ввода", "default": true }
+  ]
 }
