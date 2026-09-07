@@ -40,7 +40,7 @@
       if (loading) return;
       loading = true;
       b.setLabel({ text: L.graph || 'GRAPH', strong: TITLE[src] });
-      corner.textContent = 'LOADING';
+      corner.textContent = N.t('graphLoading', 'LOADING');
       N.get('/graph?src=' + src).then(function (g) {
         loading = false; failReported = false; build(g);
         if (!readyReported) { readyReported = true; if (ctx && ctx.ready) ctx.ready(); }
@@ -85,7 +85,7 @@
       nodes.slice(-Math.min(16, nodes.length)).forEach(function (d) { d.showLabel = true; });
       tune();
       for (var k = 0; k < 700; k++) step(k < 500 ? 0.5 : 0.1, rnd);   // раскладываем до покоя и замираем
-      corner.textContent = nodes.length + ' / ' + total + ' NODES';
+      corner.textContent = nodes.length + ' / ' + total + ' ' + N.t('graphNodesUnit', 'NODES');
       hover = null;
       draw();
     }
@@ -197,9 +197,9 @@
       tryOpen(cands, 0, d);
     }
     function tryOpen(c, i, d) {
-      if (i >= c.length) { N.toast('NOT FOUND · ' + short(d.label)); return; }
+      if (i >= c.length) { N.toast(N.t('graphNotFound', 'NOT FOUND') + ' · ' + short(d.label)); return; }
       N.post('/open?path=' + encodeURIComponent(c[i])).then(function (r) {
-        if (r && r.ok) N.toast('OPEN · ' + short(d.label)); else tryOpen(c, i + 1, d);
+        if (r && r.ok) N.toast(N.t('graphOpen', 'OPEN') + ' · ' + short(d.label)); else tryOpen(c, i + 1, d);
       }, function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); });
     }
 

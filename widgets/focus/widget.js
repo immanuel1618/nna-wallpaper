@@ -10,7 +10,7 @@
   var KEY = 'nna-focus-v3';
   var KEY_V2 = 'nna-focus-v2';
   var PRESETS = F.presets || [{ id: 'classic', label: '25/5 x4', work: 25, chill: 5, cycles: 4 }];
-  var DAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+  var DAYS_EN = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   // model.js is a separate UMD file (also loaded standalone by the node:test suite), so the
   // wallpaper page fetches it once as a classic <script> the same way nna-core.js is preloaded.
@@ -41,7 +41,7 @@
       initFocus(Model, b, wrap, ctx);
     }).catch(function (err) {
       if (!disposed) {
-        wrap.appendChild(N.el('div', 'pl-empty', 'FOCUS MODEL LOAD FAILED'));
+        wrap.appendChild(N.el('div', 'pl-empty', N.t('focusModelLoadFailed', 'FOCUS MODEL LOAD FAILED')));
         if (ctx && ctx.fail) ctx.fail(err);
       }
     });
@@ -50,7 +50,7 @@
   };
 
   function initFocus(Model, b, wrap, ctx) {
-    function text(key, fallback) { return L[key] || fallback; }
+    function text(key, fallback) { return L[key] || N.t(key, fallback); }
 
     // --- главный вид: кольцо
     var main = N.el('div', 'fo-main');
@@ -81,7 +81,8 @@
     var foot = N.el('div', 'fo-foot');
     var dots = N.el('div', 'nna-dots');
     var bar = N.el('div', 'fo-bar');
-    var bPre = tool('PRESET'), bStats = tool('STATS'), bSet = tool('SET'), bReset = tool('RESET');
+    var bPre = tool(text('focusPresetsBtn', 'PRESET')), bStats = tool(text('focusStatsBtn', 'STATS')),
+      bSet = tool(text('focusSetBtn', 'SET')), bReset = tool(text('focusResetBtn', 'RESET'));
     bar.appendChild(bPre); bar.appendChild(bStats); bar.appendChild(bSet); bar.appendChild(bReset);
     foot.appendChild(dots); foot.appendChild(bar);
 
@@ -210,7 +211,7 @@
       b.setLabel({
         text: L.focus || 'FOCUS',
         strong: st.completedWork + '/' + st.cfg.cycles + (st.phase === 'done' ? ' · ' + text('focusDoneState', 'DONE')
-          : (st.preset && st.preset !== 'custom' ? ' · ' + presetLabel() : ' · CUSTOM')),
+          : (st.preset && st.preset !== 'custom' ? ' · ' + presetLabel() : ' · ' + text('focusCustom', 'CUSTOM'))),
       });
       var want = st.cfg.cycles;
       while (dots.children.length < want) dots.appendChild(N.el('i'));
@@ -218,16 +219,16 @@
       var done = Math.min(st.completedWork, want);
       for (var i = 0; i < dots.children.length; i++) dots.children[i].classList.toggle('is-on', i < done);
     }
-    function presetLabel() { var p = PRESETS.filter(function (x) { return x.id === st.preset; })[0]; return p ? p.label : 'CUSTOM'; }
+    function presetLabel() { var p = PRESETS.filter(function (x) { return x.id === st.preset; })[0]; return p ? p.label : text('focusCustom', 'CUSTOM'); }
 
     // --- панель настроек: три поля WORK / CHILL / CYCLES, с пояснением под каждым
     function renderSettings() {
       pSet.textContent = '';
       pSet.appendChild(N.el('div', 'fo-panel-k nna-mono', text('focusSettingsTitle', 'SETTINGS · WORK / CHILL / CYCLES')));
       var rows = [
-        ['WORK', 'work', 5, 1, 180, text('focusHelpWork', 'ДЛИТЕЛЬНОСТЬ РАБОЧЕЙ ФАЗЫ')],
-        ['CHILL', 'chill', 1, 1, 60, text('focusHelpChill', 'ОТДЫХ МЕЖДУ РАБОЧИМИ ФАЗАМИ')],
-        ['CYCLES', 'cycles', 1, 1, 12, text('focusHelpCycles', 'РАБОЧИХ ФАЗ ДО DONE')],
+        [text('focusFieldWork', 'WORK'), 'work', 5, 1, 180, text('focusHelpWork', 'WORK PHASE LENGTH')],
+        [text('focusFieldChill', 'CHILL'), 'chill', 1, 1, 60, text('focusHelpChill', 'CHILL BETWEEN WORK PHASES')],
+        [text('focusFieldCycles', 'CYCLES'), 'cycles', 1, 1, 12, text('focusHelpCycles', 'WORK PHASES UNTIL DONE')],
       ];
       rows.forEach(function (r) {
         var row = N.el('div', 'fo-row');
@@ -263,13 +264,13 @@
       var week = 0; for (var i = 0; i < 7; i++) week += hist(dayKey(i)).minutes;
       head.appendChild(stat(week, text('focusStatWeek', 'MIN / WEEK')));
       pStats.appendChild(head);
-      var bars = N.el('div', 'fo-bars'), max = 1;
+      var bars = N.el('div', 'fo-bars'), max = 1, days = N.t('days', DAYS_EN);
       for (var j = 6; j >= 0; j--) max = Math.max(max, hist(dayKey(j)).minutes);
       for (var k = 6; k >= 0; k--) {
         var d = new Date(); d.setDate(d.getDate() - k);
         var col = N.el('div', 'fo-bar-col');
         var v = N.el('div', 'fo-bar-v'); var fill = N.el('i'); fill.style.height = Math.round(hist(dayKey(k)).minutes / max * 100) + '%'; v.appendChild(fill);
-        col.appendChild(v); col.appendChild(N.el('span', 'fo-bar-k nna-mono', DAYS[d.getDay()]));
+        col.appendChild(v); col.appendChild(N.el('span', 'fo-bar-k nna-mono', days[d.getDay()]));
         bars.appendChild(col);
       }
       pStats.appendChild(bars);

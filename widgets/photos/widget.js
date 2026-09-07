@@ -39,7 +39,7 @@ window.NNA.widgets = window.NNA.widgets || {};
     empty.className = 'nna-muted nna-mono';
     empty.style.cssText = 'position:absolute;inset:0;display:none;align-items:center;justify-content:center;' +
       'text-align:center;font-size:10px;letter-spacing:var(--track-label);padding:16px 22px;';
-    empty.textContent = 'NO PHOTOS · SET FOLDER IN SETTINGS';
+    empty.textContent = N.t('photosEmpty', 'NO PHOTOS · SET FOLDER IN SETTINGS');
     b.body.appendChild(empty);
 
     var urls = [], currentUrl = null, front = null;

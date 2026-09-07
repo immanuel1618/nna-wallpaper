@@ -2,12 +2,12 @@
 (function () {
   'use strict';
   var N = window.NNA, C = N.config, L = C.labels || {}, CLOCKS = C.clocks || [];
-  var DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  var DAYS_EN = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   N.weather = function (mount, ctx) {
     var b = N.block('weather', L.weather || 'WEATHER', { needsHelper: true });
     var wrap = N.el('div', 'we-wrap');
-    var city = N.el('div', 'we-city nna-mono', 'нет данных');
+    var city = N.el('div', 'we-city nna-mono', N.t('noData', 'NO DATA'));
     var temp = N.el('div', 'we-temp nna-big', '·');
     var cond = N.el('div', 'we-cond nna-mono', '');
     var meta = N.el('div', 'we-meta nna-mono', '');
@@ -31,28 +31,39 @@
     });
 
     function deg(x) { return x == null ? '·' : Math.round(x) + '°'; }
+    // helper.py/WeatherService.cs присылают code (числовой WMO weathercode Open-Meteo) и text
+    // (тот же перевод, но всегда по-английски) — на ru используем свою таблицу weatherCodes из
+    // wallpaper/i18n.js по коду, английский текст помощника остаётся запасным вариантом.
+    function condText(code, fallbackText) {
+      var map = N.t('weatherCodes', null);
+      if (map && code != null && Object.prototype.hasOwnProperty.call(map, code)) return map[code];
+      return fallbackText || '';
+    }
     function renderWeather(w) {
-      city.textContent = w.name || 'нет данных';
+      city.textContent = w.name || N.t('noData', 'NO DATA');
       if (!w.ok) { temp.textContent = '·'; cond.textContent = N.t('noData', 'NO DATA'); meta.textContent = ''; return; }
       temp.textContent = deg(w.temp);
-      cond.textContent = w.text || '';
-      meta.textContent = 'FEELS ' + deg(w.feels) + ' · WIND ' + Math.round(w.wind_ms || 0) + ' M/S · HUM ' + Math.round(w.humidity || 0) + '%';
+      cond.textContent = condText(w.code, w.text);
+      meta.textContent = N.t('weatherFeels', 'FEELS') + ' ' + deg(w.feels) + ' · ' + N.t('weatherWind', 'WIND') + ' ' +
+        Math.round(w.wind_ms || 0) + ' ' + N.t('weatherMs', 'M/S') + ' · ' + N.t('weatherHum', 'HUM') + ' ' + Math.round(w.humidity || 0) + '%';
       days.textContent = '';
+      var daysShort = N.t('days', DAYS_EN);
       (w.days || []).slice(1, 4).forEach(function (d) {
         var el = N.el('div', 'we-day');
         var dt = new Date(d.date + 'T12:00:00');
-        el.appendChild(N.el('span', 'we-day-k nna-mono', DAYS[dt.getDay()]));
+        el.appendChild(N.el('span', 'we-day-k nna-mono', daysShort[dt.getDay()]));
         el.appendChild(N.el('span', 'we-day-v nna-big', deg(d.max) + ' / ' + deg(d.min)));
-        el.appendChild(N.el('span', 'we-day-t nna-mono', d.text));
+        el.appendChild(N.el('span', 'we-day-t nna-mono', condText(d.code, d.text)));
         days.appendChild(el);
       });
     }
     function tickClocks() {
-      var now = new Date(), local = DAYS[now.getDay()];
+      var now = new Date(), localIdx = now.getDay(), daysShort = N.t('days', DAYS_EN);
       clockEls.forEach(function (c) {
         c.v.textContent = c.fmtT.format(now);
-        var wd = c.fmtD.format(now).toUpperCase().slice(0, 3);
-        c.d.textContent = wd === local ? '' : wd;
+        var wd = c.fmtD.format(now).toLowerCase().slice(0, 3);
+        var idx = DAYS_EN.indexOf(wd);
+        c.d.textContent = (idx === -1 || idx === localIdx) ? '' : daysShort[idx];
       });
     }
     var readyReported = false, failReported = false;

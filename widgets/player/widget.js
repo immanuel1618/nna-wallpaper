@@ -8,10 +8,10 @@
     var s = String(aumid || '');
     if (/yandex\.music/i.test(s)) return 'YANDEX MUSIC';
     if (/spotify/i.test(s)) return 'SPOTIFY';
-    if (/msedge|chrome|firefox|brave|opera/i.test(s)) return 'BROWSER';
+    if (/msedge|chrome|firefox|brave|opera/i.test(s)) return N.t('playerBrowser', 'BROWSER');
     if (/vlc/i.test(s)) return 'VLC';
     if (/telegram/i.test(s)) return 'TELEGRAM';
-    var last = s.split(/[\\/!.]/).filter(Boolean).pop() || 'MEDIA';
+    var last = s.split(/[\\/!.]/).filter(Boolean).pop() || N.t('playerMedia', 'MEDIA');
     return last.replace(/[_-]+/g, ' ').toUpperCase().slice(0, 18);
   }
 
@@ -107,7 +107,7 @@
       b.root.classList.toggle('is-idle', !hasTrack);
       b.root.classList.toggle('is-playing', !!(hasTrack && s.playing));
       if (!hasTrack) {
-        b.setLabel({ text: L.player || 'PLAYER', strong: 'IDLE' });
+        b.setLabel({ text: L.player || 'PLAYER', strong: N.t('playerIdleState', 'IDLE') });
         swapCover(null, null);
         return;
       }
