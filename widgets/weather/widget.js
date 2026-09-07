@@ -4,7 +4,7 @@
   var N = window.NNA, C = N.config, L = C.labels || {}, CLOCKS = C.clocks || [];
   var DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-  N.weather = function (mount) {
+  N.weather = function (mount, ctx) {
     var b = N.block('weather', L.weather || 'WEATHER', { needsHelper: true });
     var wrap = N.el('div', 'we-wrap');
     var city = N.el('div', 'we-city nna-mono', '—');
@@ -58,8 +58,8 @@
     function poll() { N.get('/weather').then(renderWeather, function () {}); }
 
     poll(); tickClocks();
-    setInterval(tickClocks, 1000);
-    setInterval(poll, ((C.weather && C.weather.refreshMin) || 10) * 60 * 1000);
+    ctx.setInterval(tickClocks, 1000);
+    ctx.setInterval(poll, ((C.weather && C.weather.refreshMin) || 10) * 60 * 1000);
     return b;
   };
 })();
@@ -74,6 +74,6 @@ window.NNA.widgets.weather = function (mount, ctx) {
     { label: 'LOS ANGELES', tz: 'America/Los_Angeles' },
     { label: 'VLADIVOSTOK', tz: 'Asia/Vladivostok' }
   ];
-  var w = N.weather(mount);
+  var w = N.weather(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

@@ -8,7 +8,7 @@
   var PRESETS = F.presets || [{ id: 'classic', label: '25 / 5 ×4', work: 25, rest: 5, longRest: 15, per: 4 }];
   var DAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
-  N.focus = function (mount) {
+  N.focus = function (mount, ctx) {
     var b = N.block('focus', L.focus || 'FOCUS');
     var wrap = N.el('div', 'fo-wrap');
 
@@ -101,7 +101,7 @@
       st.remaining = total();
       if (st.cfg.autoNext) { st.endsAt = Date.now() + st.remaining * 1000; st.running = true; }
       b.root.classList.add('is-flash');
-      setTimeout(function () { b.root.classList.remove('is-flash'); }, 1500);
+      ctx.setTimeout(function () { b.root.classList.remove('is-flash'); }, 1500);
       pruneHistory(); save();
     }
     function pruneHistory() {
@@ -233,7 +233,7 @@
     bReset.addEventListener('click', function (e) { e.stopPropagation(); resetTimer(true); N.toast('FOCUS RESET'); });
 
     render();
-    setInterval(render, 500);
+    ctx.setInterval(render, 500);
     return b;
   };
 })();
@@ -243,6 +243,6 @@ window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.focus = function (mount, ctx) {
   var N = window.NNA, s = (ctx && ctx.settings) || {};
   N.config.focus = Object.assign({}, N.config.focus || {}, s);
-  var w = N.focus(mount);
+  var w = N.focus(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

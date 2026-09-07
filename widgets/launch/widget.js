@@ -8,7 +8,7 @@
   var HELPER = (window.NNA_HELPER || {}).url || 'http://127.0.0.1:1618';
   var FOLDER = 'M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z';
 
-  N.launch = function (mount, opts) {
+  N.launch = function (mount, opts, ctx) {
     opts = opts || {};
     var compact = !!opts.compact;
     var b = N.block('launch', L.launch || 'LAUNCH', { needsHelper: true });
@@ -27,7 +27,7 @@
 
     function flash(btn, ok) {
       btn.classList.add(ok ? 'is-flash' : 'is-busy');
-      setTimeout(function () { btn.classList.remove('is-flash', 'is-busy'); }, ok ? 700 : 1200);
+      ctx.setTimeout(function () { btn.classList.remove('is-flash', 'is-busy'); }, ok ? 700 : 1200);
     }
     function run(kind, id, btn, label) {
       btn.classList.add('is-busy');
@@ -113,7 +113,7 @@
       loaded = true;
     }
     function load() {
-      N.get('/launch/list').then(render, function () { if (!loaded) setTimeout(load, 4000); });
+      N.get('/launch/list').then(render, function () { if (!loaded) ctx.setTimeout(load, 4000); });
     }
     edit.addEventListener('click', function () {
       N.post('/edit?what=launch').then(function (r) { N.toast(r && r.ok ? 'OPENING LAUNCH.JSON' : (r && r.error) || 'FAILED'); },
@@ -121,7 +121,7 @@
     });
 
     load();
-    setInterval(load, 20000);   // иконки дотягиваются в фоне, список перечитывается
+    ctx.setInterval(load, 20000);   // иконки дотягиваются в фоне, список перечитывается
     return b;
   };
 })();
@@ -131,6 +131,6 @@ window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.launch = function (mount, ctx) {
   var N = window.NNA, s = (ctx && ctx.settings) || {};
   N.config.launch = Object.assign({}, N.config.launch || {}, s);
-  var w = N.launch(mount, { compact: !!s.compact });
+  var w = N.launch(mount, { compact: !!s.compact }, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

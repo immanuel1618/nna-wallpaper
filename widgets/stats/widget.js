@@ -3,7 +3,7 @@
   'use strict';
   var N = window.NNA, C = N.config, L = C.labels || {};
 
-  N.stats = function (mount) {
+  N.stats = function (mount, ctx) {
     var b = N.block('stats', L.system || 'SYSTEM', { needsHelper: true });
     var corner = N.el('div', 'nna-corner');
     b.root.appendChild(corner);
@@ -115,7 +115,7 @@
 
     function poll() { N.get('/stats').then(render, function () {}); }
     poll();
-    setInterval(poll, (C.poll && C.poll.stats) || 1000);
+    ctx.setInterval(poll, (C.poll && C.poll.stats) || 1000);
     return b;
   };
 })();
@@ -124,6 +124,6 @@
 window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.stats = function (mount, ctx) {
   var N = window.NNA;
-  var w = N.stats(mount);
+  var w = N.stats(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

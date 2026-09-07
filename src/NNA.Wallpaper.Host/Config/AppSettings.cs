@@ -13,6 +13,9 @@ public sealed class AppSettings
     public UpdateSettings Updates { get; set; } = new();
     public bool PauseOnFullscreen { get; set; } = true;
     public int FpsCap { get; set; } = 30;
+    /// <summary>When true, config changes are patched live on the wallpaper pages over /events instead
+    /// of triggering a full <c>ReloadWallpaper()</c> (see App.xaml.cs OnConfigChanged).</summary>
+    public bool LiveUpdates { get; set; } = true;
     public ThemeSettings Theme { get; set; } = new();
     public AudioSettings Audio { get; set; } = new();
 
@@ -94,28 +97,36 @@ public sealed class UpdateSettings
     public string Channel { get; set; } = "stable";
 }
 
+/// <summary>
+/// theme.palette and theme.fonts are kept for back-compat (older config files, /config/full editing)
+/// but the wallpaper page no longer applies them: since the v3 token pass (ui/tokens.css) the owner
+/// settled on one fixed brand theme, so wallpaper/layout.js setThemeVars only applies dim/radius/gap/
+/// pad/blur now. These defaults exist mainly as the migration target in ConfigStore.Load (old
+/// "Kharkiv Tone"/"DM Mono" font values get replaced on load; the palette is left alone since it is
+/// unused either way).
+/// </summary>
 public sealed class ThemeSettings
 {
     public string Preset { get; set; } = "nna1618";
     public Dictionary<string, string> Palette { get; set; } = new()
     {
-        ["bgPage"] = "#050505",
-        ["bgSurface"] = "#000000",
+        ["bgPage"] = "#0B0B0B",
+        ["bgSurface"] = "#161616",
         ["fg"] = "#FFFFFF",
         ["fgBody"] = "#C8C8C8",
         ["fgMuted"] = "#808080",
         ["fgGhost"] = "#1D1D1D",
         ["border"] = "#434343",
-        ["glass"] = "rgba(139,139,139,0.03)",
+        ["glass"] = "rgba(22,22,22,0.72)",
     };
     public Dictionary<string, string> Fonts { get; set; } = new()
     {
-        ["display"] = "Kharkiv Tone",
-        ["mono"] = "DM Mono",
+        ["display"] = "Roboto Flex",
+        ["mono"] = "JetBrains Mono",
     };
-    public int Radius { get; set; } = 32;
-    public int Gap { get; set; } = 24;
-    public int Pad { get; set; } = 48;
+    public int Radius { get; set; } = 21;
+    public int Gap { get; set; } = 21;
+    public int Pad { get; set; } = 34;
     public int Blur { get; set; } = 14;
     public double Dim { get; set; } = 0.4;
 }

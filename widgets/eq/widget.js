@@ -4,7 +4,7 @@
   'use strict';
   var N = window.NNA, C = N.config, E = C.eq || {}, L = C.labels || {};
 
-  N.eq = function (mount) {
+  N.eq = function (mount, ctx) {
     var b = N.block('eq', L.eq || 'AUDIO');
     var corner = N.el('div', 'nna-corner', 'SILENT');
     var canvas = N.el('canvas', 'eq-canvas');
@@ -12,7 +12,7 @@
     b.body.appendChild(canvas);
     mount.appendChild(b.root);
 
-    var ctx = canvas.getContext('2d');
+    var c2d = canvas.getContext('2d');
     var BARS = E.bars || 56, ATT = E.attack || 0.55, REL = E.release || 0.075, GAIN = E.gain || 1.7, MINH = E.minHeight || 0.02;
     var W = 0, H = 0, dpr = 1;
     var raw = null, lastAudio = 0, level = new Float32Array(BARS), peak = new Float32Array(BARS);
@@ -25,9 +25,9 @@
       W = Math.max(1, r.width); H = Math.max(1, r.height);
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    window.addEventListener('weAudio', function (e) {
+    ctx.on(window, 'weAudio', function (e) {
       raw = e.detail; lastAudio = Date.now();
     });
 
@@ -63,36 +63,36 @@
     }
 
     function draw() {
-      ctx.clearRect(0, 0, W, H);
+      c2d.clearRect(0, 0, W, H);
       var padX = 30, padTop = 56, padBot = 26;
       var innerW = W - padX * 2, innerH = H - padTop - padBot;
       var gap = Math.max(2, innerW / BARS * 0.28), bw = (innerW - gap * (BARS - 1)) / BARS;
       var base = padTop + innerH;
       for (var i = 0; i < BARS; i++) {
         var h = Math.max(2, level[i] * innerH), x = padX + i * (bw + gap);
-        var g = ctx.createLinearGradient(0, base - h, 0, base);
+        var g = c2d.createLinearGradient(0, base - h, 0, base);
         g.addColorStop(0, 'rgba(255,255,255,' + (0.55 + 0.45 * level[i]).toFixed(3) + ')');
         g.addColorStop(1, 'rgba(200,200,200,0.35)');
-        ctx.fillStyle = g;
+        c2d.fillStyle = g;
         roundRect(x, base - h, bw, h, Math.min(4, bw / 2));
-        ctx.fill();
+        c2d.fill();
         var ph = base - Math.max(2, peak[i] * innerH) - 3;      // пик: тонкая планка над полосой
-        ctx.fillStyle = 'rgba(200,200,200,0.9)';
-        ctx.fillRect(x, ph, bw, 2);
+        c2d.fillStyle = 'rgba(200,200,200,0.9)';
+        c2d.fillRect(x, ph, bw, 2);
       }
-      ctx.fillStyle = 'rgba(67,67,67,0.6)';
-      ctx.fillRect(padX, base + 6, innerW, 1);
+      c2d.fillStyle = 'rgba(67,67,67,0.6)';
+      c2d.fillRect(padX, base + 6, innerW, 1);
     }
     function roundRect(x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
+      c2d.beginPath();
+      c2d.moveTo(x + r, y); c2d.lineTo(x + w - r, y); c2d.quadraticCurveTo(x + w, y, x + w, y + r);
+      c2d.lineTo(x + w, y + h); c2d.lineTo(x, y + h); c2d.lineTo(x, y + r); c2d.quadraticCurveTo(x, y, x + r, y);
+      c2d.closePath();
     }
-    function loop() { step(); draw(); requestAnimationFrame(loop); }
+    function loop() { step(); draw(); ctx.raf(loop); }
 
     resize();
-    setInterval(function () { var r = b.body.getBoundingClientRect(); if (Math.abs(r.width - W) > 2 || Math.abs(r.height - H) > 2) resize(); }, 500);
+    ctx.setInterval(function () { var r = b.body.getBoundingClientRect(); if (Math.abs(r.width - W) > 2 || Math.abs(r.height - H) > 2) resize(); }, 500);
     loop();
     return b;
   };
@@ -103,6 +103,6 @@ window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.eq = function (mount, ctx) {
   var N = window.NNA, s = (ctx && ctx.settings) || {};
   N.config.eq = Object.assign({}, N.config.eq || {}, s);
-  var w = N.eq(mount);
+  var w = N.eq(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

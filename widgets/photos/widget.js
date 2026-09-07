@@ -94,7 +94,7 @@ window.NNA.widgets = window.NNA.widgets || {};
 
     function scheduleNext() {
       clearTimeout(nextTimer);
-      nextTimer = setTimeout(function () { next(); scheduleNext(); }, INTERVAL_MS);
+      nextTimer = ctx.setTimeout(function () { next(); scheduleNext(); }, INTERVAL_MS);
     }
 
     function refresh() {
@@ -122,22 +122,18 @@ window.NNA.widgets = window.NNA.widgets || {};
       if (e.target && e.target.closest && e.target.closest('a, button')) return;
       next();
     }
-    b.root.addEventListener('click', onClick);
+    ctx.on(b.root, 'click', onClick);
 
     showEmpty(true);
     refresh();
     scheduleNext();
-    refreshTimer = setInterval(refresh, REFRESH_MS);
+    refreshTimer = ctx.setInterval(refresh, REFRESH_MS);
 
-    return {
-      root: b.root,
-      destroy: function () {
-        destroyed = true;
-        clearTimeout(nextTimer);
-        clearInterval(refreshTimer);
-        b.root.removeEventListener('click', onClick);
-        if (b.root.parentNode) b.root.parentNode.removeChild(b.root);
-      }
-    };
+    ctx.onDispose(function () {
+      destroyed = true;
+      if (b.root.parentNode) b.root.parentNode.removeChild(b.root);
+    });
+
+    return { root: b.root };
   };
 })();

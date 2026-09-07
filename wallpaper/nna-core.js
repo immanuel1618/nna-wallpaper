@@ -98,6 +98,72 @@
     else fn();
   }
 
+  /* ---- жизненный цикл виджета -------------------------------------------
+     Один объект на монтирование (модульный виджет или ячейка page-виджета). Виджет использует
+     ctx.setInterval/setTimeout/raf/on вместо голых глобальных вызовов; layout.js вызывает
+     ctx.dispose() при размонтировании ячейки (смена настроек, удаление блока, смена монитора),
+     что снимает все таймеры и слушатели разом — без этого виджет продолжал бы тикать в фоне
+     после того, как его DOM уже удалён. */
+  function createLifecycle() {
+    var pending = [];   // { clear } записи для живых setInterval/setTimeout/raf, снятые по срабатыванию
+    var listeners = []; // { target, event, fn, opts }
+    var disposers = [];
+    var disposed = false;
+
+    function untrack(rec) {
+      var i = pending.indexOf(rec);
+      if (i !== -1) pending.splice(i, 1);
+    }
+
+    function lcSetInterval(fn, ms) {
+      var id = setInterval(fn, ms);
+      pending.push({ clear: function () { clearInterval(id); } });
+      return id;
+    }
+    function lcSetTimeout(fn, ms) {
+      var rec;
+      var id = setTimeout(function () { untrack(rec); fn(); }, ms);
+      rec = { clear: function () { clearTimeout(id); } };
+      pending.push(rec);
+      return id;
+    }
+    function lcRaf(fn) {
+      var rec;
+      var id = requestAnimationFrame(function (ts) { untrack(rec); fn(ts); });
+      rec = { clear: function () { cancelAnimationFrame(id); } };
+      pending.push(rec);
+      return id;
+    }
+    function lcOn(target, event, fn, opts) {
+      if (!target || typeof target.addEventListener !== 'function') return;
+      target.addEventListener(event, fn, opts);
+      listeners.push({ target: target, event: event, fn: fn, opts: opts });
+    }
+    function lcOnDispose(fn) {
+      if (typeof fn === 'function') disposers.push(fn);
+    }
+    function dispose() {
+      if (disposed) return;
+      disposed = true;
+      var i;
+      for (i = 0; i < pending.length; i++) { try { pending[i].clear(); } catch (e) { /* noop */ } }
+      pending.length = 0;
+      for (i = 0; i < listeners.length; i++) {
+        var l = listeners[i];
+        try { l.target.removeEventListener(l.event, l.fn, l.opts); } catch (e) { /* noop */ }
+      }
+      listeners.length = 0;
+      for (i = 0; i < disposers.length; i++) { try { disposers[i](); } catch (e) { /* noop */ } }
+      disposers.length = 0;
+    }
+
+    return {
+      setInterval: lcSetInterval, setTimeout: lcSetTimeout, raf: lcRaf,
+      on: lcOn, onDispose: lcOnDispose, dispose: dispose,
+      isDisposed: function () { return disposed; }
+    };
+  }
+
   /* общее затемнение: чёрный слой поверх всего, клики сквозь него проходят */
   ready(function () {
     var dim = Math.min(1, Math.max(0, +C.dim || 0));
@@ -111,6 +177,7 @@
     get: get, post: post, el: el, pad2: pad2, fmtTime: fmtTime, fmtBytes: fmtBytes, fmtGB: fmtGB,
     fmtDate: fmtDate, fmtClock: fmtClock, block: block, toast: toast, svg: svg, ready: ready,
     watchHealth: watchHealth, isOnline: function () { return online !== false; }, config: C,
+    createLifecycle: createLifecycle,
     icons: {
       play: 'M8 5v14l11-7z',
       pause: 'M6 5h4v14H6zm8 0h4v14h-4z',

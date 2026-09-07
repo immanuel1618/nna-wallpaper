@@ -7,7 +7,7 @@
   var PER = EV.perPage || 3;
   var MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-  N.events = function (mount) {
+  N.events = function (mount, ctx) {
     var b = N.block('events', L.events || 'EVENTS', { needsHelper: true });
     var tools = N.el('div', 'ev-tools');
     var prev = N.el('button', 'ev-nav', '‹'), next = N.el('button', 'ev-nav', '›');
@@ -101,9 +101,9 @@
     });
 
     load();
-    setInterval(tick, 1000);
-    setInterval(load, (EV.refreshSec || 30) * 1000);
-    setInterval(rebuild, 60000);
+    ctx.setInterval(tick, 1000);
+    ctx.setInterval(load, (EV.refreshSec || 30) * 1000);
+    ctx.setInterval(rebuild, 60000);
     return b;
   };
 })();
@@ -113,6 +113,6 @@ window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.events = function (mount, ctx) {
   var N = window.NNA, s = (ctx && ctx.settings) || {};
   N.config.events = Object.assign({}, N.config.events || {}, s);
-  var w = N.events(mount);
+  var w = N.events(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };
