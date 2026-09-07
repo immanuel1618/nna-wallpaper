@@ -4,6 +4,33 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-08
+
+### Security
+- The API token is returned by `GET /config` only to same-origin requests (`Sec-Fetch-Site`); sensitive
+  GET routes refuse cross-site requests; every response carries `X-Content-Type-Options: nosniff`.
+- Planner login is `POST` only; the login callback requires a one-time `state` issued by the app.
+- Push-to-talk capture stops at 60 s (safety timer at 65 s).
+
+### Fixed
+- Pointer capture is reset when wallpaper windows are re-attached or paused (mouse could die after an
+  explorer restart with a button held).
+- Top bar and dock re-register their reserved area after explorer restarts; no more AppBar ping-pong
+  between the two; DPI changes handled; page-reported sizes clamped to the monitor.
+- Live updates: one send at a time per WebSocket client, clients are no longer dropped by a burst.
+- Dragging inside the top bar or dock keeps mouse capture; right click reaches the dock page.
+- Settings shell: a page requested at start is no longer overwritten by the default page.
+
+### Changed
+- Settings on the design system everywhere: taskbar page rebuilt (no native controls), palette
+  swatches instead of color pickers, font size and accent knobs, Russian block titles, hints and
+  units, one content width, no em dashes or text glyphs.
+- Wallpaper surfaces: palette-only colors including inline styles (test covers JS/HTML), Signal used
+  as a dot or notch instead of text, SYSTEM block laid out as a 2x2 grid with disks below,
+  popup windows rounded.
+- Cursors: readable pointing hand; sets are monochrome (line keeps one Signal dot on the arrow and hand).
+- README rewritten (EN + RU) with API and testing guides; docs without em dashes.
+
 ## [0.3.3] - 2026-09-08
 
 ### Added
