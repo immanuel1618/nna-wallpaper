@@ -244,11 +244,11 @@
      пустого конфига. brand -> nna меняется на том же месте (тот же side), новые right-модули
      вставляются перед первым уже существующим right-модулем (обычно planner), чтобы получить
      порядок control, volume, network, battery, layout, planner, media, weather, stats. */
-  var V2_NEW_RIGHT = ['control', 'volume', 'network', 'battery', 'layout'];
+  var V2_NEW_RIGHT = ['rec', 'control', 'volume', 'network', 'battery', 'layout'];
   var DEFAULT_MODULES = [
     { id: 'nna', side: 'left' }, { id: 'date', side: 'left' },
     { id: 'clock', side: 'center' },
-    { id: 'control', side: 'right' }, { id: 'volume', side: 'right' },
+    { id: 'rec', side: 'right' }, { id: 'control', side: 'right' }, { id: 'volume', side: 'right' },
     { id: 'network', side: 'right' }, { id: 'battery', side: 'right' }, { id: 'layout', side: 'right' },
     { id: 'planner', side: 'right' }, { id: 'media', side: 'right' },
     { id: 'weather', side: 'right' }, { id: 'stats', side: 'right' }

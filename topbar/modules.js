@@ -153,7 +153,7 @@
       ctx.setVisible(hasTrack);
       if (!hasTrack) return;
       setIcon(s.playing ? 'pause' : 'play');
-      textEl.textContent = [s.title || '', s.artist || ''].filter(function (v) { return v; }).join(' — ');
+      textEl.textContent = [s.title || '', s.artist || ''].filter(function (v) { return v; }).join(' · ');
     }
     function poll() {
       ctx.get('/media').then(render, function () { ctx.setVisible(false); });
