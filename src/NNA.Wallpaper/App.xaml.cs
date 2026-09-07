@@ -287,7 +287,7 @@ public partial class App : Application
         // ---- taskbar and top bar ----
         api.Map("GET", "/taskbar/status", async req =>
         {
-            var status = await Dispatcher.InvokeAsync(() => _taskbar?.Status() ?? new JsonObject { ["enabled"] = false, ["note"] = "taskbar module not started" });
+            var status = await Dispatcher.InvokeAsync(() => _taskbar?.Status() ?? new JsonObject { ["enabled"] = false, ["note"] = "taskbar module not started", ["noteCode"] = "not-started" });
             status["topBar"] = new JsonObject { ["enabled"] = Host!.Config.App.TopBar.Enabled, ["bars"] = _topBar?.Bars.Count ?? 0 };
             await req.Text(status.ToJsonString(Json.Api), "application/json; charset=utf-8").ConfigureAwait(false);
         });

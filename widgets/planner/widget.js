@@ -44,7 +44,10 @@
       '.nna-planner .pl-k{font-size:11px;color:var(--fg-muted);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono)}' +
       '.nna-planner .pl-v{font-size:64px}' +
       '.nna-planner .pl-sub{font-size:11px;color:var(--fg-body);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono)}' +
-      '.nna-planner .pl-list{display:flex;flex-direction:column;gap:16px;overflow:hidden;min-height:0}' +
+      // flex:1 + justify-content:center: when the task list is shorter than the section's grown
+      // height (few or no tasks today), the rows sit centered in the space below the head/sub
+      // (which stay pinned at the top of .pl-sec) instead of leaving one big empty gap underneath.
+      '.nna-planner .pl-list{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;overflow:hidden;min-height:0}' +
       '.nna-planner .pl-row{display:flex;align-items:center;gap:14px;cursor:pointer;min-width:0}' +
       '.nna-planner .pl-row:hover .pl-title{color:var(--fg)}' +
       '.nna-planner .pl-check{width:16px;height:16px;border-radius:50%;border:1px solid var(--border);flex:none;position:relative;transition:background 0.2s}' +
@@ -118,7 +121,7 @@
     ensureStyle();
     var settings = resolveSettings(ctx);
     var monitorId = resolveMonitorId();
-    var b = N.block('tasks', { text: L.tasks || 'TASKS', strong: L.tasksSoon || 'NNA PLANNER' });
+    var b = N.block('tasks', { text: L.tasks || 'TASKS', strong: N.t('tasksSoon', L.tasksSoon || 'NNA PLANNER') });
     var corner = N.el('div', 'nna-corner', '');
     b.root.appendChild(corner);
     var wrap = N.el('div', 'nna-planner');

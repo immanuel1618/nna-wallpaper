@@ -45,7 +45,7 @@
         loading = false; failReported = false; build(g);
         if (!readyReported) { readyReported = true; if (ctx && ctx.ready) ctx.ready(); }
       }, function (err) {
-        loading = false; corner.textContent = 'NO DATA';
+        loading = false; corner.textContent = N.t('noData', 'NO DATA');
         if (!failReported) { failReported = true; if (ctx && ctx.fail) ctx.fail(err); }
       });
     }
@@ -200,7 +200,7 @@
       if (i >= c.length) { N.toast('NOT FOUND · ' + short(d.label)); return; }
       N.post('/open?path=' + encodeURIComponent(c[i])).then(function (r) {
         if (r && r.ok) N.toast('OPEN · ' + short(d.label)); else tryOpen(c, i + 1, d);
-      }, function () { N.toast('HELPER OFFLINE'); });
+      }, function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); });
     }
 
     resize();

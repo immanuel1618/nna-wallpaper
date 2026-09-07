@@ -16,8 +16,11 @@ import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync, copyFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const REPO = "H:\\projects\\.wt\\lay";
+// Repo root = two levels up from tests/layout-editor-probe.mjs, whichever worktree this file is
+// actually running from — was hardcoded to a single worktree path, which broke every other one.
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.argv[2] || 1633);
 const DATA = path.join(process.env.TEMP || "C:\\Temp", `nna-layout-probe-${PORT}`);
 const EXE = path.join(REPO, "src\\NNA.Wallpaper\\bin\\Release\\net8.0-windows10.0.19041.0\\win-x64\\NNA.Wallpaper.exe");

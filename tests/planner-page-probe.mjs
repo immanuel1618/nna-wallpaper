@@ -168,7 +168,9 @@ async function main() {
             hasProfile: !!document.querySelector('[data-group="profile"]'),
             hasShow: !!document.querySelector('[data-group="show"]'),
             hasVoice: !!document.querySelector('[data-group="voice"]'),
-            hasLoginBtn: !!document.querySelector('[data-group="profile"] .btn.primary'),
+            // .ui-btn (not the old .btn) since settings/pages/planner.js moved onto the shared
+            // .ui-btn/.ui-field control system (polish round 2, item 2 — "one control system").
+            hasLoginBtn: !!document.querySelector('[data-group="profile"] .ui-btn.primary'),
         })`);
         const parsed = JSON.parse(shape);
         if (parsed.hasProfile && parsed.hasShow && parsed.hasVoice) {

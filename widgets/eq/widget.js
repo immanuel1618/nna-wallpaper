@@ -6,7 +6,7 @@
 
   N.eq = function (mount, ctx) {
     var b = N.block('eq', L.eq || 'AUDIO');
-    var corner = N.el('div', 'nna-corner', 'SILENT');
+    var corner = N.el('div', 'nna-corner', N.t('silent', 'SILENT'));
     var canvas = N.el('canvas', 'eq-canvas');
     b.root.appendChild(corner);
     b.body.appendChild(canvas);
@@ -69,7 +69,7 @@
         if (level[i] > peak[i]) peak[i] = level[i]; else peak[i] -= 0.004;
         if (peak[i] < level[i]) peak[i] = level[i];
       }
-      corner.textContent = active ? 'LIVE' : 'SILENT';
+      corner.textContent = active ? N.t('live', 'LIVE') : N.t('silent', 'SILENT');
     }
 
     function draw() {

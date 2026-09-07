@@ -38,7 +38,7 @@
 
 /* ── mic level meter (getUserMedia test, 3s) ───────────────────────────────────────────────── */
 .pl-level-row { display: flex; align-items: center; gap: 10px; }
-.pl-level { width: 120px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; flex: 0 0 auto; }
+.pl-level { width: 120px; height: 6px; border-radius: 5px; background: var(--line); overflow: hidden; flex: 0 0 auto; }
 .pl-level-fill { width: 0%; height: 100%; background: var(--fg); transition: width .08s linear; }
 
 .pl-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }

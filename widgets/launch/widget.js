@@ -14,7 +14,7 @@
     var b = N.block('launch', L.launch || 'LAUNCH', { needsHelper: true });
     if (compact) b.root.classList.add('is-compact');
     if (LC.grayIcons !== false) b.root.classList.add('is-gray');
-    var edit = N.el('button', 'nna-btn nna-corner-btn', 'EDIT');
+    var edit = N.el('button', 'nna-btn nna-corner-btn', N.t('edit', 'EDIT'));
     edit.type = 'button';
     b.root.appendChild(edit);
     var groups = N.el('div', 'la-groups');
@@ -43,10 +43,10 @@
         var ok = !!(r && r.ok);
         flash(btn, ok);
         if (ok) N.toast((kind === 'group' ? 'GROUP ' : '') + label + ' · LAUNCHED');
-        else N.toast(label + ' · ' + ((r && r.failed && r.failed.length) ? 'FAILED: ' + r.failed.join(', ').toUpperCase() : (r && r.error) || 'FAILED'));
+        else N.toast(label + ' · ' + ((r && r.failed && r.failed.length) ? N.t('failed', 'FAILED') + ': ' + r.failed.join(', ').toUpperCase() : (r && r.error) || N.t('failed', 'FAILED')));
       }, function () {
         btn.classList.remove('is-busy');
-        N.toast('HELPER OFFLINE');
+        N.toast(N.t('helperOffline', 'HELPER OFFLINE'));
       });
     }
     function initials(label) {
@@ -96,6 +96,12 @@
       lastSig = sig;
       groups.textContent = ''; items.textContent = '';
       var seen = {};
+      if (!Object.keys(cfg.items || {}).length) {
+        items.appendChild(N.el('div', 'la-empty nna-mono', N.t('launchEmpty', 'Add apps on the Blocks page')));
+        loaded = true;
+        reportReady();
+        return;
+      }
       (cfg.groups || []).forEach(function (g) {
         if (!compact) groups.appendChild(groupBtn(g, 'la-group'));
         var set = N.el('div', 'la-set');
@@ -112,7 +118,7 @@
       var rest = Object.keys(cfg.items || {}).filter(function (id) { return !seen[id]; });
       if (rest.length) {
         var set = N.el('div', 'la-set');
-        set.appendChild(N.el('span', 'la-set-k nna-mono', 'OTHER'));
+        set.appendChild(N.el('span', 'la-set-k nna-mono', N.t('other', 'OTHER')));
         var list = N.el('div', 'la-set-items');
         rest.forEach(function (id) { list.appendChild(chip(id, cfg.items[id])); });
         set.appendChild(list);
@@ -140,8 +146,8 @@
       });
     }
     edit.addEventListener('click', function () {
-      N.post('/edit?what=launch').then(function (r) { N.toast(r && r.ok ? 'OPENING LAUNCH.JSON' : (r && r.error) || 'FAILED'); },
-        function () { N.toast('HELPER OFFLINE'); });
+      N.post('/edit?what=launch').then(function (r) { N.toast(r && r.ok ? 'OPENING LAUNCH.JSON' : (r && r.error) || N.t('failed', 'FAILED')); },
+        function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); });
     });
 
     load();

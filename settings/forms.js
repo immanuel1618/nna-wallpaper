@@ -67,18 +67,18 @@ function renderField(field, data, t) {
       const mount = el("div");
       const options = (field.options || []).map((opt) => (typeof opt === "object" ? opt : { value: opt, label: opt }));
       window.NNAUI.select(mount, { value: data[field.key], options, onChange: (v) => { data[field.key] = v; } });
-      return withHelp(el("div", { class: "field" }, label, mount));
+      return withHelp(el("div", { class: "ui-field" }, label, mount));
     }
     case "color": {
       const mount = el("div");
       paletteSwatchField(mount, t, normalizeHex(data[field.key]), (v) => { data[field.key] = v; });
-      return withHelp(el("div", { class: "field" }, label, mount));
+      return withHelp(el("div", { class: "ui-field" }, label, mount));
     }
     case "path": {
       const input = el("input", { type: "text", value: data[field.key] || "", placeholder: t("formPath") });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value; });
       const browse = el("button", { class: "ui-btn sm", type: "button", text: t("formBrowse") });
-      return withHelp(el("div", { class: "field" }, label, el("div", { class: "field-row" }, input, browse)));
+      return withHelp(el("div", { class: "ui-field" }, label, el("div", { class: "field-row" }, input, browse)));
     }
     case "timezone": {
       const listId = "tz-" + field.key + "-" + Math.random().toString(36).slice(2, 8);
@@ -88,12 +88,12 @@ function renderField(field, data, t) {
       try {
         for (const z of Intl.supportedValuesOf("timeZone")) datalist.append(el("option", { value: z }));
       } catch { /* older runtimes without supportedValuesOf */ }
-      return withHelp(el("div", { class: "field" }, label, input, datalist));
+      return withHelp(el("div", { class: "ui-field" }, label, input, datalist));
     }
     case "text": {
       const textarea = el("textarea", { text: data[field.key] || "" });
       textarea.addEventListener("input", (e) => { data[field.key] = e.target.value; });
-      return withHelp(el("div", { class: "field" }, label, textarea));
+      return withHelp(el("div", { class: "ui-field" }, label, textarea));
     }
     case "list":
       return renderListField(field, data, t);
@@ -103,20 +103,20 @@ function renderField(field, data, t) {
         min: field.min, max: field.max, step: field.step || 1,
       });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value === "" ? null : Number(e.target.value); });
-      return withHelp(el("div", { class: "field" }, label, input));
+      return withHelp(el("div", { class: "ui-field" }, label, input));
     }
     case "string":
     default: {
       const input = el("input", { type: "text", value: data[field.key] ?? "" });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value; });
-      return withHelp(el("div", { class: "field" }, label, input));
+      return withHelp(el("div", { class: "ui-field" }, label, input));
     }
   }
 }
 
 function normalizeHex(v) {
   if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v)) return v;
-  return "#000000";
+  return "#0B0B0B";
 }
 
 function renderListField(field, data, t) {
@@ -153,7 +153,7 @@ function renderListField(field, data, t) {
   });
 
   const help = field.help ? el("div", { class: "hint", text: localize(field.help, t) }) : null;
-  return el("div", { class: "field" }, el("label", { text: localize(field.label, t) || field.key }), help, table, addBtn);
+  return el("div", { class: "ui-field" }, el("label", { text: localize(field.label, t) || field.key }), help, table, addBtn);
 }
 
 // ── launch.json editor ──────────────────────────────────────────
@@ -208,8 +208,8 @@ export function renderLaunchForm(container, launchData, t) {
 
     return el("div", { class: "card stack" },
       el("div", { class: "field-row" },
-        el("div", { class: "field" }, el("label", { text: "id" }), idInput),
-        el("div", { class: "field" }, el("label", { text: t("groupLabel") }), labelInput),
+        el("div", { class: "ui-field" }, el("label", { text: "id" }), idInput),
+        el("div", { class: "ui-field" }, el("label", { text: t("groupLabel") }), labelInput),
         removeGroupBtn),
       itemsBox);
   }

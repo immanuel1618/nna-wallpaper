@@ -107,3 +107,4 @@ WindowFromPoint
 CreateRoundRectRgn
 SetWindowRgn
 DeleteObject
+DWM_WINDOW_CORNER_PREFERENCE

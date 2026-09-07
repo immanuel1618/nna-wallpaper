@@ -17,7 +17,7 @@ function defaultDock() {
 }
 
 function normalizeHex(v) {
-  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#000000";
+  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#0B0B0B";
 }
 
 const MODES = ["normal", "clear", "blur", "acrylic", "opaque"];
@@ -44,7 +44,7 @@ function pathListRow(t, titleKey, list, redraw) {
     box.append(addBtn);
   };
   draw();
-  return el("div", { class: "field" }, el("label", { text: t(titleKey) }), box);
+  return el("div", { class: "ui-field" }, el("label", { text: t(titleKey) }), box);
 }
 
 export function render(container, ctx) {

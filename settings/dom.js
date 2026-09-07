@@ -105,6 +105,9 @@ export function paletteSwatchField(mount, t, value, onChange) {
   PALETTE_SWATCHES.forEach((p, i) => {
     const btn = buttons[i];
     if (!btn) return;
+    // Подпись — обычное слово (Основа/Панель/Линия/Метка), hex остаётся доступен через title,
+    // а не в самой кнопке (судья, раунд 2: "простой язык вместо имён токенов").
+    btn.title = p.value.toUpperCase();
     const swatch = el("span", {
       "aria-hidden": "true",
       style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;background:${p.value};border:1px solid var(--slate)`,

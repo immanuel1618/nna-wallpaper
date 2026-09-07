@@ -30,7 +30,7 @@
     var idle = N.el('div', 'np-idle');
     var idleTime = N.el('div', 'np-time nna-big');
     var idleDate = N.el('div', 'np-date nna-mono');
-    var idleHint = N.el('div', 'np-hint nna-mono', L.idle || 'NOTHING PLAYING');
+    var idleHint = N.el('div', 'np-hint nna-mono', N.t('idle', 'NOTHING PLAYING'));
     idle.appendChild(idleTime); idle.appendChild(idleDate); idle.appendChild(idleHint);
 
     // трек
@@ -73,8 +73,8 @@
       if (busy) return;
       busy = true; bToggle.classList.add('is-busy');
       N.post('/media/' + action + (extra || '')).then(function (r) {
-        if (r && r.ok === false) N.toast(r.error || 'FAILED');
-      }, function () { N.toast('HELPER OFFLINE'); }).then(function () {
+        if (r && r.ok === false) N.toast(r.error || N.t('failed', 'FAILED'));
+      }, function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); }).then(function () {
         busy = false; bToggle.classList.remove('is-busy');
         ctx.setTimeout(poll, 250);
       });

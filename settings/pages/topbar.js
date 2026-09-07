@@ -33,7 +33,7 @@ function defaultTopBar() {
 }
 
 function normalizeHex(v) {
-  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#000000";
+  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#0B0B0B";
 }
 
 let keySeq = 0;

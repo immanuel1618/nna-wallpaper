@@ -131,41 +131,17 @@ input, select, textarea { font: inherit; color: inherit; }
    mono/Steel treatment .field .hint already had. */
 .hint { font-family: var(--font-mono); font-size: var(--fs-10); color: var(--muted); }
 
-.field { display: flex; flex-direction: column; gap: var(--sp-5); }
-.field label { font-family: var(--mono); font-size: var(--fs-10); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
-.field input, .field select, .field textarea {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
-  padding: var(--sp-8) var(--sp-13); color: var(--fg); font-family: var(--text); font-size: var(--fs-13); outline: none; width: 100%;
-}
-.field textarea { resize: vertical; min-height: 64px; font-family: var(--mono); }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--line-strong); }
-.field input::placeholder { color: var(--muted); }
+/* Поля ввода теперь только через .ui-field (ui/components.css) — единая система контролов
+   settings/**; .field-row остаётся чистой layout-обвязкой (flex + gap), без своей стилизации
+   input/select/textarea. */
 .field-row { display: flex; gap: var(--sp-8); }
-.field-row .field { flex: 1; min-width: 0; }
+.field-row .ui-field { flex: 1; min-width: 0; }
 
 .setrow { display: flex; align-items: center; gap: var(--sp-13); padding: var(--sp-13); border-bottom: 1px solid var(--line); }
 .setrow:last-child { border-bottom: 0; }
 .setrow .main { flex: 1; min-width: 0; }
 .setrow .t { color: var(--fg); font-size: var(--fs-13); }
 .setrow .s { color: var(--muted); font-size: var(--fs-10); margin-top: 2px; }
-
-/* Legacy alias: settings/pages/planner.js is owned by another agent this round and still uses
-   .btn/.btn.primary/.btn.ghost/.btn.sm markup (everywhere else in settings/** has moved to
-   .ui-btn from ui/components.css, see docs/DESIGN-SYSTEM.md) — kept here, scoped down to just
-   this one file's needs (no .danger variant: planner.js never uses one), so that page does not
-   go unstyled out from under it. Remove once planner.js is migrated too. */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-8);
-  font-family: var(--mono); font-size: var(--fs-13); text-transform: uppercase; letter-spacing: var(--track-label);
-  background: rgba(128, 128, 128, .12); border: 1px solid var(--slate); color: var(--ash);
-  border-radius: var(--r-pill); padding: var(--sp-8) var(--sp-21); transition: background .18s, color .18s;
-}
-.btn:hover { background: rgba(128, 128, 128, .24); border-color: var(--steel); }
-.btn.primary { background: var(--white); color: var(--base); border-color: var(--white); }
-.btn.primary:hover { background: var(--ash); }
-.btn.ghost { background: none; border-color: var(--line); }
-.btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
-.btn.sm { padding: var(--sp-5) var(--sp-13); font-size: var(--fs-10); }
 
 /* .ui-btn.sm — a compact size modifier NNAUI's own button styles don't define; used everywhere a
    row needs a small inline action (remove/add rows, table buttons, "show on desktop", ...). */
@@ -218,7 +194,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .dnd-remove { flex: 0 0 auto; color: var(--muted); font-family: var(--mono); font-size: var(--fs-13); line-height: 1; padding: 2px var(--sp-5); }
 .dnd-remove:hover { color: var(--ash); text-decoration: underline; text-decoration-color: var(--signal); }
 .dnd-add { display: flex; gap: var(--sp-5); margin-top: 2px; }
-.dnd-add-select { flex: 1 1 auto; min-width: 0; background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: var(--sp-5); color: var(--fg); font-size: var(--fs-10); }
+.dnd-add-select { flex: 1 1 auto; min-width: 0; background: var(--raised); border: 1px solid var(--line); border-radius: 5px; padding: var(--sp-5); color: var(--fg); font-size: var(--fs-10); }
 
 /* ── cursor (η) ───────────────────────────────────────────────── */
 .cursor-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }

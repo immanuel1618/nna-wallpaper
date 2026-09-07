@@ -78,14 +78,17 @@ body.pp-nna .pp-panel { width: calc(var(--sp-233) + var(--sp-21)); } /* 254 */
 }
 .pp-device-row.is-active .dot { background: var(--white); border-color: var(--white); }
 .pp-device-row.is-active { color: var(--white); }
-.pp-device-row .name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-device-row .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .pp-session-row { display: flex; flex-direction: column; gap: var(--sp-5); padding: var(--sp-5) var(--sp-8); border-radius: var(--sp-13); }
 .pp-session-row:hover { background: rgba(255, 255, 255, .06); }
 .pp-session-top { display: flex; align-items: center; gap: var(--sp-8); }
-.pp-session-name { flex: 1 1 88px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-16); }
-.pp-session-top .ui-slider { flex: 1 1 88px; min-width: 55px; }
-.pp-peak { height: 2px; border-radius: 2px; background: var(--slate); overflow: hidden; }
+.pp-session-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-16); }
+/* Ширина ползунка фиксирована (144px), а не сжимается вместе с именем сессии — иначе на узкой
+   панели он мог утащить всю свободную ширину и обрезать подпись раньше, чем она реально кончится
+   (судья, раунд 2). */
+.pp-session-top .ui-slider { flex: none; width: 144px; }
+.pp-peak { height: 2px; border-radius: 5px; background: var(--slate); overflow: hidden; }
 .pp-peak > i { display: block; height: 100%; background: var(--ash); width: 0%; }
 .pp-empty { font-family: var(--font-mono); font-size: var(--fs-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--steel); padding: var(--sp-5) var(--sp-8); }
 
@@ -122,7 +125,7 @@ body.pp-nna .pp-panel { width: calc(var(--sp-233) + var(--sp-21)); } /* 254 */
 .pp-agenda { display: flex; flex-direction: column; gap: var(--sp-8); overflow: auto; max-height: 260px; }
 .pp-agenda-item { display: flex; gap: var(--sp-8); align-items: baseline; }
 .pp-agenda-time { font-family: var(--font-mono); font-size: var(--fs-10); color: var(--steel); flex: none; font-variant-numeric: tabular-nums; }
-.pp-agenda-text { font-size: var(--fs-13); color: var(--ash); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-agenda-text { flex: 1 1 auto; min-width: 0; font-size: var(--fs-13); color: var(--ash); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- nna menu ------------------------------------------------------------ */
 .pp-menu { display: flex; flex-direction: column; }

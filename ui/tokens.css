@@ -70,9 +70,9 @@
   --fg:         var(--white);
   --fg-body:    var(--ash);
   --fg-muted:   var(--steel);
-  --fg-ghost:   #1D1D1D; /* служебный тон темнее Surface, не текст — оставлено как есть */
+  --fg-ghost:   var(--surface); /* служебный тон, не текст — Surface (палитра v3, не отдельный тон) */
   --border:        var(--slate);
-  --border-swatch: #676767; /* граница образцов палитры в настройках — оставлено как есть */
+  --border-swatch: var(--slate); /* граница образцов палитры в настройках — Slate (палитра v3) */
   --btn:       rgba(139, 139, 139, 0.12);
   --btn-hover: rgba(139, 139, 139, 0.24);
   --glass:     rgba(139, 139, 139, 0.03);
@@ -100,7 +100,7 @@
   --text:    var(--font-text);
   --r-block: 21px;
   --r-card:  13px;
-  --r-pill:  89px;
+  --r-pill:  111px;
   --r-media: 8px;
 
   /* служебные состояния: монохром, кроме --bad (Signal) */

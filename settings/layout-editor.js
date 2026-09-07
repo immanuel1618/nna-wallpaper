@@ -89,18 +89,23 @@ export function mountLayoutTab(container, ctx) {
   let applying = false;
 
   const page = el("div", { class: "lay-page" });
+  container.append(page);
+
+  // Движок не запущен (headless) — нет ни одного живого монитора: раньше страница всё равно
+  // рисовала карточку МОНИТОРЫ, панель действий и пунктирную заглушку канваса — три пустых
+  // контейнера вокруг одного сообщения. Теперь при пустых liveMonitors это единственное, что есть
+  // на странице; карточка/канвас/панель действий монтируются только когда монитор хотя бы один есть.
+  if (liveMonitors.length === 0) {
+    page.append(el("div", { class: "empty" }, el("div", { class: "mark", text: "α" }), el("div", { class: "txt", text: tt("emptyMonitorsEngine") })));
+    return;
+  }
+
   const monRow = el("div", { class: "lay-mon-row" });
   const monGroup = groupCard("monitors", tt("monitorsTitle"), monRow);
   const gridGroup = el("div");
   const canvasMount = el("div", { class: "lay-canvas-mount" });
   const actionsRow = el("div", { class: "lay-actions" });
   page.append(monGroup, gridGroup, canvasMount, actionsRow);
-  container.append(page);
-
-  if (liveMonitors.length === 0) {
-    page.append(el("div", { class: "empty" }, el("div", { class: "mark", text: "α" }), el("div", { class: "txt", text: tt("emptyMonitors") })));
-    return;
-  }
 
   for (const live of liveMonitors) {
     if (!byId.has(live.id)) {
@@ -355,7 +360,7 @@ export function mountLayoutTab(container, ctx) {
     };
     input.addEventListener("input", () => commitValue(false));
     input.addEventListener("change", () => commitValue(true));
-    return settingRow(tt(labelKey), helpKey ? tt(helpKey) : null, el("div", { class: "field lay-grid-field" }, input));
+    return settingRow(tt(labelKey), helpKey ? tt(helpKey) : null, el("div", { class: "ui-field lay-grid-field" }, input));
   }
 
   function renderGridGroup() {
@@ -381,7 +386,7 @@ export function mountLayoutTab(container, ctx) {
       gridField("gridRows", null, "rows"),
       gridField("gridGap", "gridGapHelp", "gap", 0),
       gridField("gridPad", "gridPadHelp", "pad", 0),
-      settingRow(tt("gridWeights"), tt("gridWeightsHelp"), el("div", { class: "field" }, weights))));
+      settingRow(tt("gridWeights"), tt("gridWeightsHelp"), el("div", { class: "ui-field" }, weights))));
   }
 
   function renderActions() {

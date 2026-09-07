@@ -4,7 +4,7 @@
   "ru": "Знак",
   "en": "Mark"
  },
- "description": "Бренд-стрелка по золотому треугольнику знака NNA1618, короткий перелом хвоста.",
+ "description": "Стрелка по золотому треугольнику, белая, с чёрным контуром.",
  "rasterizer": "pillow-shapes.json (no cairo/resvg/inkscape/magick found)",
  "canvas": 32,
  "sizes": [

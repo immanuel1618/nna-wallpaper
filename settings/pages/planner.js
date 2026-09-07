@@ -164,7 +164,7 @@ function renderProfileCard(status, profile, s, ctx, refresh) {
       el("div", { class: "empty" }, el("div", { class: "txt", text: s.loginHint })),
       el("div", { class: "rowflex" },
         el("button", {
-          class: "btn primary", type: "button", text: ctx.t("loginTelegram"),
+          class: "ui-btn primary", type: "button", text: ctx.t("loginTelegram"),
           onclick: async () => { try { await ctx.api("POST", "/app/login"); } catch (err) { ctx.onStatus(ctx.t("statusError", err.message), true); } },
         })));
     return card;
@@ -195,11 +195,11 @@ function renderProfileCard(status, profile, s, ctx, refresh) {
   card.append(
     el("div", { class: "pl-profile-row" }, avatarWrap, info),
     el("div", { class: "rowflex" },
-      el("a", { class: "btn ghost sm", href: "https://planner.nna1618.com", target: "_blank", rel: "noreferrer", text: s.openWeb }),
-      el("a", { class: "btn ghost sm", href: "https://t.me/" + botUsername, target: "_blank", rel: "noreferrer", text: s.openBot }),
+      el("a", { class: "ui-btn ghost sm", href: "https://planner.nna1618.com", target: "_blank", rel: "noreferrer", text: s.openWeb }),
+      el("a", { class: "ui-btn ghost sm", href: "https://t.me/" + botUsername, target: "_blank", rel: "noreferrer", text: s.openBot }),
       el("span", { class: "sp" }),
       el("button", {
-        class: "btn sm", type: "button", text: ctx.t("logout"),
+        class: "ui-btn sm", type: "button", text: ctx.t("logout"),
         onclick: async () => { try { await ctx.api("POST", "/planner/logout"); refresh(); } catch (err) { ctx.onStatus(ctx.t("statusError", err.message), true); } },
       })));
   return card;
@@ -318,7 +318,7 @@ function renderVoiceCard(s, ctx, status) {
   // hotkey capture field
   const hotkeyRow = el("div", { class: "rowflex" });
   card.append(settingRow(s.hotkey, s.hotkeyHint, hotkeyRow));
-  const hotkeyBtn = el("button", { class: "btn pl-hotkey-btn", type: "button", text: ctx.config.app.planner?.hotkey || "Ctrl+Shift+Space" });
+  const hotkeyBtn = el("button", { class: "ui-btn pl-hotkey-btn", type: "button", text: ctx.config.app.planner?.hotkey || "Ctrl+Shift+Space" });
   hotkeyRow.append(hotkeyBtn);
   hotkeyBtn.addEventListener("click", () => {
     startHotkeyCapture(hotkeyBtn, s, (combo) => {
@@ -346,7 +346,7 @@ function renderVoiceCard(s, ctx, status) {
   // test microphone: 3s level meter via getUserMedia in this window (SettingsWindow grants mic
   // permission itself, see src/NNA.Wallpaper/SettingsWindow.xaml.cs PermissionRequested)
   const levelBar = el("div", { class: "pl-level" }, el("div", { class: "pl-level-fill" }));
-  const testBtn = el("button", { class: "btn sm", type: "button", text: s.testMic });
+  const testBtn = el("button", { class: "ui-btn sm", type: "button", text: s.testMic });
   card.append(settingRow(s.testMic, null, el("div", { class: "pl-level-row" }, testBtn, levelBar)));
   testBtn.addEventListener("click", () => runMicTest(testBtn, levelBar, s, ctx));
 

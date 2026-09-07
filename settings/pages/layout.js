@@ -23,6 +23,7 @@ const S = {
     gridGapHelp: "Отступ между блоками, px",
     gridPadHelp: "Поля от края, px",
     gridWeightsHelp: "Веса колонок через запятую, например 2, 1, 2",
+    emptyMonitorsEngine: "Мониторы не найдены: движок не запущен",
   },
   en: {
     monitorsTitle: "Monitors",
@@ -40,6 +41,7 @@ const S = {
     gridGapHelp: "Gap between blocks, px",
     gridPadHelp: "Padding from the edge, px",
     gridWeightsHelp: "Column weights, comma separated, e.g. 2, 1, 2",
+    emptyMonitorsEngine: "No monitors found: engine is not running",
   },
 };
 

@@ -24,7 +24,7 @@ export async function render(container, ctx) {
   const general = groupCard("general", t("generalSection"),
     settingRow(t("autostart"), null, autostartMount),
     settingRow(t("language"), null, langMount),
-    settingRow(t("apiPort"), t("apiPortHint"), el("div", { class: "field" }, portInput)));
+    settingRow(t("apiPort"), t("apiPortHint"), el("div", { class: "ui-field" }, portInput)));
 
   window.NNAUI.toggle(autostartMount, {
     checked: !!app.autostart,
@@ -78,7 +78,7 @@ export async function render(container, ctx) {
   const updates = groupCard("updates", t("updates"),
     settingRow(t("channel"), null, channelMount),
     el("div", { class: "rowflex" }, checkBtn, updateResult));
-  window.NNAUI.select(channelMount, { value: app.updates?.channel || "stable", options: [{ value: "stable", label: "stable" }], onChange: async (v) => {
+  window.NNAUI.select(channelMount, { value: app.updates?.channel || "stable", options: [{ value: "stable", label: t("channelStable") }], onChange: async (v) => {
     const upd = { ...app.updates, channel: v };
     try { await ctx.put({ app: { updates: upd } }); app.updates = upd; ctx.onStatus(t("statusSaved"), false); }
     catch (err) { ctx.onStatus(t("statusError", err.message), true); }
@@ -89,7 +89,7 @@ export async function render(container, ctx) {
   const importResult = el("span", { class: "tag" });
   const foldersGroup = groupCard("folders", t("importFolder"),
     el("div", { class: "field-row" },
-      el("div", { class: "field" }, importInput),
+      el("div", { class: "ui-field" }, importInput),
       el("button", {
         class: "ui-btn", type: "button", text: t("importBtn"),
         onclick: async () => {

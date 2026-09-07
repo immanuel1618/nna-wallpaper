@@ -31,7 +31,7 @@
 
 .lay-minimap { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); overflow-x: auto; }
 .lay-minimap-mon {
-  position: absolute; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--chip);
+  position: absolute; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--chip);
   display: flex; align-items: flex-end; padding: 4px; cursor: pointer; overflow: hidden;
 }
 .lay-minimap-mon:hover { border-color: var(--fg); }
@@ -96,7 +96,7 @@
 .lay-block-del:hover { color: var(--ash); text-decoration: underline; text-decoration-color: var(--signal); }
 .lay-block-handle {
   position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize;
-  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); border-radius: 0 0 6px 0;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); border-radius: 0 0 5px 0;
 }
 .lay-block:hover .lay-block-handle, .lay-block.sel .lay-block-handle { border-color: var(--fg); }
 .lay-block-ghost {

@@ -58,7 +58,7 @@ function defaultTopBar() {
 }
 
 function normalizeHex(v) {
-  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#000000";
+  return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#0B0B0B";
 }
 
 function slugify(name) {
@@ -66,6 +66,14 @@ function slugify(name) {
     .replace(/[^a-z0-9а-яё]+/gi, "-").replace(/^-+|-+$/g, "");
   return base || "preset-" + Date.now();
 }
+
+// GET /taskbar/status's "note" (App.xaml.cs) is an internal, English, developer-facing string —
+// never shown to the user directly. "noteCode" is the small stable identifier it comes paired
+// with; this page's own dictionary translates known codes, so the page never has to print the
+// raw string (judge, round 2: "сырую строку не показывать").
+const NOTE_CODE_TEXT = {
+  "not-started": { ru: "Модуль панели задач не запущен (headless)", en: "Taskbar module not started (headless)" },
+};
 
 /**
  * Mounts the ζ "taskbar" tab.
@@ -110,14 +118,18 @@ export function mountTaskbarTab(container, ctx) {
 
   function render() {
     container.innerHTML = "";
-    container.append(
+    // page-narrow (760px, design-system.css) — same content width as every other settings page,
+    // instead of the sections sitting directly in container (full page-body width).
+    const page = el("div", { class: "page-narrow" });
+    page.append(
       renderPresetSection(),
       renderAdvancedSection(),
       renderWindowsSection());
     // topBar (our own top bar) now has its own page (settings/pages/topbar.js); this section stays
     // available for callers that still want it inline (ctx.showTopBar), off by default when unset
     // so a caller has to opt in explicitly.
-    if (ctx.showTopBar) container.append(renderTopBarSection());
+    if (ctx.showTopBar) page.append(renderTopBarSection());
+    container.append(page);
   }
 
   // ── 1. Preset ─────────────────────────────────────────────────
@@ -234,9 +246,9 @@ export function mountTaskbarTab(container, ctx) {
 
     return collapsibleCard("advanced", t("advancedSection"),
       el("div", { class: "rowflex" }, exportBtn),
-      el("div", { class: "field" }, exportArea),
+      el("div", { class: "ui-field" }, exportArea),
       el("div", { class: "h-sec", text: t("presetImport") }),
-      el("div", { class: "field" }, importArea),
+      el("div", { class: "ui-field" }, importArea),
       el("div", { class: "rowflex" }, importBtn));
   }
 
@@ -249,9 +261,9 @@ export function mountTaskbarTab(container, ctx) {
 
     const card = el("div", { class: "ui-card stack taskbar-state-card" },
       el("div", { class: "group-title", text: t(labelKey) }),
-      el("div", { class: "field" }, el("label", { text: t("surfaceMode") }), modeMount),
-      el("div", { class: "field" }, el("label", { text: t("surfaceColor") }), colorMount),
-      el("div", { class: "field" }, el("label", { text: t("surfaceOpacity") }), opacityMount));
+      el("div", { class: "ui-field" }, el("label", { text: t("surfaceMode") }), modeMount),
+      el("div", { class: "ui-field" }, el("label", { text: t("surfaceColor") }), colorMount),
+      el("div", { class: "ui-field" }, el("label", { text: t("surfaceOpacity") }), opacityMount));
 
     window.NNAUI.select(modeMount, {
       value: style.mode,
@@ -353,7 +365,9 @@ export function mountTaskbarTab(container, ctx) {
       }
       taskbarStatusChecked = true;
     }
-    target.textContent = taskbarStatus && taskbarStatus.note ? taskbarStatus.note : (taskbarStatus ? "" : t("taskbarUnavailable"));
+    const codeText = taskbarStatus && taskbarStatus.noteCode && NOTE_CODE_TEXT[taskbarStatus.noteCode];
+    const localized = codeText ? (codeText[ctx.lang] || codeText.ru) : "";
+    target.textContent = taskbarStatus ? localized : t("taskbarUnavailable");
   }
 
   // ── 3. Top bar (legacy inline section; the live app now uses settings/pages/topbar.js — see

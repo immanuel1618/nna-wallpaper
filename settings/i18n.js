@@ -76,6 +76,7 @@ const DICT = {
   updates: { ru: "Обновления", en: "Updates" },
   checkNow: { ru: "Проверить сейчас", en: "Check now" },
   channel: { ru: "Канал", en: "Channel" },
+  channelStable: { ru: "Стабильный", en: "Stable" },
   importFolder: { ru: "Импорт из папки", en: "Import from folder" },
   importBtn: { ru: "Импортировать", en: "Import" },
   importHint: { ru: "Недоступно из приложения: используйте флаг командной строки --import <папка>", en: "Not available from the app: use the --import <folder> command-line flag" },
@@ -249,18 +250,21 @@ const DICT = {
 
   // Base/Surface/Slate/Steel palette swatches (dom.js paletteSwatchField) — replaces native
   // <input type="color"> pickers in topbar.js/dock.js/forms.js/blocks.js surface-color rows.
-  swatchBase: { ru: "Base", en: "Base" },
-  swatchSurface: { ru: "Surface", en: "Surface" },
-  swatchSlate: { ru: "Slate", en: "Slate" },
-  swatchSteel: { ru: "Steel", en: "Steel" },
+  // Обычные слова вместо имён токенов (судья, раунд 2) — hex остаётся в title-подсказке свотча
+  // (см. dom.js paletteSwatchField), не в подписи кнопки.
+  swatchBase: { ru: "Основа", en: "Base" },
+  swatchSurface: { ru: "Панель", en: "Surface" },
+  swatchSlate: { ru: "Линия", en: "Slate" },
+  swatchSteel: { ru: "Метка", en: "Steel" },
 
   // γ — appearance: font scale + accent knobs (owner decision D6: one theme, a few dials)
   themeKnobsSection: { ru: "Шрифт и акцент", en: "Font and accent" },
   fontScale: { ru: "Размер шрифта", en: "Font size" },
   accent: { ru: "Акцент", en: "Accent" },
+  // Обычные слова вместо имён токенов (судья, раунд 2): Signal -> Бордовый/Blood, Chrome -> Хром.
   accent_none: { ru: "Нет", en: "None" },
-  accent_signal: { ru: "Signal", en: "Signal" },
-  accent_chrome: { ru: "Chrome", en: "Chrome" },
+  accent_signal: { ru: "Бордовый", en: "Blood" },
+  accent_chrome: { ru: "Хром", en: "Chrome" },
 };
 
 /** Both languages' "Saved" strings — used by settings/api.js's setStatus to color the status

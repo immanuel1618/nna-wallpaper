@@ -12,7 +12,7 @@
     var tools = N.el('div', 'ev-tools');
     var prev = N.el('button', 'ev-nav', '‹'), next = N.el('button', 'ev-nav', '›');
     var pageEl = N.el('span', 'ev-page nna-mono', '');
-    var edit = N.el('button', 'nna-btn ev-edit', 'EDIT');
+    var edit = N.el('button', 'nna-btn ev-edit', N.t('edit', 'EDIT'));
     prev.type = next.type = edit.type = 'button';
     tools.appendChild(prev); tools.appendChild(pageEl); tools.appendChild(next); tools.appendChild(edit);
     var list = N.el('div', 'ev-list');
@@ -60,7 +60,7 @@
       prev.classList.toggle('is-hidden', pages <= 1); next.classList.toggle('is-hidden', pages <= 1);
       var slice = items.slice(page * PER, page * PER + PER);
       if (!slice.length) {
-        var empty = N.el('div', 'ev-empty nna-mono', 'NO EVENTS · PRESS EDIT');
+        var empty = N.el('div', 'ev-empty nna-mono', N.t('eventsEmpty', 'NO EVENTS · PRESS EDIT'));
         list.appendChild(empty); return;
       }
       slice.forEach(function (it) {
@@ -105,8 +105,8 @@
     prev.addEventListener('click', function () { if (page > 0) { page--; renderPage(); } });
     next.addEventListener('click', function () { if ((page + 1) * PER < items.length) { page++; renderPage(); } });
     edit.addEventListener('click', function () {
-      N.post('/edit?what=events').then(function (r) { N.toast(r && r.ok ? 'OPENING EVENTS.JSON' : (r && r.error) || 'FAILED'); },
-        function () { N.toast('HELPER OFFLINE'); });
+      N.post('/edit?what=events').then(function (r) { N.toast(r && r.ok ? 'OPENING EVENTS.JSON' : (r && r.error) || N.t('failed', 'FAILED')); },
+        function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); });
     });
 
     load();

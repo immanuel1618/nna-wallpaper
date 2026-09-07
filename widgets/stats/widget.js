@@ -42,8 +42,8 @@
     var netDown = N.el('div', 'st-net'), netUp = N.el('div', 'st-net');
     net.root.appendChild(netDown); net.root.appendChild(netUp);
     var netDownK = N.el('span', 'st-net-k nna-mono'), netUpK = N.el('span', 'st-net-k nna-mono');
-    netDownK.appendChild(arrow(ARROW_DOWN_D)); netDownK.appendChild(N.text ? N.text('DOWN') : document.createTextNode('DOWN'));
-    netUpK.appendChild(arrow(ARROW_UP_D)); netUpK.appendChild(N.text ? N.text('UP') : document.createTextNode('UP'));
+    netDownK.appendChild(arrow(ARROW_DOWN_D)); netDownK.appendChild(document.createTextNode(N.t('netDown', 'DOWN')));
+    netUpK.appendChild(arrow(ARROW_UP_D)); netUpK.appendChild(document.createTextNode(N.t('netUp', 'UP')));
     var netDownV = N.el('span', 'st-net-v nna-big'), netUpV = N.el('span', 'st-net-v nna-big');
     netDown.appendChild(netDownK); netDown.appendChild(netDownV);
     netUp.appendChild(netUpK); netUp.appendChild(netUpV);
@@ -91,7 +91,7 @@
       if (!s || !s.cpu) return;
       // CPU
       cpu.v.textContent = pct(s.cpu.percent);
-      cpu.sub.textContent = (s.cpu.freq_mhz ? (s.cpu.freq_mhz / 1000).toFixed(1) + ' GHZ · ' : '') + s.cpu.cores + ' THREADS';
+      cpu.sub.textContent = (s.cpu.freq_mhz ? (s.cpu.freq_mhz / 1000).toFixed(1) + ' GHZ · ' : '') + s.cpu.cores + ' ' + N.t('threads', 'THREADS');
       var pc = s.cpu.per_core || [];
       while (coreBars.length < pc.length) {
         var cb = N.el('span', 'st-core'); var ci = N.el('i'); cb.appendChild(ci);
@@ -110,22 +110,22 @@
         vram.fill.style.width = vp.toFixed(1) + '%';
         vram.text.textContent = (s.gpu.mem_used_mb / 1024).toFixed(1) + ' / ' + (s.gpu.mem_total_mb / 1024).toFixed(0) + ' GB';
       } else {
-        gpu.v.textContent = '·'; gpu.sub.textContent = 'NO GPU DATA';
+        gpu.v.textContent = '·'; gpu.sub.textContent = N.t('noGpuData', 'NO GPU DATA');
       }
       // RAM
       ram.v.textContent = pct(s.mem.percent);
       ram.sub.textContent = N.fmtGB(s.mem.used) + ' / ' + N.fmtGB(s.mem.total) + ' GB';
       ramBar.fill.style.width = s.mem.percent + '%';
-      ramBar.text.textContent = N.fmtGB(s.mem.total - s.mem.used) + ' GB FREE';
+      ramBar.text.textContent = N.fmtGB(s.mem.total - s.mem.used) + ' GB ' + N.t('free', 'FREE');
       // DISKS (секция во всю ширину под сеткой 2×2, см. disksWrap/disksList выше)
       (s.disks || []).forEach(function (d) {
         var line = diskLines[d.mount];
         if (!line) { line = diskLines[d.mount] = barLine(disksList, d.mount); }
         line.fill.style.width = d.percent + '%';
-        line.text.textContent = N.fmtGB(d.total - d.used) + ' GB FREE';
+        line.text.textContent = N.fmtGB(d.total - d.used) + ' GB ' + N.t('free', 'FREE');
         line.bar.classList.toggle('is-hot', d.percent > 90);
       });
-      disksV.textContent = (s.disks || []).length + ' VOL';
+      disksV.textContent = (s.disks || []).length + ' ' + N.t('vol', 'VOL');
       // NET
       netDownV.textContent = N.fmtBytes(s.net.down_bps, true);
       netUpV.textContent = N.fmtBytes(s.net.up_bps, true);

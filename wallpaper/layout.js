@@ -21,13 +21,50 @@
   /* Счётчик принятых сообщений /events — виден снаружи (тесты, CDP) как window.NNA_EVENTS. */
   window.NNA_EVENTS = { received: 0, lastType: null };
 
-  /* дефолты, совпадающие с nna-config.js — используются, пока
-     хост не пришлёт своих (host отдаёт только dim/poll через тему и настройки виджетов). */
+  /* дефолты (запасной вариант, пока манифест не прочитан или title в нём отсутствует). Настоящие
+     заголовки блоков (player/tasks/system/launch/graph/focus/events/weather/eq/photo) приходят из
+     title:{ru,en} манифестов виджетов (widgets/<id>/widget.json) — см. refreshLabelsFromManifests
+     ниже; idle/tasksSoon/tasksSub — служебные подписи внутри виджетов, тоже читаются из cfg.language,
+     но не имеют манифеста (их порождает не виджет, а сама эта карта). */
   var DEFAULT_LABELS = {
     player: 'PLAYER', tasks: 'TASKS', system: 'SYSTEM', launch: 'LAUNCH', graph: 'GRAPH',
     focus: 'FOCUS', events: 'EVENTS', weather: 'WEATHER', eq: 'AUDIO', photo: 'PHOTO',
     idle: 'NOTHING PLAYING', tasksSoon: 'NNA PLANNER', tasksSub: 'SOON'
   };
+  /* widget id (папка /widgets/<id>) -> ключ в window.NNA_CONFIG.labels, который читают виджеты
+     (L.system, L.tasks, L.photo — см. widget.js каждого виджета); для большинства id ключ
+     совпадает с id, три расходятся исторически. */
+  var WIDGET_LABEL_KEY = { planner: 'tasks', stats: 'system', photos: 'photo' };
+  function labelKeyForWidget(id) {
+    return WIDGET_LABEL_KEY.hasOwnProperty(id) ? WIDGET_LABEL_KEY[id] : id;
+  }
+  function manifestTitle(manifest, language) {
+    var t = manifest && manifest.title;
+    if (!t) return null;
+    return t[language] || t.ru || t.en || null;
+  }
+  /* Перечитывает заголовки блоков из уже загруженных манифестов (S.manifests) на нужном языке и
+     мутирует window.NNA_CONFIG.labels НА МЕСТЕ (не переприсваивает объект) — так виджеты, которые
+     захватили L = C.labels один раз при первой загрузке своего widget.js, продолжают видеть
+     актуальные значения при следующем рендере (mount/refresh), а applyBlocksAndSettings может сразу
+     же перерисовать .nna-label уже смонтированных ячеек без их пересоздания. */
+  function refreshLabelsFromManifests(language) {
+    var labels = window.NNA_CONFIG.labels || (window.NNA_CONFIG.labels = {});
+    Object.keys(S.manifests).forEach(function (id) {
+      var manifest = S.manifests[id];
+      if (!manifest) return;
+      var title = manifestTitle(manifest, language);
+      if (title != null) labels[labelKeyForWidget(id)] = title;
+    });
+    return labels;
+  }
+  /* Перерисовывает базовый текст .nna-label уже смонтированной ячейки, не трогая strong-часть
+     (текущий трек, источник и т.п.) — см. wallpaper/nna-core.js:setLabel про структуру узла. */
+  function updateCellLabel(entry, text) {
+    var lab = entry.cell.querySelector('.nna-label');
+    if (!lab || !lab.firstChild || lab.firstChild.nodeType !== 3) return;
+    lab.firstChild.nodeValue = text;
+  }
   var DEFAULT_CLOCKS = [
     { label: 'MOSCOW', tz: 'Europe/Moscow' },
     { label: 'LOS ANGELES', tz: 'America/Los_Angeles' },
@@ -343,6 +380,15 @@
   function applyBlocksAndSettings(nextBlocks, widgetsCfg, theme, isPreview) {
     var neededIds = collectNeededManifestIds(nextBlocks);
     return fetchManifests(neededIds).then(function () {
+      refreshLabelsFromManifests(window.NNA_CONFIG.language || 'ru');
+      if (!isPreview) {
+        var labels = window.NNA_CONFIG.labels || {};
+        Object.keys(S.cellsByKey).forEach(function (k) {
+          var entry = S.cellsByKey[k];
+          var lkey = labelKeyForWidget(entry.widgetId);
+          if (labels.hasOwnProperty(lkey)) updateCellLabel(entry, labels[lkey]);
+        });
+      }
       var nextSettingsById = {};
       var overrideByWidget = {}, idsInOrder = [], i;
       for (i = 0; i < nextBlocks.length; i++) {
@@ -404,6 +450,7 @@
     var widgetsCfg = cfg.widgets || {};
     var tb = cfg.topbar || cfg.topBar || {};
 
+    window.NNA_CONFIG.language = cfg.language || window.NNA_CONFIG.language || 'ru';
     window.NNA_CONFIG.dim = theme.dim;
     setThemeVars(theme);
     updateGridGeometry(grid, tb, monitor);
@@ -538,8 +585,9 @@
     window.NNA_HELPER = { url: location.origin, token: cfg.token };
     window.NNA_CONFIG = {
       dim: (cfg.theme || {}).dim,
+      language: cfg.language || 'ru',
       poll: { stats: 1000, media: 1000, health: 5000 },
-      labels: DEFAULT_LABELS
+      labels: JSON.parse(JSON.stringify(DEFAULT_LABELS)) // копия — мутируем на месте, не трогая шаблон
     };
 
     /* Контейнер сетки создаётся один раз и переживает все последующие config-changed: только его
@@ -556,7 +604,8 @@
       window.NNA.paused = false;
       window.NNA.watchHealth();
       installBridgeListener();
-
+      return loadScript('/wallpaper/i18n.js');
+    }).then(function () {
       applyConfig(cfg, {}).then(function () {
         if (!window.NNA_CONFIG.clocks) window.NNA_CONFIG.clocks = DEFAULT_CLOCKS;
         var bootBlocks = (cfg.monitor && cfg.monitor.blocks) || [];

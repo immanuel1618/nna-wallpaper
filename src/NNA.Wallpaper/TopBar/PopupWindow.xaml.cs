@@ -7,6 +7,7 @@ using NNA.Wallpaper.Engine;
 using NNA.Wallpaper.Host;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace NNA.Wallpaper.TopBar;
@@ -80,6 +81,26 @@ public partial class PopupWindow : Window
         var hwnd = (HWND)new WindowInteropHelper(this).Handle;
         var ex = PInvoke.GetWindowLong(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
         PInvoke.SetWindowLong(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW);
+        ApplyRoundedCorners(hwnd);
+    }
+
+    /// <summary>DWMWA_WINDOW_CORNER_PREFERENCE (33) -> DWMWCP_ROUND (2): asks DWM itself to round the
+    /// window's corners (same call as Themes/BrandChrome.cs's DWM attributes, see ApplyDarkTitleBar
+    /// there). Reposition's SetWindowRgn (13 px CSS, scaled) still clips the window to that same
+    /// rounded rect for hit-testing/click-through outside it; this call is what makes DWM actually
+    /// anti-alias the corner instead of leaving the region's hard-edged staircase visible.</summary>
+    private static unsafe void ApplyRoundedCorners(HWND hwnd)
+    {
+        try
+        {
+            var pref = DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
+            PInvoke.DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE, &pref, (uint)sizeof(DWM_WINDOW_CORNER_PREFERENCE));
+        }
+        catch
+        {
+            // Best-effort: pre-Windows 11 systems don't support this attribute — the SetWindowRgn
+            // clip in Reposition still gives the popup its rounded silhouette either way.
+        }
     }
 
     private async Task InitBrowserAsync(string monitorId, string module, int anchorCenterXPhysical)

@@ -33,7 +33,7 @@
     function deg(x) { return x == null ? '·' : Math.round(x) + '°'; }
     function renderWeather(w) {
       city.textContent = w.name || 'нет данных';
-      if (!w.ok) { temp.textContent = '·'; cond.textContent = 'NO DATA'; meta.textContent = ''; return; }
+      if (!w.ok) { temp.textContent = '·'; cond.textContent = N.t('noData', 'NO DATA'); meta.textContent = ''; return; }
       temp.textContent = deg(w.temp);
       cond.textContent = w.text || '';
       meta.textContent = 'FEELS ' + deg(w.feels) + ' · WIND ' + Math.round(w.wind_ms || 0) + ' M/S · HUM ' + Math.round(w.humidity || 0) + '%';

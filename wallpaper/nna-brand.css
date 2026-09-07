@@ -98,8 +98,8 @@
 .nna-icon-btn.is-primary svg { width: 28px; height: 28px; }
 
 /* ---- полоски ------------------------------------------------------------- */
-.nna-bar { position: relative; height: 6px; background: var(--fg-ghost); border-radius: 3px; overflow: hidden; }
-.nna-bar > i { display: block; height: 100%; width: 0; background: var(--fg); border-radius: 3px; transition: width 0.45s ease; }
+.nna-bar { position: relative; height: 6px; background: var(--fg-ghost); border-radius: 5px; overflow: hidden; }
+.nna-bar > i { display: block; height: 100%; width: 0; background: var(--fg); border-radius: 5px; transition: width 0.45s ease; }
 .nna-bar.is-thin { height: 3px; }
 .nna-bar.is-hot > i { background: var(--fg-body); }
 
