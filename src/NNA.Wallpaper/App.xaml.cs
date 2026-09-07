@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
 using Hardcodet.Wpf.TaskbarNotification;
 using NNA.Wallpaper.Engine;
@@ -22,6 +23,10 @@ public partial class App : Application
     private TrayIcon? _tray;
     private TaskbarStyler? _taskbar;
     private TopBarManager? _topBar;
+    /// <summary>Sorted monitor ids as of the last known-good config, used by <see cref="OnConfigChanged"/>
+    /// to tell "a monitor was added/removed" (needs a full reload) from "a block moved" (patched live
+    /// by the wallpaper pages over /events).</summary>
+    private List<string>? _lastMonitorIds;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -77,6 +82,7 @@ public partial class App : Application
 
         var config = new ConfigStore(paths, log);
         config.Load();
+        _lastMonitorIds = SortedMonitorIds(config.Monitors);
         var port = Args.Port ?? config.App.ApiPort;
 
         Host = new HostContext(paths, config, log, port, new HeadlessHostApp(Dispatcher, Shutdown))
@@ -178,9 +184,36 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// Decides whether a config change needs a full <c>ReloadWallpaper()</c> (visible flicker) or can
+    /// be left to the wallpaper pages, which patch themselves live over the /events WebSocket
+    /// (<see cref="Services.EventsService"/> pushes a "config-changed" message for every change).
+    /// With LiveUpdates off we fall back to the old behaviour entirely. With it on, only an actual
+    /// change to the *set* of monitor ids (a monitor plugged in/out, not a block moved on one) still
+    /// forces a reload — every other case (app, monitors-without-id-change, widget:*) is live-patched.
+    /// </summary>
     private void OnConfigChanged(ConfigStore config, string what)
     {
-        if (what == "monitors" || what == "app" || what.StartsWith("widget:", StringComparison.Ordinal))
+        var liveUpdates = config.App.LiveUpdates;
+        bool reload;
+        if (!liveUpdates)
+        {
+            reload = what == "monitors" || what == "app" || what.StartsWith("widget:", StringComparison.Ordinal);
+        }
+        else if (what == "monitors")
+        {
+            var ids = SortedMonitorIds(config.Monitors);
+            reload = _lastMonitorIds is not null && !ids.SequenceEqual(_lastMonitorIds);
+        }
+        else
+        {
+            reload = false;
+        }
+        if (what == "monitors")
+        {
+            _lastMonitorIds = SortedMonitorIds(config.Monitors);
+        }
+        if (reload)
         {
             Engine?.ReloadWallpaper();
         }
@@ -193,6 +226,12 @@ public partial class App : Application
             Autostart.Apply(config.App.Autostart);
         }
     }
+
+    private static List<string> SortedMonitorIds(MonitorsConfig monitors) =>
+        (monitors.Monitors ?? new List<MonitorLayout>())
+            .Select(m => m.Id)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>
     /// Routes owned by the WPF shell rather than the host library (which we must not modify):

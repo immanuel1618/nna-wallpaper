@@ -169,7 +169,7 @@
           var willBeDone = !row.classList.contains('is-done');
           row.classList.toggle('is-done', willBeDone);
           N.post('/planner/done?id=' + encodeURIComponent(t.id) + '&done=' + (willBeDone ? 1 : 0))
-            .then(function () { setTimeout(tick, 600); })
+            .then(function () { ctx.setTimeout(tick, 600); })
             .catch(function () { row.classList.toggle('is-done', !willBeDone); N.toast(text('plannerError', 'ОШИБКА')); });
         });
         list.appendChild(row);
@@ -216,7 +216,7 @@
           var next = !chip.classList.contains('is-on');
           chip.classList.toggle('is-on', next);
           N.post('/planner/habit?id=' + encodeURIComponent(h.id) + '&checked=' + (next ? 1 : 0))
-            .then(function () { setTimeout(tick, 600); })
+            .then(function () { ctx.setTimeout(tick, 600); })
             .catch(function () { chip.classList.toggle('is-on', !next); N.toast(text('plannerError', 'ОШИБКА')); });
         });
         chips.appendChild(chip);
@@ -292,7 +292,7 @@
         recorder.start();
         btn.classList.add('is-rec');
         N.toast(text('plannerRecording', 'ЗАПИСЬ · НАЖМИ ЕЩЁ РАЗ, ЧТОБЫ ОТПРАВИТЬ'));
-        recTimer = setTimeout(function () { if (recorder && recorder.state === 'recording') recorder.stop(); }, 30000);
+        recTimer = ctx.setTimeout(function () { if (recorder && recorder.state === 'recording') recorder.stop(); }, 30000);
       }).catch(function () { N.toast(text('plannerError', 'ОШИБКА МИКРОФОНА')); });
     }
 
@@ -383,7 +383,7 @@
 
     try {
       if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.addEventListener('message', function (e) {
+        ctx.on(window.chrome.webview, 'message', function (e) {
           var data = e && e.data;
           if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e2) { return; } }
           onHostMessage(data);
@@ -391,10 +391,10 @@
       }
     } catch (e) { /* not inside WebView2 */ }
 
-    window.addEventListener('nnaHost', function (e) { onHostMessage(e && e.detail); });
+    ctx.on(window, 'nnaHost', function (e) { onHostMessage(e && e.detail); });
 
     tick();
-    setInterval(tick, settings.refreshSec * 1000);
+    ctx.setInterval(tick, settings.refreshSec * 1000);
 
     return b;
   };

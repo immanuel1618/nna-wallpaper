@@ -7,7 +7,7 @@
   var TITLE = { h: 'H:', e: 'E:' };
   try { var _t = typeof G.titles === 'string' ? JSON.parse(G.titles || '{}') : G.titles; if (_t && typeof _t === 'object') TITLE = Object.assign(TITLE, _t); } catch (e) {}
 
-  N.graph = function (mount) {
+  N.graph = function (mount, ctx) {
     var b = N.block('graph', L.graph || 'GRAPH', { needsHelper: true });
     b.label.classList.add('is-clickable');
     var corner = N.el('div', 'nna-corner');
@@ -17,7 +17,7 @@
     b.body.appendChild(canvas); b.body.appendChild(tip);
     mount.appendChild(b.root);
 
-    var ctx = canvas.getContext('2d');
+    var c2d = canvas.getContext('2d');
     var src = G.start === 'e' ? 'e' : 'h';
     var nodes = [], links = [], adj = {}, root = '', total = 0, lastG = null;
     var W = 0, H = 0, dpr = 1, PAD = 36, TOP = 54;
@@ -30,7 +30,7 @@
       W = Math.max(1, r.width); H = Math.max(1, r.height);
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (lastG && (Math.abs(W - oW) > oW * 0.1 || Math.abs(H - oH) > oH * 0.1)) build(lastG);
       else draw();
     }
@@ -131,30 +131,30 @@
     }
 
     function draw() {
-      ctx.clearRect(0, 0, W, H);
+      c2d.clearRect(0, 0, W, H);
       var i, hid = hover ? hover.id : null;
-      ctx.lineWidth = 1;
+      c2d.lineWidth = 1;
       for (i = 0; i < links.length; i++) {
         var l = links[i], hot = hid && (l.s.id === hid || l.t.id === hid);
-        ctx.strokeStyle = hot ? 'rgba(255,255,255,0.85)' : 'rgba(128,128,128,0.22)';
-        ctx.beginPath(); ctx.moveTo(l.s.x, l.s.y); ctx.lineTo(l.t.x, l.t.y); ctx.stroke();
+        c2d.strokeStyle = hot ? 'rgba(255,255,255,0.85)' : 'rgba(128,128,128,0.22)';
+        c2d.beginPath(); c2d.moveTo(l.s.x, l.s.y); c2d.lineTo(l.t.x, l.t.y); c2d.stroke();
       }
       for (i = 0; i < nodes.length; i++) {
         var d = nodes[i], isHot = hid && (d.id === hid || adj[hid][d.id]);
         var g = Math.round(103 + (255 - 103) * d.shade);
-        ctx.fillStyle = isHot ? '#FFFFFF' : 'rgb(' + g + ',' + g + ',' + g + ')';
-        ctx.beginPath(); ctx.arc(d.x, d.y, d.r + (d.id === hid ? 2 : 0), 0, Math.PI * 2); ctx.fill();
+        c2d.fillStyle = isHot ? '#FFFFFF' : 'rgb(' + g + ',' + g + ',' + g + ')';
+        c2d.beginPath(); c2d.arc(d.x, d.y, d.r + (d.id === hid ? 2 : 0), 0, Math.PI * 2); c2d.fill();
         if (d.type === 'concept' || d.type === 'document') {
-          ctx.strokeStyle = 'rgba(5,5,5,0.9)'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(d.x, d.y, Math.max(1.2, d.r - 2.2), 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1;
+          c2d.strokeStyle = 'rgba(5,5,5,0.9)'; c2d.lineWidth = 1.5;
+          c2d.beginPath(); c2d.arc(d.x, d.y, Math.max(1.2, d.r - 2.2), 0, Math.PI * 2); c2d.stroke(); c2d.lineWidth = 1;
         }
       }
-      ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textBaseline = 'middle';
+      c2d.font = '500 10px "JetBrains Mono", monospace'; c2d.textBaseline = 'middle';
       for (i = 0; i < nodes.length; i++) {
         var nd = nodes[i];
         if (!nd.showLabel || nd.id === hid) continue;
-        ctx.fillStyle = 'rgba(128,128,128,0.9)';
-        ctx.fillText(short(nd.label), nd.x + nd.r + 6, nd.y);
+        c2d.fillStyle = 'rgba(128,128,128,0.9)';
+        c2d.fillText(short(nd.label), nd.x + nd.r + 6, nd.y);
       }
     }
     function short(s) { var m = G.maxLabelLen || 26; s = String(s || ''); return s.length > m ? s.slice(0, m - 1) + '…' : s; }
@@ -198,9 +198,9 @@
     }
 
     resize();
-    setInterval(function () { var r = b.body.getBoundingClientRect(); if (Math.abs(r.width - W) > 2 || Math.abs(r.height - H) > 2) resize(); }, 500);
+    ctx.setInterval(function () { var r = b.body.getBoundingClientRect(); if (Math.abs(r.width - W) > 2 || Math.abs(r.height - H) > 2) resize(); }, 500);
     load();
-    setInterval(load, 10 * 60 * 1000);   // граф на диске мог пересобраться
+    ctx.setInterval(load, 10 * 60 * 1000);   // граф на диске мог пересобраться
     return b;
   };
 })();
@@ -210,6 +210,6 @@ window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.graph = function (mount, ctx) {
   var N = window.NNA, s = (ctx && ctx.settings) || {};
   N.config.graph = Object.assign({}, N.config.graph || {}, s);
-  var w = N.graph(mount);
+  var w = N.graph(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

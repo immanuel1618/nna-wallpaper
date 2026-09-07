@@ -39,6 +39,21 @@ public sealed class ConfigStore
                 app.ApiToken = NewToken();
                 dirty = true;
             }
+            // v3 token migration: old configs (or fresh ones read before this pass) may still carry
+            // the pre-tokens font names. The wallpaper page no longer applies theme.fonts at all
+            // (ui/tokens.css fixes the brand font now), but app.json should not keep serving stale
+            // names to anything that still reads it (the settings editor, /config/full). The palette
+            // is left untouched: it is unused either way, so migrating it would just be churn.
+            if (app.Theme.Fonts.TryGetValue("display", out var display) && display == "Kharkiv Tone")
+            {
+                app.Theme.Fonts["display"] = "Roboto Flex";
+                dirty = true;
+            }
+            if (app.Theme.Fonts.TryGetValue("mono", out var mono) && mono == "DM Mono")
+            {
+                app.Theme.Fonts["mono"] = "JetBrains Mono";
+                dirty = true;
+            }
             App = app;
             if (dirty) SaveAppUnlocked();
 

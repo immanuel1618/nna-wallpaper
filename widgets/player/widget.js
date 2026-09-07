@@ -15,7 +15,7 @@
     return last.replace(/[_-]+/g, ' ').toUpperCase().slice(0, 18);
   }
 
-  N.player = function (mount) {
+  N.player = function (mount, ctx) {
     var b = N.block('player', L.player || 'PLAYER', { needsHelper: true });
     var body = b.body;
 
@@ -76,7 +76,7 @@
         if (r && r.ok === false) N.toast(r.error || 'FAILED');
       }, function () { N.toast('HELPER OFFLINE'); }).then(function () {
         busy = false; bToggle.classList.remove('is-busy');
-        setTimeout(poll, 250);
+        ctx.setTimeout(poll, 250);
       });
     }
     bPrev.addEventListener('click', function () { act('prev'); });
@@ -138,9 +138,9 @@
       idleDate.textContent = N.fmtDate(d);
     }
     tickClock(); poll();
-    setInterval(tickClock, 1000);
-    setInterval(poll, (C.poll && C.poll.media) || 1000);
-    setInterval(function () { if (state && state.playing) render(); }, 500);
+    ctx.setInterval(tickClock, 1000);
+    ctx.setInterval(poll, (C.poll && C.poll.media) || 1000);
+    ctx.setInterval(function () { if (state && state.playing) render(); }, 500);
     return b;
   };
 })();
@@ -149,6 +149,6 @@
 window.NNA.widgets = window.NNA.widgets || {};
 window.NNA.widgets.player = function (mount, ctx) {
   var N = window.NNA;
-  var w = N.player(mount);
+  var w = N.player(mount, ctx);
   return { root: w && w.root, destroy: (w && w.destroy) || null };
 };

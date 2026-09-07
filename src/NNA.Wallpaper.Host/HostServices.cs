@@ -36,6 +36,9 @@ public sealed class HostServices : IDisposable
         Api.MapStatic("/topbar/", ctx.Paths.WebRoot("topbar"));
         Api.MapStatic("/presets/", ctx.Paths.WebRoot("presets"));
         Api.MapStatic("/widgets/", ctx.Paths.BuiltInWidgetsDir, ctx.Paths.UserWidgetsDir);
+        // "ui" is a separate small web root another agent owns; when it is absent from the build
+        // output this route simply 404s (MapStatic only serves files that exist on disk).
+        Api.MapStatic("/ui/", ctx.Paths.WebRoot("ui"));
 
         // Feature services (each in its own file). Order matters only for /health contributors.
         RegisterServices();
