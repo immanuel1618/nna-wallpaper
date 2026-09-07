@@ -139,7 +139,6 @@ public sealed class HostServices : IDisposable
             ["ok"] = true,
             ["version"] = HostInfo.Version,
             ["port"] = _ctx.Port,
-            ["token"] = app.ApiToken,
             ["language"] = app.Language,
             ["fpsCap"] = app.FpsCap,
             ["theme"] = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(app.Theme, Json.Config)),
@@ -149,6 +148,13 @@ public sealed class HostServices : IDisposable
             ["taskbar"] = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(app.Taskbar, Json.Config)),
             ["topbar"] = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(app.TopBar, Json.Config)),
         };
+        // The API token unlocks every non-GET route; it must never reach a request we can't verify
+        // came from our own page. LocalApi.IsSameOriginRequest treats Sec-Fetch-Site: same-origin/none
+        // (what Chromium/WebView2 send for our own pages) as trusted, and — since a real browser
+        // always sets Sec-Fetch-Site — also trusts a request with neither that header nor
+        // Origin/Referer at all, which is what curl and tests/api-contract.ps1 send against localhost.
+        // Anything else (a foreign page's cross-site/same-site fetch) gets the config minus the token.
+        if (LocalApi.IsSameOriginRequest(req)) obj["token"] = app.ApiToken;
         return req.Text(obj.ToJsonString(Json.Api), "application/json; charset=utf-8");
     }
 

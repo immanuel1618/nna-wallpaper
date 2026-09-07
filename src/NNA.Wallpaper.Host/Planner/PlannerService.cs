@@ -13,6 +13,7 @@ public sealed class PlannerService : Services.IHostService, IDisposable
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
     private const long MaxCaptureBytes = 12 * 1024 * 1024;
+    private static readonly TimeSpan LoginStateTtl = TimeSpan.FromMinutes(10);
 
     /// <summary>Set by the constructor so Hotkeys (a different project/thread — push-to-talk lives in
     /// NNA.Wallpaper, this service in NNA.Wallpaper.Host) can reach the signed-in session's capture
@@ -28,6 +29,11 @@ public sealed class PlannerService : Services.IHostService, IDisposable
     private JsonObject? _todayCache;
     private DateTimeOffset _todayCacheAt = DateTimeOffset.MinValue;
     private JsonObject? _lastQuota;
+
+    /// <summary>Outstanding login nonces (session-fixation guard): GET /planner/callback saves a
+    /// session only if it carries a state= that was minted here for this run of the login window,
+    /// each one usable exactly once and expiring after <see cref="LoginStateTtl"/>.</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> _loginStates = new();
 
     /// <summary>Last known state of the global push-to-talk hotkey, set by NNA.Wallpaper.Hotkeys after
     /// it tries RegisterHotKey; surfaced on /planner/status.hotkey. Not thread-locked — a torn read of
@@ -53,7 +59,11 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         api.Map("POST", "/planner/done", Done);
         api.Map("POST", "/planner/habit", Habit);
         api.Map("POST", "/planner/capture", Capture);
-        api.Map("GET", "/planner/login", Login);
+        // POST, not GET: opening the Telegram login window is a state-changing action that must
+        // require the API token like any other POST — a GET would let a plain <img>/<a> from any
+        // page pop it open unattended (and, pre-state, cross-site engineer a session fixation via
+        // /planner/callback below).
+        api.Map("POST", "/planner/login", Login);
         api.Map("POST", "/planner/logout", Logout);
         api.Map("GET", "/planner/callback", Callback);
         api.Map("POST", "/planner/input", Input);
@@ -465,6 +475,35 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         return req.Json(new { ok = true });
     }
 
+    /// <summary>Mints a one-time login nonce and remembers it for <see cref="LoginStateTtl"/>. Called
+    /// right before the Telegram login window navigates, so the nonce can ride along on the login
+    /// page's URL as state= and come back unchanged on /planner/callback — without it (or with a
+    /// stale/foreign one) the callback is refused, closing the session-fixation hole where a page
+    /// could otherwise drive a victim's own /planner/callback navigation to plant an attacker's session.</summary>
+    public string CreateLoginState()
+    {
+        PruneExpiredLoginStates();
+        var state = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        _loginStates[state] = DateTimeOffset.UtcNow + LoginStateTtl;
+        return state;
+    }
+
+    private void PruneExpiredLoginStates()
+    {
+        var now = DateTimeOffset.UtcNow;
+        foreach (var kv in _loginStates)
+        {
+            if (kv.Value < now) _loginStates.TryRemove(kv.Key, out _);
+        }
+    }
+
+    /// <summary>One-time use: valid states are removed whether or not the caller goes on to complete login.</summary>
+    private bool ConsumeLoginState(string? state)
+    {
+        PruneExpiredLoginStates();
+        return !string.IsNullOrEmpty(state) && _loginStates.TryRemove(state, out var expiry) && expiry >= DateTimeOffset.UtcNow;
+    }
+
     private Task Logout(ApiRequest req)
     {
         _session = null;
@@ -478,9 +517,20 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         return req.Json(new { ok = true });
     }
 
-    /// <summary>GET /planner/callback?&lt;widget fields&gt; — arrives from the browser page inside the login window, no X-Token.</summary>
+    /// <summary>GET /planner/callback?&lt;widget fields&gt;&amp;state=&lt;nonce&gt; — arrives from the browser page
+    /// inside the login window, no X-Token. state must be one minted by <see cref="CreateLoginState"/>
+    /// for this login attempt (session-fixation guard: without this check, anything that could get a
+    /// victim to load this URL — no token needed — could sign the victim's app into an attacker's
+    /// planner account).</summary>
     private async Task Callback(ApiRequest req)
     {
+        if (!ConsumeLoginState(req.Query("state")))
+        {
+            _ctx.Log.Warn("planner callback refused: missing/invalid/expired state");
+            await req.Text(FailureHtml(), "text/html; charset=utf-8", 403).ConfigureAwait(false);
+            return;
+        }
+
         var fields = new Dictionary<string, string>();
         foreach (var key in new[] { "id", "first_name", "last_name", "username", "photo_url", "auth_date", "hash" })
         {

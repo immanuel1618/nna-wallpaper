@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 using NNA.Wallpaper.Host;
+using NNA.Wallpaper.Host.Planner;
 using NNA.Wallpaper.Themes;
 
 namespace NNA.Wallpaper;
@@ -91,7 +92,15 @@ public partial class PlannerLoginWindow : Window
 
             var loginUrl = _ctx.Config.App.Planner.LoginUrl;
             var sep = loginUrl.Contains('?') ? "&" : "?";
-            Browser.CoreWebView2.Navigate(loginUrl + sep + "port=" + _ctx.Port);
+            var url = loginUrl + sep + "port=" + _ctx.Port;
+            // Session-fixation guard: a fresh one-time nonce, threaded through the login page and
+            // back on /planner/callback?state=; PlannerService.Callback refuses anything else. If
+            // PlannerService.Current isn't up yet (should not happen — the host starts it before any
+            // window can open), fall back to no state rather than throw; the callback will then 403
+            // and the failure page tells the user to retry, same as an expired/foreign state would.
+            var state = PlannerService.Current?.CreateLoginState();
+            if (!string.IsNullOrEmpty(state)) url += "&state=" + Uri.EscapeDataString(state);
+            Browser.CoreWebView2.Navigate(url);
         }
         catch (Exception ex)
         {

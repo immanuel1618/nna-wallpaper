@@ -48,6 +48,9 @@ public sealed class ApiRequest
     {
         Response.StatusCode = code;
         Response.ContentType = contentType;
+        // Every response: browsers must not MIME-sniff a served file (e.g. a widget icon) into
+        // something executable and run it as such.
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
         if (cacheControl is not null) Response.Headers["Cache-Control"] = cacheControl;
         Response.ContentLength64 = data.Length;
         try
@@ -94,6 +97,76 @@ public sealed class LocalApi : IDisposable
     private sealed record Route(string Method, string Path, ApiHandler Handler);
     private sealed record PrefixRoute(string Method, string Prefix, ApiHandler Handler);
     private sealed record StaticRoute(string Prefix, string[] Roots);
+
+    /// <summary>
+    /// GET endpoints that hand back something a same-origin page needs but a third-party site
+    /// embedding/navigating this loopback origin must not get for free: the API token (/config),
+    /// window/audio-session titles and icons, dock/planner/system state, launch list, the live
+    /// events stream. Kept in one place (also referenced by HostServices.GetConfig for the token
+    /// itself) so the list can't drift between the token gate and the request gate.
+    /// </summary>
+    private static readonly string[] SensitiveExactPaths =
+    {
+        "/config/full", "/windows", "/windows/icon",
+        "/audio/sessions", "/audio/session-icon", "/events",
+    };
+
+    private static readonly string[] SensitivePrefixes =
+    {
+        "/dock/", "/planner/", "/system/", "/cursor/", "/launch/",
+    };
+
+    /// <summary>True for any GET/HEAD path that must not be served to a request whose
+    /// Sec-Fetch-Site says it did not originate from this same page (see <see cref="SensitiveExactPaths"/>).</summary>
+    public static bool IsSensitivePath(string path)
+    {
+        // /planner/callback is, by design, reached by a cross-site top-level navigation — the login
+        // page (a different site entirely) sends the browser here via location.href once Telegram's
+        // widget confirms the user. That is exactly the request shape (Sec-Fetch-Site: cross-site)
+        // this gate exists to block for every other path under /planner/, so it must be exempted here
+        // rather than broken; its own defense is the one-time state= nonce (PlannerService.Callback).
+        //
+        // Bare /config is exempted too: unlike /config/full (settings-page only, no legitimate
+        // cross-site caller, so a flat 403 is correct) it is what the wallpaper page itself polls for
+        // theme/layout/widget settings, and HostServices.GetConfig already redacts the one genuinely
+        // sensitive field (the API token) per-request via IsSameOriginRequest — a blanket 403 here
+        // would be redundant with that and would break nothing real, but the contract this gate must
+        // not violate is "GET /config cross-site still answers, just without token" (see
+        // tests/security-probe.ps1).
+        if (path is "/planner/callback" or "/config") return false;
+        return Array.IndexOf(SensitiveExactPaths, path) >= 0
+            || Array.Exists(SensitivePrefixes, p => path.StartsWith(p, StringComparison.Ordinal))
+            || (path.StartsWith("/widgets/", StringComparison.Ordinal) && path.EndsWith("/preview.png", StringComparison.Ordinal));
+    }
+
+    /// <summary>Sec-Fetch-Site values that mean "this request was made by our own page" (Chromium/WebView2
+    /// send this header on essentially every request; curl and other non-browser clients never do).</summary>
+    private static bool IsSameOriginSite(string site) =>
+        string.Equals(site, "same-origin", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(site, "none", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True when the request is verifiably our own page: either the browser told us so
+    /// (Sec-Fetch-Site: same-origin/none), or nothing told us otherwise — no Sec-Fetch-Site AND no
+    /// Origin/Referer at all, which is what curl and our own PowerShell test scripts send against
+    /// localhost. Used to decide whether GET /config may include the API token in its response.
+    /// </summary>
+    public static bool IsSameOriginRequest(ApiRequest req)
+    {
+        var site = req.Raw.Headers["Sec-Fetch-Site"];
+        if (!string.IsNullOrEmpty(site)) return IsSameOriginSite(site);
+        return string.IsNullOrEmpty(req.Raw.Headers["Origin"]) && string.IsNullOrEmpty(req.Raw.Headers["Referer"]);
+    }
+
+    /// <summary>True only when the browser explicitly says this request is not same-origin/none — i.e.
+    /// it sent Sec-Fetch-Site with some other value ("cross-site", "same-site"). A request with no
+    /// Sec-Fetch-Site at all (curl, our test scripts) is not flagged here; the Origin/Host checks
+    /// earlier in <see cref="Handle"/> already cover a browser page trying to reach us cross-origin.</summary>
+    private static bool IsCrossSiteRequest(ApiRequest req)
+    {
+        var site = req.Raw.Headers["Sec-Fetch-Site"];
+        return !string.IsNullOrEmpty(site) && !IsSameOriginSite(site);
+    }
 
     private readonly HostContext _ctx;
     private readonly List<Route> _routes = new();
@@ -211,6 +284,18 @@ public sealed class LocalApi : IDisposable
                 }
                 res.Headers["Access-Control-Allow-Origin"] = origin;
                 res.Headers["Vary"] = "Origin";
+            }
+
+            // Origin/Host cover a browser page reaching us cross-origin; Sec-Fetch-Site catches the
+            // gap they miss — a same-site (different port on 127.0.0.1/localhost isn't "same-site" for
+            // this header, but a plain <img>/<script> "no-cors" load from another page on this machine
+            // can still omit Origin) or cross-site GET for state that isn't meant to leave this page:
+            // the token, window/audio-session titles, dock/planner/system state, the events stream.
+            if (req.Method is "GET" or "HEAD" && IsSensitivePath(req.Path) && IsCrossSiteRequest(req))
+            {
+                _ctx.Log.Warn("refused cross-site Sec-Fetch-Site " + http.Request.Headers["Sec-Fetch-Site"] + " on " + req.Method + " " + req.Path);
+                await req.Json(new { error = "forbidden site" }, 403).ConfigureAwait(false);
+                return;
             }
 
             if (req.Method == "OPTIONS")
