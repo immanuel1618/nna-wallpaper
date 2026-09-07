@@ -1,0 +1,107 @@
+# NOTE: v0.1.0 was already released manually from Konstantin's machine (see CHANGELOG.md).
+# This workflow is for building and publishing every release after v0.1.0.
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build artifacts only; do not publish a GitHub Release"
+        type: boolean
+        default: true
+      version:
+        description: "Version to release (e.g. 0.2.0). Leave empty to derive from the tag or Directory.Build.props."
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Resolve the version to build/pack and whether this run should actually publish.
+      # - version: explicit workflow_dispatch input > tag name (v* stripped) > Directory.Build.props
+      # - dry_run: workflow_dispatch input (default true) when manually triggered;
+      #            always "false" for a tag push, so tag pushes always publish.
+      - name: Resolve version and dry_run
+        id: vars
+        shell: pwsh
+        run: |
+          $eventName = "${{ github.event_name }}"
+          $refName = "${{ github.ref_name }}"
+          $inputVersion = "${{ github.event.inputs.version }}"
+          $inputDryRun = "${{ github.event.inputs.dry_run }}"
+
+          if ($eventName -eq "workflow_dispatch") {
+            if ([string]::IsNullOrWhiteSpace($inputDryRun)) {
+              $dryRun = "true"
+            } else {
+              $dryRun = $inputDryRun
+            }
+          } else {
+            $dryRun = "false"
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($inputVersion)) {
+            $version = $inputVersion.Trim()
+          } elseif ($eventName -eq "push" -and $refName -like "v*") {
+            $version = $refName.TrimStart("v")
+          } else {
+            $content = Get-Content -Raw "Directory.Build.props"
+            $match = [regex]::Match($content, "<Version>([^<]+)</Version>")
+            if (-not $match.Success) {
+              throw "Could not resolve version: no <Version> found in Directory.Build.props"
+            }
+            $version = $match.Groups[1].Value.Trim()
+          }
+
+          Write-Host "Resolved version: $version"
+          Write-Host "Resolved dry_run: $dryRun"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "dry_run=$dryRun" >> $env:GITHUB_OUTPUT
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk --version 1.2.0
+
+      - name: Build and pack release artifacts
+        shell: pwsh
+        run: build/pack.ps1 -Version "${{ steps.vars.outputs.version }}"
+
+      - name: Upload Releases artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Releases
+          path: Releases/
+
+      # Publishes a GitHub Release via Velopack so releases.win.json and assets land where
+      # UpdateManager expects them. Runs only for a real tag push with dry_run resolved to false,
+      # or a manual workflow_dispatch run with dry_run explicitly set to false.
+      - name: Publish GitHub Release
+        if: steps.vars.outputs.dry_run == 'false'
+        shell: pwsh
+        run: |
+          vpk upload github `
+            --repoUrl "https://github.com/${{ github.repository }}" `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --publish `
+            --releaseName "NNA Wallpaper ${{ steps.vars.outputs.version }}" `
+            --tag "v${{ steps.vars.outputs.version }}" `
+            --outputDir Releases

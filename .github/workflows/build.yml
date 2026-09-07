@@ -1,0 +1,37 @@
+name: build
+
+# Builds and tests the solution on every push to main and on every pull request.
+# Does not produce or publish any release artifacts (see release.yml for that).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore NNA.Wallpaper.sln
+
+      - name: Build
+        run: dotnet build NNA.Wallpaper.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test NNA.Wallpaper.sln -c Release --no-build
