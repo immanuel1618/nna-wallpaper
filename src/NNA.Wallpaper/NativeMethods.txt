@@ -8,6 +8,8 @@ ABM_SETSTATE
 ABS_ALWAYSONTOP
 ABS_AUTOHIDE
 APPBARDATA
+DCompositionCreateDevice
+DCompositionCreateDevice2
 DwmGetWindowAttribute
 EnumChildWindows
 EnumDisplayMonitors
@@ -27,6 +29,10 @@ GetWindowLong
 GetWindowLongPtr
 GetWindowRect
 GetWindowThreadProcessId
+IDCompositionDesktopDevice
+IDCompositionDevice
+IDCompositionTarget
+IDCompositionVisual
 InvalidateRect
 IsIconic
 IsWindow

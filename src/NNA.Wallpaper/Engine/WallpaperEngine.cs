@@ -92,9 +92,10 @@ public sealed class WallpaperEngine : IHostApp, IDisposable
 
     private async Task CreateWindowsAsync()
     {
+        var hosting = _ctx.Config.App.Engine.Hosting;
         foreach (var m in DisplayMonitors.Enumerate())
         {
-            var w = new WallpaperWindow(m, _desktop.Parent, _log) { DevTools = DevTools };
+            var w = new WallpaperWindow(m, _desktop.Parent, _log, hosting) { DevTools = DevTools };
             var id = m.Id;
             w.WebMessage += json => PageMessage?.Invoke(id, json);
             _windows.Add(w);

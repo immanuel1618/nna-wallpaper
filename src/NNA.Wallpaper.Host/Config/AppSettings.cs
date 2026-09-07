@@ -27,6 +27,17 @@ public sealed class AppSettings
     public PlannerSettings Planner { get; set; } = new();
     public TaskbarSettings Taskbar { get; set; } = new();
     public TopBarSettings TopBar { get; set; } = new();
+    public EngineSettings Engine { get; set; } = new();
+}
+
+/// <summary>Wallpaper engine hosting mode. "composition" (default) hosts WebView2 through
+/// CoreWebView2CompositionController + DirectComposition, so mouse input goes through SendMouseInput
+/// instead of a Chromium child HWND (fixes hover flicker behind the desktop icon layer, see the
+/// "Engine: rendering behind the desktop icons" section of docs/ARCHITECTURE.md). "window" is the
+/// old CoreWebView2Controller/child-HWND path, kept as a fallback switch.</summary>
+public sealed class EngineSettings
+{
+    public string Hosting { get; set; } = "composition";
 }
 
 /// <summary>One visual style: mode normal|clear|blur|acrylic|opaque, tint colour and opacity 0..1.</summary>
