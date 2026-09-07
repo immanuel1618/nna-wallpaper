@@ -4,6 +4,25 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-07
+
+### Added
+- Settings window rebuilt as a macOS-like shell: sidebar with search, pages Layout, Blocks, Appearance,
+  Top bar, Dock, Taskbar, Cursor, Planner, General, About.
+- Dock (`app.dock`, off by default; the `mac` preset enables it): pinned and running apps with
+  magnification, labels, bounce, separator, folder fans, trash; `/dock/*` routes.
+- Taskbar mode `win-only` (`taskbar.windows.mode`): the Windows taskbar stays hidden and does not slide
+  out on hover; the Win key shows it together with Start. Low-level keyboard hook watches Win only,
+  never logs keys, removed on pause and exit.
+- Page observability: `POST /log/page`, widget `ctx.ready()/ctx.fail()`, automatic remount of a widget
+  that did not render within 8 s, request retries.
+- App icon and tray icon from the brand mark, background pack (`wallpaper/backgrounds`), README banner,
+  preset previews.
+
+### Fixed
+- HEAD requests wrote a response body and could leave a keep-alive connection stuck, which showed up
+  as an empty LAUNCH block and a stale TASKS login screen after start.
+
 ## [0.3.1] - 2026-09-07
 
 ### Added
