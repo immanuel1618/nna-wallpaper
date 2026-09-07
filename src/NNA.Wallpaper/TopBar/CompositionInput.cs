@@ -40,6 +40,10 @@ public sealed class CompositionInput
     private readonly CoreWebView2CompositionController _comp;
     private HCURSOR _cursor;
     private bool _tracking;
+    /// <summary>Left/middle button currently down, per <c>SetCapture</c> — needed so a
+    /// <c>WM_CAPTURECHANGED</c> (some other window/menu stole capture mid-drag) can synthesize the
+    /// matching Up into WebView2 instead of leaving it thinking the button is still held.</summary>
+    private bool _leftDown, _middleDown;
 
     public CompositionInput(HWND hwnd, CoreWebView2CompositionController comp)
     {
@@ -77,18 +81,57 @@ public sealed class CompositionInput
                 return true;
 
             case PInvoke.WM_LBUTTONDOWN:
+                // SetCapture so drag gestures (sliders, drag-to-reorder in the dock) keep receiving
+                // WM_MOUSEMOVE/up even if the pointer leaves this HWND mid-drag — without it, the
+                // page's own pointer capture (setPointerCapture) has no real HWND-level backing here
+                // the way it would in windowed WebView2 hosting.
+                PInvoke.SetCapture(_hwnd);
+                _leftDown = true;
                 _comp.SendMouseInput(CoreWebView2MouseEventKind.LeftButtonDown, KeysFromWParam(wParam), 0, ClientPoint(lParam));
                 return true;
             case PInvoke.WM_LBUTTONUP:
+                _leftDown = false;
+                if (!_middleDown) PInvoke.ReleaseCapture();
                 _comp.SendMouseInput(CoreWebView2MouseEventKind.LeftButtonUp, KeysFromWParam(wParam), 0, ClientPoint(lParam));
                 return true;
 
             case PInvoke.WM_MBUTTONDOWN:
+                PInvoke.SetCapture(_hwnd);
+                _middleDown = true;
                 _comp.SendMouseInput(CoreWebView2MouseEventKind.MiddleButtonDown, KeysFromWParam(wParam), 0, ClientPoint(lParam));
                 return true;
             case PInvoke.WM_MBUTTONUP:
+                _middleDown = false;
+                if (!_leftDown) PInvoke.ReleaseCapture();
                 _comp.SendMouseInput(CoreWebView2MouseEventKind.MiddleButtonUp, KeysFromWParam(wParam), 0, ClientPoint(lParam));
                 return true;
+
+            // Right button is forwarded too (unlike InputBridge's desktop-icon raw-input path, which
+            // deliberately drops it so the real desktop context menu keeps working) — dock/topbar
+            // pages need a real "contextmenu" DOM event for their own right-click menus, which only
+            // fires in Chromium off a right button up it actually received.
+            case PInvoke.WM_RBUTTONDOWN:
+                _comp.SendMouseInput(CoreWebView2MouseEventKind.RightButtonDown, KeysFromWParam(wParam), 0, ClientPoint(lParam));
+                return true;
+            case PInvoke.WM_RBUTTONUP:
+                _comp.SendMouseInput(CoreWebView2MouseEventKind.RightButtonUp, KeysFromWParam(wParam), 0, ClientPoint(lParam));
+                return true;
+
+            case PInvoke.WM_CAPTURECHANGED:
+                // Something else (a system menu, another window) took capture out from under us —
+                // WebView2 must not keep thinking a button is held, or hover/drag state inside the
+                // page gets stuck until the next real click.
+                if (_leftDown)
+                {
+                    _leftDown = false;
+                    _comp.SendMouseInput(CoreWebView2MouseEventKind.LeftButtonUp, CoreWebView2MouseEventVirtualKeys.None, 0, default);
+                }
+                if (_middleDown)
+                {
+                    _middleDown = false;
+                    _comp.SendMouseInput(CoreWebView2MouseEventKind.MiddleButtonUp, CoreWebView2MouseEventVirtualKeys.None, 0, default);
+                }
+                return false; // do not mark handled: WM_CAPTURECHANGED must reach DefWindowProc too
 
             case PInvoke.WM_MOUSEWHEEL:
             {

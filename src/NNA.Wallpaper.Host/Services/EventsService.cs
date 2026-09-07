@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Threading;
 
 namespace NNA.Wallpaper.Host.Services;
 
@@ -19,6 +21,7 @@ namespace NNA.Wallpaper.Host.Services;
 public sealed class EventsService : IHostService, IDisposable
 {
     private const int DebounceMs = 50;
+    private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(2);
 
     /// <summary>Set by the constructor so other services (DockService's window-change poll) can
     /// push a broadcast without a DI container, the same pattern as WindowsService.Current.</summary>
@@ -28,6 +31,11 @@ public sealed class EventsService : IHostService, IDisposable
 
     private readonly object _clientsLock = new();
     private readonly HashSet<WebSocket> _clients = new();
+    /// <summary>One send lock per connected client, so two overlapping BroadcastAsync calls (or a
+    /// broadcast racing the initial "hello") never call WebSocket.SendAsync concurrently on the same
+    /// socket — .NET's WebSocket throws InvalidOperationException on that, which the old code was
+    /// treating (via a broad catch) as "client is dead" and disconnecting a perfectly healthy one.</summary>
+    private readonly ConcurrentDictionary<WebSocket, SemaphoreSlim> _sendLocks = new();
     private readonly Dictionary<string, int> _pendingGen = new();
     private readonly object _pendingLock = new();
     private long _sent;
@@ -63,6 +71,8 @@ public sealed class EventsService : IHostService, IDisposable
             }
             _clients.Clear();
         }
+        foreach (var kv in _sendLocks) kv.Value.Dispose();
+        _sendLocks.Clear();
     }
 
     // ------------------------------------------------------------------ /events (calendar file)
@@ -93,7 +103,10 @@ public sealed class EventsService : IHostService, IDisposable
         try
         {
             var hello = Json.Serialize(new { type = "hello", version = HostInfo.Version });
-            await socket.SendAsync(Encoding.UTF8.GetBytes(hello), WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
+            if (!await TrySendAsync(socket, Encoding.UTF8.GetBytes(hello)).ConfigureAwait(false))
+            {
+                return; // socket already gone/broken before the handshake even finished
+            }
 
             var buffer = new byte[256];
             while (!ct.IsCancellationRequested && socket.State == WebSocketState.Open)
@@ -123,12 +136,14 @@ public sealed class EventsService : IHostService, IDisposable
     private void AddClient(WebSocket socket)
     {
         lock (_clientsLock) _clients.Add(socket);
+        _sendLocks[socket] = new SemaphoreSlim(1, 1);
         _ctx.Log.Info("events client connected");
     }
 
     private void RemoveClient(WebSocket socket)
     {
         lock (_clientsLock) _clients.Remove(socket);
+        if (_sendLocks.TryRemove(socket, out var sem)) sem.Dispose();
     }
 
     /// <summary>Debounce 50 ms per "what" key: only the last change in a burst is broadcast, so a
@@ -218,15 +233,67 @@ public sealed class EventsService : IHostService, IDisposable
         var bytes = Encoding.UTF8.GetBytes(Json.Serialize(payload));
         foreach (var ws in snapshot)
         {
-            try
-            {
-                if (ws.State == WebSocketState.Open)
-                    await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
-            }
-            catch
+            if (!await TrySendAsync(ws, bytes).ConfigureAwait(false))
             {
                 RemoveClient(ws);
             }
+        }
+    }
+
+    /// <summary>
+    /// Sends one message to one client, serialized behind that client's own <see cref="SemaphoreSlim"/>
+    /// (see <see cref="_sendLocks"/>) so a broadcast can never race another broadcast — or the initial
+    /// "hello" — on the same socket. A 2s timeout guards against a client that stopped reading
+    /// (WebSocket.SendAsync has no built-in timeout and would otherwise hang the broadcast loop
+    /// indefinitely for every other connected client behind it).
+    ///
+    /// Returns false — meaning the caller should <see cref="RemoveClient"/> — only for the two cases
+    /// the robustness review called out as legitimate "this client is gone" signals: the socket was
+    /// already not <see cref="WebSocketState.Open"/>, or the send itself threw
+    /// <see cref="WebSocketException"/>. A send that merely times out (slow-but-alive reader) or hits
+    /// any other exception is logged and leaves the client connected — it is no longer possible for a
+    /// concurrent-send <see cref="InvalidOperationException"/> to disconnect a healthy client, because
+    /// the per-client semaphore means that exception can no longer happen here at all.
+    /// </summary>
+    private async Task<bool> TrySendAsync(WebSocket ws, byte[] bytes)
+    {
+        if (ws.State != WebSocketState.Open) return false;
+        var sem = _sendLocks.GetOrAdd(ws, _ => new SemaphoreSlim(1, 1));
+        try
+        {
+            if (!await sem.WaitAsync(SendTimeout).ConfigureAwait(false))
+            {
+                return true; // lock contended for 2s straight: leave connected, do not diagnose as dead
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            return false; // RemoveClient already disposed this client's semaphore concurrently
+        }
+        try
+        {
+            if (ws.State != WebSocketState.Open) return false;
+            using var cts = new CancellationTokenSource(SendTimeout);
+            await ws.SendAsync(bytes, WebSocketMessageType.Text, true, cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (WebSocketException)
+        {
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            _ctx.Log.Warn("events send timed out (client still connected)");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _ctx.Log.Warn("events send failed: " + ex.Message);
+            return true;
+        }
+        finally
+        {
+            try { sem.Release(); } catch (ObjectDisposedException) { }
         }
     }
 }

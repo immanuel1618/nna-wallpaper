@@ -167,6 +167,24 @@ public sealed class TaskbarStyler : IDisposable
                 _accentEverApplied = true;
                 if (!ok) { AccentSupported = false; _log.Warn("taskbar accent apply failed: " + Marshal.GetLastWin32Error()); }
             }
+
+            // A secondary taskbar HWND is destroyed whenever its monitor goes away (unplug, sleep/
+            // wake reshuffle) without any corresponding notification to this class — left behind, its
+            // key would linger forever and, on a monitor reconnect, could be handed out again to an
+            // unrelated new HWND that Windows happens to reuse the same handle value for, skipping
+            // the accent apply it actually needs (the stale key would look already-applied).
+            if (_appliedKey.Count > 0)
+            {
+                List<nint>? stale = null;
+                foreach (var hwnd in _appliedKey.Keys)
+                {
+                    if (!PInvoke.IsWindow((HWND)hwnd)) (stale ??= new List<nint>()).Add(hwnd);
+                }
+                if (stale is not null)
+                {
+                    foreach (var hwnd in stale) _appliedKey.Remove(hwnd);
+                }
+            }
         }
         catch (Exception ex)
         {

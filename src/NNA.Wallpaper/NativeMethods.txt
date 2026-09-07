@@ -54,11 +54,13 @@ RAWINPUTHEADER
 RID_DEVICE_INFO_TYPE
 RegisterRawInputDevices
 RegisterWindowMessage
+ReleaseCapture
 SHAppBarMessage
 SHQueryUserNotificationState
 ScreenToClient
 SendMessage
 SendMessageTimeout
+SetCapture
 SetCursor
 SetParent
 SetWindowLong
@@ -72,7 +74,9 @@ TrackMouseEvent
 UnhookWindowsHookEx
 UpdateWindow
 WH_KEYBOARD_LL
+WM_CAPTURECHANGED
 WM_DISPLAYCHANGE
+WM_DPICHANGED
 WM_INPUT
 WM_KEYDOWN
 WM_KEYUP

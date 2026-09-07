@@ -31,6 +31,7 @@ public partial class PopupWindow : Window
     private int _topYPhysical;
     private int _monLeftPhysical;
     private int _monRightPhysical;
+    private int _monHeightPhysical;
 
     /// <summary>Popup module id (matches topbar/popup/?module=), not the topbar module that opened it
     /// (e.g. the "clock" topbar module opens the "calendar" popup module).</summary>
@@ -51,6 +52,7 @@ public partial class PopupWindow : Window
         _topYPhysical = topYPhysical;
         _monLeftPhysical = monitor.Left;
         _monRightPhysical = monitor.Left + monitor.Width;
+        _monHeightPhysical = monitor.Height;
 
         InitializeComponent();
         // Off-screen until the page reports a real size, so nothing flashes at the wrong spot/size.
@@ -61,7 +63,15 @@ public partial class PopupWindow : Window
 
         SourceInitialized += OnSourceInitialized;
         Deactivated += (_, _) => SafeClose();
-        Closing += (_, _) => _closing = true;
+        Closing += (_, _) =>
+        {
+            _closing = true;
+            // Popups are short-lived (opened/closed repeatedly for volume/calendar/menu/control
+            // center) — without an explicit Dispose each one leaves its WebView2 controller/CoreWebView2
+            // process resources alive until GC finalization gets around to it, which under repeated
+            // open/close can pile up.
+            try { Browser.Dispose(); } catch { }
+        };
         Loaded += async (_, _) => await InitBrowserAsync(monitor.Id, module, anchorCenterXPhysical).ConfigureAwait(true);
     }
 
@@ -128,8 +138,13 @@ public partial class PopupWindow : Window
     private void Reposition(double cssWidth, double cssHeight)
     {
         if (_closing) return;
-        cssWidth = Math.Max(60, cssWidth);
-        cssHeight = Math.Max(40, cssHeight);
+        // A non-numeric/NaN/infinite report (malformed page message) must not corrupt placement —
+        // ignore the message outright and keep whatever size/position this popup already has.
+        if (double.IsNaN(cssWidth) || double.IsNaN(cssHeight) || double.IsInfinity(cssWidth) || double.IsInfinity(cssHeight)) return;
+        var monitorWidthDiu = (_monRightPhysical - _monLeftPhysical) / _scale;
+        var monitorHeightDiu = _monHeightPhysical / _scale;
+        cssWidth = Math.Clamp(cssWidth, 60, Math.Max(60, monitorWidthDiu));
+        cssHeight = Math.Clamp(cssHeight, 40, Math.Max(40, monitorHeightDiu));
         var wPhysical = cssWidth * _scale;
         var hPhysical = cssHeight * _scale;
 

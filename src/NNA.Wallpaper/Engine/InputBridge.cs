@@ -38,13 +38,10 @@ public sealed class InputBridge : IDisposable
     private readonly Func<IReadOnlyList<WallpaperWindow>> _windows;
     private readonly DesktopHost _desktop;
     private HwndSource? _sink;
-    private bool _left, _middle;
-    private WallpaperWindow? _captured;
-    /// <summary>Composition-hosted window the pointer is currently considered "inside" of, so a
-    /// COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE can be sent exactly once when it changes (real cursor
-    /// movement only re-evaluates "window under point" against the actual, unclipped window tree, so
-    /// this cannot rely on WebView2's own hover tracking the way a real HWND would).</summary>
-    private WallpaperWindow? _hoverWindow;
+    /// <summary>Capture (press/release pairing) and hover (composition-hosted Leave bookkeeping)
+    /// state — see <see cref="PointerState{T}"/> for why this is split into its own, Win32-free
+    /// class.</summary>
+    private readonly PointerState<WallpaperWindow> _state = new();
     public long Forwarded { get; private set; }
     public bool Enabled { get; set; } = true;
 
@@ -111,16 +108,22 @@ public sealed class InputBridge : IDisposable
         if (!PInvoke.GetCursorPos(out var pt)) return;
 
         WallpaperWindow? target;
-        if (_captured is not null && _left)
+        if (_state.Captured is not null && _state.Left)
         {
-            target = _captured; // keep the press/release pair on the same window
+            target = _state.Captured; // keep the press/release pair on the same window
         }
         else
         {
             if (!PointerOnDesktop(pt)) { ReleaseIfNeeded(pt); return; }
             target = FindWindow(pt.X, pt.Y);
         }
-        if (target is null || !target.Ready || target.Paused) return;
+        if (target is null || !target.Ready || target.Paused)
+        {
+            // The captured/hovered window went away mid-gesture (paused, closing, mid-reattach): do
+            // not leave a stuck button-down or an undelivered hover Leave behind for it.
+            ReleaseIfNeeded(pt);
+            return;
+        }
 
         SetHover(target);
 
@@ -140,24 +143,22 @@ public sealed class InputBridge : IDisposable
 
         if ((flags & RI_MOUSE_LEFT_BUTTON_DOWN) != 0)
         {
-            _left = true;
-            _captured = target;
+            _state.Press(target);
             Post(hwnd, PInvoke.WM_LBUTTONDOWN, Keys(), lparamClient);
         }
         else if ((flags & RI_MOUSE_LEFT_BUTTON_UP) != 0)
         {
             Post(hwnd, PInvoke.WM_LBUTTONUP, Keys(exceptLeft: true), lparamClient);
-            _left = false;
-            _captured = null;
+            _state.Release();
         }
         else if ((flags & RI_MOUSE_MIDDLE_BUTTON_DOWN) != 0)
         {
-            _middle = true;
+            _state.PressMiddle();
             Post(hwnd, PInvoke.WM_MBUTTONDOWN, Keys(), lparamClient);
         }
         else if ((flags & RI_MOUSE_MIDDLE_BUTTON_UP) != 0)
         {
-            _middle = false;
+            _state.ReleaseMiddle();
             Post(hwnd, PInvoke.WM_MBUTTONUP, Keys(), lparamClient);
         }
         else if ((flags & RI_MOUSE_WHEEL) != 0)
@@ -186,24 +187,22 @@ public sealed class InputBridge : IDisposable
 
         if ((flags & RI_MOUSE_LEFT_BUTTON_DOWN) != 0)
         {
-            _left = true;
-            _captured = target;
+            _state.Press(target);
             target.SendMouse(CoreWebView2MouseEventKind.LeftButtonDown, CompKeys(), 0, point);
         }
         else if ((flags & RI_MOUSE_LEFT_BUTTON_UP) != 0)
         {
             target.SendMouse(CoreWebView2MouseEventKind.LeftButtonUp, CompKeys(exceptLeft: true), 0, point);
-            _left = false;
-            _captured = null;
+            _state.Release();
         }
         else if ((flags & RI_MOUSE_MIDDLE_BUTTON_DOWN) != 0)
         {
-            _middle = true;
+            _state.PressMiddle();
             target.SendMouse(CoreWebView2MouseEventKind.MiddleButtonDown, CompKeys(), 0, point);
         }
         else if ((flags & RI_MOUSE_MIDDLE_BUTTON_UP) != 0)
         {
-            _middle = false;
+            _state.ReleaseMiddle();
             target.SendMouse(CoreWebView2MouseEventKind.MiddleButtonUp, CompKeys(), 0, point);
         }
         else if ((flags & RI_MOUSE_WHEEL) != 0)
@@ -227,46 +226,48 @@ public sealed class InputBridge : IDisposable
     /// WM_MOUSELEAVE bookkeeping. Idempotent when called with the same or no target.</summary>
     private void SetHover(WallpaperWindow? target)
     {
-        if (ReferenceEquals(_hoverWindow, target)) return;
-        if (_hoverWindow is { UsesComposition: true, Ready: true })
+        var prev = _state.Hover(target);
+        if (prev is { UsesComposition: true, Ready: true })
         {
-            _hoverWindow.SendMouse(CoreWebView2MouseEventKind.Leave, CoreWebView2MouseEventVirtualKeys.None, 0, default);
+            prev.SendMouse(CoreWebView2MouseEventKind.Leave, CoreWebView2MouseEventVirtualKeys.None, 0, default);
         }
-        _hoverWindow = target;
     }
 
     private CoreWebView2MouseEventVirtualKeys CompKeys(bool exceptLeft = false)
     {
         var k = CoreWebView2MouseEventVirtualKeys.None;
-        if (_left && !exceptLeft) k |= CoreWebView2MouseEventVirtualKeys.LeftButton;
-        if (_middle) k |= CoreWebView2MouseEventVirtualKeys.MiddleButton;
+        if (_state.Left && !exceptLeft) k |= CoreWebView2MouseEventVirtualKeys.LeftButton;
+        if (_state.Middle) k |= CoreWebView2MouseEventVirtualKeys.MiddleButton;
         return k;
     }
 
+    /// <summary>Pointer left the desktop, or the captured/hovered window stopped being usable
+    /// mid-gesture: resolves via <see cref="PointerState{T}.TargetLost"/> and sends whatever release
+    /// (WM_LBUTTONUP/LeftButtonUp) and hover-leave the outgoing state still owed, so neither the page
+    /// nor WebView2's own hover tracking gets stuck.</summary>
     private void ReleaseIfNeeded(System.Drawing.Point pt)
     {
-        // Pointer left the desktop while a forwarded press was active: send the release so the page does not stick.
-        if (_left && _captured is not null && _captured.Ready)
+        var (up, leave) = _state.TargetLost();
+        if (up is not null && up.Ready)
         {
-            if (_captured.UsesComposition)
+            if (up.UsesComposition)
             {
                 var client = pt;
-                PInvoke.ScreenToClient(_captured.Hwnd, ref client);
-                _captured.SendMouse(CoreWebView2MouseEventKind.LeftButtonUp, CoreWebView2MouseEventVirtualKeys.None, 0, client);
+                PInvoke.ScreenToClient(up.Hwnd, ref client);
+                up.SendMouse(CoreWebView2MouseEventKind.LeftButtonUp, CoreWebView2MouseEventVirtualKeys.None, 0, client);
             }
             else
             {
-                var hwnd = _captured.InputTarget();
+                var hwnd = up.InputTarget();
                 var client = pt;
                 PInvoke.ScreenToClient(hwnd, ref client);
                 Post(hwnd, PInvoke.WM_LBUTTONUP, 0, MakeLParam(client.X, client.Y));
             }
         }
-        _left = false;
-        _captured = null;
-        // The pointer left the desktop entirely: whatever composition window last had hover state
-        // needs an explicit Leave, since no further real WM_MOUSEMOVE/synthetic move will ever reach it.
-        SetHover(null);
+        if (leave is { UsesComposition: true, Ready: true })
+        {
+            leave.SendMouse(CoreWebView2MouseEventKind.Leave, CoreWebView2MouseEventVirtualKeys.None, 0, default);
+        }
     }
 
     private void Post(HWND hwnd, uint msg, nuint wparam, nint lparam)
@@ -278,8 +279,8 @@ public sealed class InputBridge : IDisposable
     private nuint Keys(bool exceptLeft = false)
     {
         nuint k = 0;
-        if (_left && !exceptLeft) k |= (nuint)MODIFIERKEYS_FLAGS.MK_LBUTTON;
-        if (_middle) k |= (nuint)MODIFIERKEYS_FLAGS.MK_MBUTTON;
+        if (_state.Left && !exceptLeft) k |= (nuint)MODIFIERKEYS_FLAGS.MK_LBUTTON;
+        if (_state.Middle) k |= (nuint)MODIFIERKEYS_FLAGS.MK_MBUTTON;
         return k;
     }
 
@@ -343,6 +344,17 @@ public sealed class InputBridge : IDisposable
         }
         return false;
     }
+
+    /// <summary>
+    /// Drops all capture/hover state without synthesizing any message — for callers that already
+    /// know the target windows are gone or about to stop receiving input: <see
+    /// cref="WallpaperEngine.ReattachAsync"/> calls this right after disposing/clearing the old
+    /// window list (so a stale <c>_captured</c>/<c>_hoverWindow</c> from before the reattach never
+    /// gets posted/sent to), and <see cref="WallpaperEngine.SetUserPause"/> calls this when pausing
+    /// (so a press held down at the moment of pausing does not stay "captured" against a window that
+    /// will ignore further input until resumed).
+    /// </summary>
+    public void Reset() => _state.Reset();
 
     public void Dispose()
     {
