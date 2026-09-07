@@ -246,11 +246,18 @@ public sealed class TaskbarStyler : IDisposable
         {
             var id = key + "\\" + name;
             if (!node.ContainsKey(id)) continue;
-            using var k = Registry.CurrentUser.CreateSubKey(key, writable: true);
-            if (k is null) continue;
-            var v = node[id];
-            if (v is null) { try { k.DeleteValue(name, throwOnMissingValue: false); } catch { } }
-            else k.SetValue(name, (int)v!, RegistryValueKind.DWord);
+            try
+            {
+                using var k = Registry.CurrentUser.CreateSubKey(key, writable: true);
+                if (k is null) continue;
+                var v = node[id];
+                if (v is null) k.DeleteValue(name, throwOnMissingValue: false);
+                else if (v is JsonValue jv && jv.TryGetValue<int>(out var iv)) k.SetValue(name, iv, RegistryValueKind.DWord);
+            }
+            catch (Exception ex)
+            {
+                _log.Warn("taskbar reset: " + name + ": " + ex.Message);
+            }
         }
         if (node["autoHide"] is JsonValue ah && ah.TryGetValue<bool>(out var auto)) SetAutoHide(auto);
         Broadcast();

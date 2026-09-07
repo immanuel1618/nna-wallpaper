@@ -1,7 +1,7 @@
 # Build
 bin/
 obj/
-publish/
+publish*/
 Releases/
 *.user
 *.suo
@@ -27,5 +27,5 @@ secrets/
 
 # Local publish output (never commit build output)
 .pubbin/
-publish/
+publish*/
 Releases-*/
