@@ -1,0 +1,14 @@
+{
+  "id": "events",
+  "name": "Events",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "events" },
+  "defaultSize": { "cols": 1, "rows": 4 },
+  "minSize": { "cols": 1, "rows": 2 },
+  "needs": ["events", "config"],
+  "settings": [
+    { "key": "perPage", "type": "number", "label": "Карточек на странице", "default": 3, "min": 1, "max": 10 },
+    { "key": "refreshSec", "type": "number", "label": "Обновление, сек", "default": 30, "min": 5, "max": 600 }
+  ]
+}

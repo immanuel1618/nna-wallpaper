@@ -1,0 +1,19 @@
+{
+  "id": "weather",
+  "name": "Weather + clocks",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "weather" },
+  "defaultSize": { "cols": 1, "rows": 8 },
+  "minSize": { "cols": 1, "rows": 2 },
+  "needs": ["weather"],
+  "settings": [
+    { "key": "refreshMin", "type": "number", "label": "Обновление, мин", "default": 10, "min": 1, "max": 120 },
+    { "key": "clocks", "type": "list", "label": "Часы", "item": { "label": "string", "tz": "timezone" },
+      "default": [
+        { "label": "MOSCOW", "tz": "Europe/Moscow" },
+        { "label": "LOS ANGELES", "tz": "America/Los_Angeles" },
+        { "label": "VLADIVOSTOK", "tz": "Asia/Vladivostok" }
+      ] }
+  ]
+}

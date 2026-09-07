@@ -1,0 +1,14 @@
+{
+  "id": "launch",
+  "name": "Launch",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "launch" },
+  "defaultSize": { "cols": 1, "rows": 4 },
+  "minSize": { "cols": 1, "rows": 1 },
+  "needs": ["launch", "config"],
+  "settings": [
+    { "key": "grayIcons", "type": "bool", "label": "Иконки в монохроме", "default": true },
+    { "key": "compact", "type": "bool", "label": "Компактный вид", "default": false }
+  ]
+}

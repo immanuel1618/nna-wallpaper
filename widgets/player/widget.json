@@ -1,0 +1,11 @@
+{
+  "id": "player",
+  "name": "Player",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "player" },
+  "defaultSize": { "cols": 1, "rows": 1 },
+  "minSize": { "cols": 1, "rows": 2 },
+  "needs": ["media"],
+  "settings": []
+}

@@ -1,0 +1,15 @@
+{
+  "id": "graph",
+  "name": "Graph",
+  "version": "1.0.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "graph" },
+  "defaultSize": { "cols": 1, "rows": 8 },
+  "minSize": { "cols": 1, "rows": 2 },
+  "needs": ["graph", "open"],
+  "settings": [
+    { "key": "start", "type": "string", "label": "Стартовый граф", "default": "h" },
+    { "key": "openOnClick", "type": "bool", "label": "Открывать файл по клику", "default": true },
+    { "key": "maxLabelLen", "type": "number", "label": "Максимальная длина подписи", "default": 26, "min": 8, "max": 64 }
+  ]
+}
