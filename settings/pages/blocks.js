@@ -29,7 +29,7 @@ import { findFreeSlot } from "../layout-model.js";
 // generic keys (save, remove, statusSaving, formAdd, ...) keep working unchanged.
 const S = {
   ru: {
-    onDesktopCount: "на {0} мониторах",
+    onDesktopCount: "на столе: {0}",
     onOneMonitor: "на 1 мониторе",
     notOnDesktop: "не на столе",
     tabSettings: "Настройки",
@@ -44,7 +44,7 @@ const S = {
     noSettings: "У этого блока нет настроек",
   },
   en: {
-    onDesktopCount: "on {0} monitors",
+    onDesktopCount: "on desktop: {0}",
     onOneMonitor: "on 1 monitor",
     notOnDesktop: "not on the desktop",
     tabSettings: "Settings",

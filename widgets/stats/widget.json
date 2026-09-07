@@ -3,11 +3,26 @@
   "name": "System",
   "version": "1.0.0",
   "author": "NNA1618",
-  "entry": { "kind": "module", "path": "widget.js", "export": "stats" },
-  "defaultSize": { "cols": 1, "rows": 1 },
-  "minSize": { "cols": 1, "rows": 2 },
-  "needs": ["stats"],
-  "description": { "ru": "Загрузка процессора, памяти и сети в реальном времени.", "en": "Live CPU, memory and network load." },
+  "entry": {
+    "kind": "module",
+    "path": "widget.js",
+    "export": "stats"
+  },
+  "defaultSize": {
+    "cols": 1,
+    "rows": 1
+  },
+  "minSize": {
+    "cols": 1,
+    "rows": 1
+  },
+  "needs": [
+    "stats"
+  ],
+  "description": {
+    "ru": "Загрузка процессора, памяти и сети в реальном времени.",
+    "en": "Live CPU, memory and network load."
+  },
   "icon": "stats",
   "groups": [],
   "settings": []
