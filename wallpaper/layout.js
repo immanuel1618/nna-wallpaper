@@ -124,7 +124,14 @@
     }
     gridEl.style.gridTemplateRows = 'repeat(' + rows + ', minmax(0, 1fr))';
     gridEl.style.gap = (grid.gap != null ? grid.gap : 24) + 'px';
-    gridEl.style.padding = (grid.pad != null ? grid.pad : 48) + 'px';
+    var pad = (grid.pad != null ? grid.pad : 48);
+    gridEl.style.padding = pad + 'px';
+    /* Our top bar (mac-like menu bar) reserves the top edge: keep the blocks below it. */
+    var tb = cfg.topbar || cfg.topBar || {};
+    if (tb.enabled) {
+      var forThis = String(tb.monitors || 'all').toLowerCase() !== 'primary' || /^main/i.test(String(monitor.name || ''));
+      if (forThis) gridEl.style.paddingTop = (pad + (tb.height || 30)) + 'px';
+    }
     document.body.appendChild(gridEl);
 
     var cellsByWidget = {};

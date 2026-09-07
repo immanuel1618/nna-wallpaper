@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>NNA Wallpaper top bar</title>
+<link rel="stylesheet" href="/wallpaper/nna-brand.css">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+  body { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box;
+         font-family: var(--font-mono, monospace); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #C8C8C8; }
+  .l, .r { display: flex; gap: 18px; }
+  .b { font-family: var(--font-display, sans-serif); color: #fff; letter-spacing: 0; }
+  #clock { font-family: var(--font-display, sans-serif); font-size: 14px; color: #fff; letter-spacing: 0; }
+</style>
+</head>
+<body>
+  <div class="l"><span class="b">NNA</span><span id="date"></span></div>
+  <div id="clock"></div>
+  <div class="r"><span id="stats"></span><span>PLACEHOLDER</span></div>
+  <script>
+    function pad(n){return (n<10?'0':'')+n;}
+    var D=['ВС','ПН','ВТ','СР','ЧТ','ПТ','СБ'], M=['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК'];
+    function tick(){ var d=new Date(); document.getElementById('clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes());
+      document.getElementById('date').textContent=D[d.getDay()]+' · '+pad(d.getDate())+' '+M[d.getMonth()]; }
+    tick(); setInterval(tick, 1000);
+    function stats(){ fetch('/stats').then(function(r){return r.json();}).then(function(s){ document.getElementById('stats').textContent='CPU '+Math.round(s.cpu.percent)+'% · RAM '+Math.round(s.mem.percent)+'%'; }).catch(function(){}); }
+    stats(); setInterval(stats, 2000);
+  </script>
+</body>
+</html>

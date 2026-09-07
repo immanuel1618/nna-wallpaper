@@ -4,6 +4,9 @@ using Hardcodet.Wpf.TaskbarNotification;
 using NNA.Wallpaper.Engine;
 using NNA.Wallpaper.Host;
 using NNA.Wallpaper.Host.Config;
+using NNA.Wallpaper.Taskbar;
+using NNA.Wallpaper.TopBar;
+using System.Text.Json.Nodes;
 
 namespace NNA.Wallpaper;
 
@@ -17,6 +20,8 @@ public partial class App : Application
 
     private Mutex? _instanceMutex;
     private TrayIcon? _tray;
+    private TaskbarStyler? _taskbar;
+    private TopBarManager? _topBar;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -120,6 +125,18 @@ public partial class App : Application
 
         _tray = new TrayIcon(Host, Engine);
         _tray.Show();
+
+        try
+        {
+            _taskbar = new TaskbarStyler(Host, Dispatcher);
+            _taskbar.Apply();
+            _topBar = new TopBarManager(Host, Dispatcher);
+            _topBar.Apply();
+        }
+        catch (Exception ex)
+        {
+            log.Error("taskbar/top bar start failed", ex);
+        }
         if (engineError is not null)
         {
             var ru = config.App.Language.Equals("ru", StringComparison.OrdinalIgnoreCase);
@@ -167,6 +184,10 @@ public partial class App : Application
         {
             Engine?.ReloadWallpaper();
         }
+        if (what == "app")
+        {
+            Dispatcher.BeginInvoke(() => { try { _taskbar?.Apply(); _topBar?.Apply(); } catch (Exception ex) { Log?.Error("taskbar/top bar apply", ex); } });
+        }
         if (what == "app" && !Args.Headless)
         {
             Autostart.Apply(config.App.Autostart);
@@ -206,6 +227,44 @@ public partial class App : Application
         api.Map("POST", "/app/check-updates", async req => await req.Json(await Updates.CheckAsync(Host!).ConfigureAwait(false)).ConfigureAwait(false));
         api.Map("POST", "/app/update", async req => await req.Json(await Updates.ApplyAsync(Host!).ConfigureAwait(false)).ConfigureAwait(false));
 
+        // ---- taskbar and top bar ----
+        api.Map("GET", "/taskbar/status", async req =>
+        {
+            var status = await Dispatcher.InvokeAsync(() => _taskbar?.Status() ?? new JsonObject { ["enabled"] = false, ["note"] = "taskbar module not started" });
+            status["topBar"] = new JsonObject { ["enabled"] = Host!.Config.App.TopBar.Enabled, ["bars"] = _topBar?.Bars.Count ?? 0 };
+            await req.Text(status.ToJsonString(Json.Api), "application/json; charset=utf-8").ConfigureAwait(false);
+        });
+        api.Map("POST", "/taskbar/apply", async req =>
+        {
+            Host!.Config.Load();
+            await Dispatcher.InvokeAsync(() => { _taskbar?.Apply(); _topBar?.Apply(); });
+            await req.Json(new { ok = true }).ConfigureAwait(false);
+        });
+        api.Map("POST", "/taskbar/reset", async req =>
+        {
+            var ok = await Dispatcher.InvokeAsync(() => _taskbar?.Reset() ?? false);
+            await req.Json(new { ok, message = ok ? "windows settings restored from backup" : "no backup yet" }).ConfigureAwait(false);
+        });
+        api.Map("POST", "/taskbar/restart-explorer", async req =>
+        {
+            await req.Json(new { ok = true, message = "restarting explorer" }).ConfigureAwait(false);
+            _ = Task.Run(TaskbarStyler.RestartExplorer);
+        });
+        api.Map("GET", "/taskbar/presets", req => req.Text(PresetStore.List(Host!).ToJsonString(Json.Api), "application/json; charset=utf-8"));
+        api.Map("GET", "/taskbar/preset", async req =>
+        {
+            var node = PresetStore.Read(Host!, req.Query("id"));
+            if (node is null) { await req.Error(404, "no such preset").ConfigureAwait(false); return; }
+            await req.Text(node.ToJsonString(Json.Api), "application/json; charset=utf-8").ConfigureAwait(false);
+        });
+        api.Map("POST", "/taskbar/presets", async req =>
+        {
+            var body = Json.ParseNode(await req.ReadBodyAsync().ConfigureAwait(false)) as JsonObject;
+            var saved = body is not null && PresetStore.SaveUser(Host!, body, out var id) ? id : null;
+            if (saved is null) { await req.Error(400, "preset needs id, name, taskbar and topBar").ConfigureAwait(false); return; }
+            await req.Json(new { ok = true, id = saved }).ConfigureAwait(false);
+        });
+
         api.Map("POST", "/app/login", req =>
         {
             Dispatcher.BeginInvoke(() => PlannerLoginWindow.Open(Host!));
@@ -215,6 +274,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        try { _topBar?.Dispose(); } catch { }
+        try { _taskbar?.Dispose(); } catch { }
         try { _tray?.Dispose(); } catch { }
         try { Engine?.Dispose(); } catch { }
         Services?.Dispose();
