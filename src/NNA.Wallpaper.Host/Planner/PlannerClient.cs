@@ -57,6 +57,37 @@ public sealed class PlannerClient : IDisposable
         return PlannerSession.FromLoginResponse(root);
     }
 
+    /// <summary>
+    /// Downloads the Telegram-hosted avatar to <paramref name="destPath"/>. Refuses anything that is
+    /// not an https://t.me/ URL (the only host photo_url is ever expected to point at) — never fetches
+    /// an arbitrary URL a compromised/odd profile payload might contain. Best-effort: false on any
+    /// failure, never throws.
+    /// </summary>
+    public async Task<bool> DownloadAvatarAsync(string photoUrl, string destPath)
+    {
+        if (string.IsNullOrWhiteSpace(photoUrl) || !photoUrl.StartsWith("https://t.me/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        try
+        {
+            using var res = await _http.GetAsync(photoUrl).ConfigureAwait(false);
+            if (!res.IsSuccessStatusCode) return false;
+            var bytes = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+            var dir = Path.GetDirectoryName(destPath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            var tmp = destPath + ".tmp";
+            await File.WriteAllBytesAsync(tmp, bytes).ConfigureAwait(false);
+            File.Move(tmp, destPath, overwrite: true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _ctx.Log.Warn("planner avatar download failed: " + ex.Message);
+            return false;
+        }
+    }
+
     /// <summary>Refresh in place (mutates and saves <paramref name="session"/>). Serialized: concurrent 401s share one attempt.</summary>
     public async Task<bool> RefreshAsync(PlannerSession session)
     {
@@ -139,19 +170,55 @@ public sealed class PlannerClient : IDisposable
         return await ReadArrayAsync(res).ConfigureAwait(false);
     }
 
-    private async Task<JsonArray> GetHabitsRowsAsync(PlannerSession session)
+    /// <summary>Public: also used directly by PlannerService's /planner/stats (habits are evergreen —
+    /// not date-scoped — so stats reuses the same "open habits + meta.checks" rows as /planner/today).</summary>
+    public async Task<JsonArray> GetHabitsRowsAsync(PlannerSession session)
     {
         using var res = await SendAsync(session, () =>
             new HttpRequestMessage(HttpMethod.Get, RestUrl("entries?kind=eq.habit&state=eq.open&select=id,title,meta"))).ConfigureAwait(false);
         return await ReadArrayAsync(res).ConfigureAwait(false);
     }
 
-    private async Task<JsonArray> GetMoneyRowsAsync(PlannerSession session, DateTimeOffset sinceUtc)
+    /// <summary>Public: also used directly by PlannerService's /planner/stats with a wider (week) window.</summary>
+    public async Task<JsonArray> GetMoneyRowsAsync(PlannerSession session, DateTimeOffset sinceUtc)
     {
         var since = Uri.EscapeDataString(sinceUtc.ToString("o"));
         using var res = await SendAsync(session, () =>
             new HttpRequestMessage(HttpMethod.Get, RestUrl($"entries?kind=eq.money&happened_at=gte.{since}&select=amount_minor,direction,category"))).ConfigureAwait(false);
         return await ReadArrayAsync(res).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// For /planner/stats: total = open tasks due before <paramref name="until"/> (includes overdue,
+    /// same "due" definition /planner/today already uses) plus tasks completed (state=done) since
+    /// <paramref name="since"/>; done = the latter count alone. Two plain id-only queries on columns
+    /// (kind/state/due_at/updated_at) already used by GetTasksRowsAsync above, not invented ones.
+    /// </summary>
+    public async Task<(int total, int done)> GetTaskStatsAsync(PlannerSession session, DateTimeOffset until, DateTimeOffset since)
+    {
+        var untilStr = Uri.EscapeDataString(until.ToString("o"));
+        var sinceStr = Uri.EscapeDataString(since.ToString("o"));
+
+        using var openRes = await SendAsync(session, () =>
+            new HttpRequestMessage(HttpMethod.Get, RestUrl($"entries?kind=eq.task&state=eq.open&due_at=lt.{untilStr}&select=id"))).ConfigureAwait(false);
+        var openArr = await ReadArrayAsync(openRes).ConfigureAwait(false);
+
+        using var doneRes = await SendAsync(session, () =>
+            new HttpRequestMessage(HttpMethod.Get, RestUrl($"entries?kind=eq.task&state=eq.done&updated_at=gte.{sinceStr}&select=id"))).ConfigureAwait(false);
+        var doneArr = await ReadArrayAsync(doneRes).ConfigureAwait(false);
+
+        return (openArr.Count + doneArr.Count, doneArr.Count);
+    }
+
+    /// <summary>For /planner/stats: count of meetings starting in [since, until) — same starts_at column GetMeetingsRowsAsync already uses, just without its 5-row cap.</summary>
+    public async Task<int> GetMeetingsCountAsync(PlannerSession session, DateTimeOffset since, DateTimeOffset until)
+    {
+        var sinceStr = Uri.EscapeDataString(since.ToString("o"));
+        var untilStr = Uri.EscapeDataString(until.ToString("o"));
+        using var res = await SendAsync(session, () =>
+            new HttpRequestMessage(HttpMethod.Get, RestUrl($"entries?kind=eq.meeting&starts_at=gte.{sinceStr}&starts_at=lt.{untilStr}&select=id"))).ConfigureAwait(false);
+        var arr = await ReadArrayAsync(res).ConfigureAwait(false);
+        return arr.Count;
     }
 
     /// <summary>Secondary summary (rpc/summary_for). Best-effort: a failure here must never break /planner/today.</summary>

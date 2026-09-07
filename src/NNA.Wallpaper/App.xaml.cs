@@ -25,6 +25,7 @@ public partial class App : Application
     private TaskbarStyler? _taskbar;
     private TopBarManager? _topBar;
     private DockManager? _dock;
+    private Hotkeys? _hotkeys;
     /// <summary>Sorted monitor ids as of the last known-good config, used by <see cref="OnConfigChanged"/>
     /// to tell "a monitor was added/removed" (needs a full reload) from "a block moved" (patched live
     /// by the wallpaper pages over /events).</summary>
@@ -146,6 +147,19 @@ public partial class App : Application
         catch (Exception ex)
         {
             log.Error("taskbar/top bar start failed", ex);
+        }
+
+        try
+        {
+            // Global push-to-talk hotkey for the planner voice block (docs/PLANNER.md). Headless runs
+            // never reach this line (they return earlier), so /planner/status.hotkey.registered stays
+            // false there by construction, not by a headless-specific branch here.
+            _hotkeys = new Hotkeys(Host, Dispatcher);
+            _hotkeys.Register();
+        }
+        catch (Exception ex)
+        {
+            log.Error("hotkey start failed", ex);
         }
         if (engineError is not null)
         {
@@ -317,6 +331,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        try { _hotkeys?.Dispose(); } catch { }
         try { _dock?.Dispose(); } catch { }
         try { _topBar?.Dispose(); } catch { }
         try { _taskbar?.Dispose(); } catch { }

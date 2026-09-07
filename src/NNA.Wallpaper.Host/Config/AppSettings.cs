@@ -188,7 +188,19 @@ public sealed class PlannerSettings
     public string SupabaseUrl { get; set; } = "https://tvpmtjidonohpgwhyssm.supabase.co";
     public string PublishableKey { get; set; } = "sb_publishable_HYka0T2lxZndnMainWUNXg_YPWy2dy8";
     public string LoginUrl { get; set; } = "https://planner.nna1618.com/desktop/login.html";
+    /// <summary>Which TASKS-block sections the wallpaper shows (also doubles as the "Sections" setting).</summary>
     public List<string> Show { get; set; } = new() { "tasks", "meetings", "habits", "money", "briefing" };
+    /// <summary>Push-to-talk global hotkey, e.g. "Ctrl+Shift+Space" (parsed by NNA.Wallpaper.Hotkeys:
+    /// modifier tokens Ctrl/Shift/Alt/Win plus one <see cref="System.Windows.Input.Key"/> name).</summary>
+    public string Hotkey { get; set; } = "Ctrl+Shift+Space";
+    /// <summary>TASKS block auto-refresh interval, seconds (settings page offers 30/60/120).</summary>
+    public int RefreshSec { get; set; } = 60;
+    /// <summary>Max tasks shown in the TASKS block (settings page slider, 3-13).</summary>
+    public int MaxTasks { get; set; } = 8;
+    /// <summary>Show the recognized text before it is sent, in the voice capture UI.</summary>
+    public bool ShowRecognizedText { get; set; } = true;
+    /// <summary>@username (no @) of the NNA Planner Telegram bot, for the settings page's "open bot" link.</summary>
+    public string BotUsername { get; set; } = "NNAplanner_bot";
 }
 
 /// <summary>monitors.json — per-monitor layouts.</summary>

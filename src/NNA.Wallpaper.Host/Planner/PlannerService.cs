@@ -14,6 +14,11 @@ public sealed class PlannerService : Services.IHostService, IDisposable
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
     private const long MaxCaptureBytes = 12 * 1024 * 1024;
 
+    /// <summary>Set by the constructor so Hotkeys (a different project/thread — push-to-talk lives in
+    /// NNA.Wallpaper, this service in NNA.Wallpaper.Host) can reach the signed-in session's capture
+    /// pipeline without HostServices exposing every service instance; same pattern as EventsService.Current.</summary>
+    public static PlannerService? Current { get; private set; }
+
     private readonly HostContext _ctx;
     private readonly PlannerClient _client;
     private readonly SemaphoreSlim _todayLock = new(1, 1);
@@ -24,13 +29,22 @@ public sealed class PlannerService : Services.IHostService, IDisposable
     private DateTimeOffset _todayCacheAt = DateTimeOffset.MinValue;
     private JsonObject? _lastQuota;
 
+    /// <summary>Last known state of the global push-to-talk hotkey, set by NNA.Wallpaper.Hotkeys after
+    /// it tries RegisterHotKey; surfaced on /planner/status.hotkey. Not thread-locked — a torn read of
+    /// this small struct-like tuple is harmless (worst case: one stale poll of /planner/status).</summary>
+    private static (bool Registered, string? Error) _hotkeyState = (false, null);
+
     public PlannerService(HostContext ctx)
     {
         _ctx = ctx;
         _client = new PlannerClient(ctx);
         _session = PlannerSession.Load(ctx);
         _refreshTimer = new Timer(_ => _ = RefreshTickAsync(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        Current = this;
     }
+
+    /// <summary>Called by NNA.Wallpaper.Hotkeys after every RegisterHotKey/UnregisterHotKey attempt.</summary>
+    public static void SetHotkeyState(bool registered, string? error) => _hotkeyState = (registered, error);
 
     public void Register(LocalApi api)
     {
@@ -45,6 +59,16 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         api.Map("POST", "/planner/input", Input);
         api.Map("POST", "/planner/test-delete", TestDelete);
         api.Map("POST", "/planner/undo", Undo);
+        api.Map("GET", "/planner/profile", Profile);
+        api.Map("GET", "/planner/avatar", Avatar);
+        api.Map("GET", "/planner/stats", Stats);
+        if (_ctx.TestEndpoints)
+        {
+            // Test-only: sends a WAV file through the exact same capture path a hotkey push-to-talk
+            // release does (CaptureVoiceAsync), so the pipeline can be probed headless (no WPF, no
+            // real global hotkey) — see tests/hotkey-probe.ps1.
+            api.Map("POST", "/planner/capture-file", CaptureFile);
+        }
     }
 
     // ---- background refresh --------------------------------------------------------------------------
@@ -56,7 +80,11 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         try
         {
             var ok = await _client.RefreshAsync(session).ConfigureAwait(false);
-            if (!ok) _ctx.Log.Warn("planner: background token refresh failed, sign-in will be required");
+            if (!ok) { _ctx.Log.Warn("planner: background token refresh failed, sign-in will be required"); return; }
+            // A session saved before the v2 profile fields existed gets first_name/username/photo_url
+            // opportunistically merged in by ApplyRefresh above (if the refresh response carries them);
+            // cache the avatar now that PhotoUrl may have just appeared.
+            await EnsureAvatarCachedAsync(session).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -64,12 +92,44 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         }
     }
 
+    private string AvatarFilePath => Path.Combine(_ctx.Paths.DataDir, "cache", "avatar.jpg");
+
+    /// <summary>Downloads the Telegram avatar once (skips if the file already exists) — see PlannerClient.DownloadAvatarAsync for the https://t.me/ restriction. Never throws.</summary>
+    private async Task EnsureAvatarCachedAsync(PlannerSession session)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(session.Profile.PhotoUrl)) return;
+            if (File.Exists(AvatarFilePath)) return;
+            await _client.DownloadAvatarAsync(session.Profile.PhotoUrl, AvatarFilePath).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _ctx.Log.Warn("planner avatar cache: " + ex.Message);
+        }
+    }
+
     // ---- routes ---------------------------------------------------------------------------------------
+
+    private static JsonObject HotkeyStatusJson() => new()
+    {
+        ["registered"] = _hotkeyState.Registered,
+        ["error"] = _hotkeyState.Error,
+    };
 
     private Task Status(ApiRequest req)
     {
         var s = _session;
-        if (s is null) return req.Json(new { loggedIn = false, profile = (object?)null });
+        if (s is null)
+        {
+            var loggedOut = new JsonObject
+            {
+                ["loggedIn"] = false,
+                ["profile"] = null,
+                ["hotkey"] = HotkeyStatusJson(),
+            };
+            return req.Text(loggedOut.ToJsonString(Json.Api), "application/json; charset=utf-8");
+        }
 
         var obj = new JsonObject
         {
@@ -81,9 +141,128 @@ public sealed class PlannerService : Services.IHostService, IDisposable
                 ["tier"] = s.Profile.Tier,
             },
             ["expires_at"] = s.ExpiresAt.ToUnixTimeSeconds(),
+            ["hotkey"] = HotkeyStatusJson(),
         };
         if (_lastQuota is not null) obj["quota"] = _lastQuota.DeepClone();
         return req.Text(obj.ToJsonString(Json.Api), "application/json; charset=utf-8");
+    }
+
+    /// <summary>GET /planner/profile — the settings page's profile card. Distinct from the compact
+    /// /planner/status.profile (used by the wallpaper block): this one carries everything the card
+    /// needs, including the avatar URL and the raw session fields the block has no use for.</summary>
+    private Task Profile(ApiRequest req)
+    {
+        var s = _session;
+        if (s is null) return req.Json(new { loggedIn = false });
+
+        var obj = new JsonObject
+        {
+            ["loggedIn"] = true,
+            ["display_name"] = s.Profile.DisplayName,
+            ["first_name"] = s.Profile.FirstName,
+            ["username"] = s.Profile.Username,
+            ["avatar"] = File.Exists(AvatarFilePath) ? "/planner/avatar" : null,
+            ["tier"] = s.Profile.Tier,
+            ["timezone"] = s.Profile.Timezone,
+            ["lang"] = s.Profile.Lang,
+            ["expires_at"] = s.ExpiresAt.ToUnixTimeSeconds(),
+            ["sections"] = s.Profile.Sections is { Count: > 0 }
+                ? new JsonArray(s.Profile.Sections.Select(x => (JsonNode)x).ToArray())
+                : null,
+        };
+        return req.Text(obj.ToJsonString(Json.Api), "application/json; charset=utf-8");
+    }
+
+    /// <summary>GET /planner/avatar — the cached JPEG, or 404 when there is none (no photo_url on the
+    /// profile, or the one-time download hasn't happened/succeeded yet).</summary>
+    private async Task Avatar(ApiRequest req)
+    {
+        var path = AvatarFilePath;
+        byte[] bytes;
+        try
+        {
+            if (!File.Exists(path)) { await req.Error(404, "no avatar").ConfigureAwait(false); return; }
+            bytes = await File.ReadAllBytesAsync(path).ConfigureAwait(false);
+        }
+        catch
+        {
+            await req.Error(404, "no avatar").ConfigureAwait(false);
+            return;
+        }
+        await req.Bytes(bytes, "image/jpeg", 200, "no-store").ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// GET /planner/stats?range=day|week — small stat tiles for the settings page. Every field here
+    /// is computed from columns PlannerClient already queries elsewhere (kind/state/due_at/updated_at/
+    /// starts_at/meta.checks/amount_minor/direction) — nothing from rpc/summary_for, whose actual
+    /// response shape this client has never had a verified reason to depend on. "currency" has no
+    /// backing column anywhere in this client's queries, so it is a fixed "RUB", not sourced data —
+    /// see docs/PLANNER.md for the exact definition of every field.
+    /// </summary>
+    private async Task Stats(ApiRequest req)
+    {
+        var session = _session;
+        if (session is null) { await req.Error(401, "not logged in").ConfigureAwait(false); return; }
+
+        var range = string.Equals(req.Query("range"), "week", StringComparison.OrdinalIgnoreCase) ? "week" : "day";
+        var days = range == "week" ? 7 : 1;
+
+        try
+        {
+            var zone = ResolveZoneSafe(session.Profile.Timezone);
+            var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone);
+            var todayStartLocal = new DateTimeOffset(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0, nowLocal.Offset);
+            var rangeStartLocal = todayStartLocal.AddDays(-(days - 1));
+            var untilLocal = todayStartLocal.AddDays(1);
+            var sinceUtc = rangeStartLocal.ToUniversalTime();
+            var untilUtc = untilLocal.ToUniversalTime();
+            var nowUtc = DateTimeOffset.UtcNow;
+
+            var (tasksTotal, tasksDone) = await _client.GetTaskStatsAsync(session, untilUtc, sinceUtc).ConfigureAwait(false);
+            var meetings = await _client.GetMeetingsCountAsync(session, nowUtc, untilUtc).ConfigureAwait(false);
+            var habitsArr = await _client.GetHabitsRowsAsync(session).ConfigureAwait(false);
+            var moneyArr = await _client.GetMoneyRowsAsync(session, sinceUtc).ConfigureAwait(false);
+
+            var windowKeys = Enumerable.Range(0, days).Select(i => nowLocal.AddDays(-i).ToString("yyyy-MM-dd")).ToHashSet();
+            var todayKey = nowLocal.ToString("yyyy-MM-dd");
+            int habitsTotal = 0, habitsDone = 0, streak = 0;
+            foreach (var n in habitsArr.OfType<JsonObject>())
+            {
+                habitsTotal++;
+                var checks = ((n["meta"] as JsonObject)?["checks"] as JsonArray)?
+                    .Select(x => (string?)x ?? "").ToHashSet() ?? new HashSet<string>();
+                if (checks.Overlaps(windowKeys)) habitsDone++;
+
+                var s = 0;
+                var d = nowLocal.Date;
+                while (checks.Contains(d.ToString("yyyy-MM-dd"))) { s++; d = d.AddDays(-1); }
+                if (s > streak) streak = s;
+            }
+            _ = todayKey; // kept for clarity of intent (day range === windowKeys of size 1 === {todayKey})
+
+            long spent = 0, income = 0;
+            foreach (var n in moneyArr.OfType<JsonObject>())
+            {
+                var amount = (long?)n["amount_minor"] ?? 0;
+                if ((string?)n["direction"] == "income") income += amount; else spent += amount;
+            }
+
+            var obj = new JsonObject
+            {
+                ["tasks"] = new JsonObject { ["done"] = tasksDone, ["total"] = tasksTotal },
+                ["habits"] = new JsonObject { ["done"] = habitsDone, ["total"] = habitsTotal, ["streak"] = streak },
+                ["money"] = new JsonObject { ["sum"] = income - spent, ["currency"] = "RUB" },
+                ["meetings"] = meetings,
+            };
+            await req.Text(obj.ToJsonString(Json.Api), "application/json; charset=utf-8").ConfigureAwait(false);
+        }
+        catch (PlannerAuthException) { await req.Error(401, "sign in again").ConfigureAwait(false); }
+        catch (Exception ex)
+        {
+            _ctx.Log.Error("planner stats", ex);
+            await req.Error(502, "planner unavailable").ConfigureAwait(false);
+        }
     }
 
     private async Task Today(ApiRequest req)
@@ -290,6 +469,10 @@ public sealed class PlannerService : Services.IHostService, IDisposable
     {
         _session = null;
         PlannerSession.Delete(_ctx);
+        // Drop the cached avatar too: otherwise a different Telegram account signing in next would
+        // briefly show the previous account's photo until EnsureAvatarCachedAsync's "already exists"
+        // early-out is bypassed — it never is, so this file has to go now, not lazily.
+        try { if (File.Exists(AvatarFilePath)) File.Delete(AvatarFilePath); } catch { }
         InvalidateCache();
         NotifyChanged();
         return req.Json(new { ok = true });
@@ -311,6 +494,7 @@ public sealed class PlannerService : Services.IHostService, IDisposable
             session.Save(_ctx);
             _session = session;
             InvalidateCache();
+            _ = EnsureAvatarCachedAsync(session); // fire-and-forget: must not delay the login page's redirect/close
             _ctx.App.PostToPages("{\"type\":\"planner\",\"event\":\"login\"}");
             await req.Text(SuccessHtml(), "text/html; charset=utf-8", 200).ConfigureAwait(false);
         }
@@ -496,8 +680,97 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         + "p{font-size:13px;color:#c8c8c8;margin:0;line-height:1.5}</style></head>"
         + "<body><div><h1>" + title + "</h1><p>" + message + "</p></div>" + script + "</body></html>";
 
+    /// <summary>
+    /// Sends already-recorded WAV bytes through the same capture pipeline /planner/input's
+    /// OnInputSubmitted uses for text, and broadcasts the exact same <c>{"type":"planner",
+    /// "event":"captured",...}</c> shape the wallpaper block's widget.js already listens for (see
+    /// onHostMessage/handleCaptureResult there) — so a push-to-talk hotkey capture shows up in the
+    /// TASKS block's recognized-text/undo panel identically to a mic capture started from the block
+    /// itself. Called from NNA.Wallpaper.Hotkeys (via <see cref="Current"/>) and from the test-only
+    /// /planner/capture-file route below. Returns null when there is no signed-in session or the
+    /// capture call itself fails outright (logged either way, never throws).
+    /// </summary>
+    public async Task<JsonObject?> CaptureVoiceAsync(byte[] wavBytes, string source)
+    {
+        var session = _session;
+        if (session is null)
+        {
+            _ctx.Log.Warn("planner capture (" + source + "): not logged in");
+            return null;
+        }
+        if (wavBytes.Length == 0) return null;
+
+        PlannerHttpResult result;
+        try
+        {
+            var base64 = Convert.ToBase64String(wavBytes);
+            result = await _client.CaptureAsync(session, null, base64, "audio/wav", source).ConfigureAwait(false);
+        }
+        catch (PlannerAuthException)
+        {
+            _ctx.Log.Warn("planner capture (" + source + "): sign in again");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _ctx.Log.Error("planner capture (" + source + ")", ex);
+            return null;
+        }
+
+        if (result.Body?["quota"] is JsonNode q) _lastQuota = q.DeepClone() as JsonObject;
+        InvalidateCache();
+
+        var ok = (bool?)result.Body?["ok"] ?? false;
+        var msg = new JsonObject { ["type"] = "planner", ["event"] = "captured", ["ok"] = ok };
+        if (result.Body?["entries"] is JsonNode entries) msg["entries"] = entries.DeepClone();
+        if (result.Body?["batch_id"] is JsonNode batchId) msg["batch_id"] = batchId.DeepClone();
+        if (!ok)
+        {
+            msg["error"] = result.Status == 429 ? "limit" : ((string?)result.Body?["message"] ?? (string?)result.Body?["reason"] ?? "error");
+        }
+        else
+        {
+            NotifyChanged();
+        }
+        _ctx.App.PostToPages(msg.ToJsonString(Json.Api));
+        return msg;
+    }
+
+    /// <summary>Test-only (TestEndpoints): POST {"path": "..."} — reads a WAV fixture off disk and runs it through CaptureVoiceAsync, exactly like a hotkey release would with real mic bytes.</summary>
+    private async Task CaptureFile(ApiRequest req)
+    {
+        var body = await req.ReadBodyAsync().ConfigureAwait(false);
+        var node = Json.ParseNode(body) as JsonObject ?? new JsonObject();
+        var path = (string?)node["path"];
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            await req.Error(400, "path required").ConfigureAwait(false);
+            return;
+        }
+
+        byte[] bytes;
+        try
+        {
+            bytes = await File.ReadAllBytesAsync(path).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await req.Error(400, "read failed: " + ex.Message).ConfigureAwait(false);
+            return;
+        }
+
+        var result = await CaptureVoiceAsync(bytes, "test-file").ConfigureAwait(false);
+        if (result is null)
+        {
+            await req.Error(401, "not logged in, or capture failed (see log)").ConfigureAwait(false);
+            return;
+        }
+        await req.Text(result.ToJsonString(Json.Api), "application/json; charset=utf-8").ConfigureAwait(false);
+    }
+
     public void Dispose()
     {
+        if (Current == this) Current = null;
         _refreshTimer.Dispose();
         _client.Dispose();
         _todayLock.Dispose();

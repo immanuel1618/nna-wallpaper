@@ -32,12 +32,30 @@ public sealed class PlannerSession
         return s;
     }
 
-    /// <summary>Apply a GoTrue refresh-token response in place. The profile itself never changes here.</summary>
+    /// <summary>
+    /// Apply a GoTrue refresh-token response in place. Plain GoTrue token refresh normally carries no
+    /// profile data (that only comes from auth-telegram-widget at login) — but if a future refresh
+    /// endpoint does start echoing a "profile" node, this opportunistically enriches a session saved
+    /// before the v2 profile fields (first_name/username/photo_url/sections) existed, without
+    /// clobbering already-known values when the response is only a partial echo.
+    /// </summary>
     public void ApplyRefresh(JsonNode root)
     {
         AccessToken = (string?)root["access_token"] ?? AccessToken;
         RefreshToken = (string?)root["refresh_token"] ?? RefreshToken;
         ExpiresAt = ReadExpiresAt(root);
+
+        if (root["profile"] is JsonNode profileNode)
+        {
+            var refreshed = PlannerProfile.FromJson(profileNode);
+            if (!string.IsNullOrEmpty(refreshed.DisplayName)) Profile.DisplayName = refreshed.DisplayName;
+            if (!string.IsNullOrEmpty(refreshed.FirstName)) Profile.FirstName = refreshed.FirstName;
+            if (!string.IsNullOrEmpty(refreshed.Username)) Profile.Username = refreshed.Username;
+            if (!string.IsNullOrEmpty(refreshed.PhotoUrl)) Profile.PhotoUrl = refreshed.PhotoUrl;
+            if (!string.IsNullOrEmpty(refreshed.Timezone)) Profile.Timezone = refreshed.Timezone;
+            if (!string.IsNullOrEmpty(refreshed.Tier)) Profile.Tier = refreshed.Tier;
+            if (refreshed.Sections is { Count: > 0 }) Profile.Sections = refreshed.Sections;
+        }
     }
 
     private static DateTimeOffset ReadExpiresAt(JsonNode root)
