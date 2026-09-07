@@ -1,0 +1,11 @@
+{
+  "id": "planner",
+  "name": "NNA Planner",
+  "version": "0.1.0",
+  "author": "NNA1618",
+  "entry": { "kind": "module", "path": "widget.js", "export": "planner" },
+  "needs": ["planner"],
+  "defaultSize": { "cols": 1, "rows": 1 },
+  "minSize": { "cols": 1, "rows": 1 },
+  "settings": []
+}

@@ -1,0 +1,140 @@
+/* NNA1618 — общий стиль блоков для обоих обоев. Токены из H:\brand\tokens.css */
+@font-face {
+  font-family: 'Kharkiv Tone';
+  src: url('fonts/kar.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'DM Mono';
+  src: url('fonts/DMMono-Medium.ttf') format('truetype');
+  font-weight: 400 500; font-style: normal; font-display: swap;
+}
+
+:root {
+  --bg-page: #050505;
+  --bg-surface: #000000;
+  --fg: #FFFFFF;
+  --fg-body: #C8C8C8;
+  --fg-muted: #808080;
+  --fg-ghost: #1D1D1D;
+  --border: #434343;
+  --border-swatch: #676767;
+  --btn: rgba(139, 139, 139, 0.12);
+  --btn-hover: rgba(139, 139, 139, 0.24);
+  --glass: rgba(139, 139, 139, 0.03);
+  --font-display: 'Kharkiv Tone', 'Segoe UI', sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, Consolas, monospace;
+  --radius: 32px;
+  --gap: 24px;
+  --pad: 48px;
+}
+
+/* ---- блок ---------------------------------------------------------------- */
+.nna-block {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--glass);
+  border: 1px solid rgba(67, 67, 67, 0.5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.03);
+  font-family: var(--font-mono);
+  color: var(--fg-body);
+  user-select: none;
+}
+.nna-block::before {            /* лёгкое зерно, чтобы стекло не было плоским */
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: radial-gradient(rgba(255,255,255,0.9) 0.6px, transparent 0.7px);
+  background-size: 3px 3px;
+  z-index: 1;
+}
+.nna-body { position: absolute; inset: 0; z-index: 2; }
+
+.nna-label {
+  position: absolute; top: 24px; left: 30px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--fg-muted);
+  z-index: 6; pointer-events: none;
+  white-space: nowrap;
+}
+.nna-label b { color: var(--fg); font-weight: 500; }
+.nna-label.is-clickable { pointer-events: auto; cursor: pointer; }
+.nna-label.is-clickable:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.nna-corner {
+  position: absolute; top: 24px; right: 30px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--fg-muted); z-index: 6;
+}
+
+/* ---- типографика --------------------------------------------------------- */
+.nna-big { font-family: var(--font-display); color: var(--fg); line-height: 0.95; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.nna-mono { font-family: var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; }
+.nna-muted { color: var(--fg-muted); }
+.nna-body-text { color: var(--fg-body); }
+
+/* ---- кнопки -------------------------------------------------------------- */
+.nna-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--fg);
+  background: var(--btn);
+  border: 1px solid rgba(67, 67, 67, 0.7);
+  border-radius: 111px;
+  padding: 13px 20px;
+  cursor: pointer; user-select: none;
+  transition: background 0.15s, transform 0.08s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.nna-btn:hover { background: var(--btn-hover); border-color: var(--border-swatch); }
+.nna-btn:active { transform: scale(0.97); }
+.nna-btn.is-on { background: var(--fg); color: var(--bg-surface); border-color: var(--fg); }
+.nna-btn.is-busy { opacity: 0.55; pointer-events: none; }
+.nna-btn.is-flash { background: var(--fg); color: var(--bg-surface); }
+.nna-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--btn); border: 1px solid rgba(67, 67, 67, 0.7);
+  color: var(--fg); cursor: pointer;
+  transition: background 0.15s, transform 0.08s;
+}
+.nna-icon-btn:hover { background: var(--btn-hover); }
+.nna-icon-btn:active { transform: scale(0.94); }
+.nna-icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
+.nna-icon-btn.is-primary { width: 72px; height: 72px; background: var(--fg); color: var(--bg-surface); border-color: var(--fg); }
+.nna-icon-btn.is-primary svg { width: 28px; height: 28px; }
+
+/* ---- полоски ------------------------------------------------------------- */
+.nna-bar { position: relative; height: 6px; background: var(--fg-ghost); border-radius: 3px; overflow: hidden; }
+.nna-bar > i { display: block; height: 100%; width: 0; background: var(--fg); border-radius: 3px; transition: width 0.45s ease; }
+.nna-bar.is-thin { height: 3px; }
+.nna-bar.is-hot > i { background: var(--fg-body); }
+
+/* ---- служебное ----------------------------------------------------------- */
+.nna-offline .nna-needs-helper::after {
+  content: 'HELPER OFFLINE';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font: 500 11px var(--font-mono); letter-spacing: 0.34em;
+  color: var(--fg-muted);
+  background: rgba(11, 11, 11, 0.72);
+  z-index: 9;
+}
+.nna-toast {
+  position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px);
+  font: 500 11px var(--font-mono); letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--bg-surface); background: var(--fg);
+  padding: 12px 22px; border-radius: 111px;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s; z-index: 99; pointer-events: none;
+}
+.nna-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.nna-dim { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 9999; }
+.nna-dots { display: inline-flex; gap: 6px; }
+.nna-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg-ghost); }
+.nna-dots i.is-on { background: var(--fg); }
