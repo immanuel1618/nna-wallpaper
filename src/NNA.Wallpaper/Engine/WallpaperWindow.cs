@@ -194,6 +194,7 @@ public sealed class WallpaperWindow : IDisposable
             e.State = e.PermissionKind == CoreWebView2PermissionKind.Microphone
                 ? CoreWebView2PermissionState.Allow
                 : CoreWebView2PermissionState.Deny;
+            _log.Info($"mic permission {e.PermissionKind} -> {e.State} on {Monitor.Id}");
         };
         controller.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
         controller.CoreWebView2.ProcessFailed += (_, e) => _log.Warn($"webview process failed on {Monitor.Id}: {e.ProcessFailedKind} {e.Reason}");

@@ -7,12 +7,22 @@
 
 .USAGE
   powershell -File tests\planner-probe.ps1 -Port 1628 -Data <tmp-dir> -Exe <path to NNA.Wallpaper.exe>
+  powershell -File tests\planner-probe.ps1 -Exe <...> -Voice tests\fixtures\voice-test.wav
+
+.PARAMETER Voice
+  Path to a WAV fixture (2s, 16kHz mono; tests\fixtures\voice-test.wav is a 440Hz sine, generated
+  with Python's wave module — no real speech, so the capture pipeline transcribing it to "nothing
+  parsed" is an expected, passing outcome) sent to /planner/capture as audio_base64 + mime audio/wav
+  alongside the existing silence.webm check. Only 5xx (a provider error) fails this step; any 200 or
+  4xx response is recorded pass/fail-free, with its status and body, since what matters here is that
+  the WAV path through the capture pipeline doesn't blow up, not what it transcribes a tone to.
 #>
 [CmdletBinding()]
 param(
     [int]$Port = 1618,
     [string]$Data = (Join-Path $env:TEMP 'nna-planner-probe'),
-    [string]$Exe
+    [string]$Exe,
+    [string]$Voice = (Join-Path $PSScriptRoot 'fixtures\voice-test.wav')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -304,12 +314,40 @@ try {
         }
     }
 
-    # ── 8. quota regression: at most 2 AI calls happened above (text + voice) ───────────────────────
+    # ── 7b. capture (voice, WAV) — -Voice fixture: a synthetic 440Hz sine, not speech, so "nothing
+    #    parsed"/empty transcription is an expected outcome here, not a failure; only a 5xx (provider
+    #    blew up on the WAV path) or missing fixture fails this step. Cleans up via /planner/undo on
+    #    the same self-scoped rpc/undo_batch as step 6, in case the pipeline did parse something. ────
+    if (-not (Test-Path $Voice)) {
+        Record 'capture-voice-wav' 'SKIP' "fixture not found: $Voice"
+    }
+    else {
+        $wavB64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($Voice))
+        $wavBody = (@{ audio_base64 = $wavB64; mime = 'audio/wav' } | ConvertTo-Json -Compress)
+        $r = Invoke-Api -Method POST -Path '/planner/capture' -Body $wavBody -Auth
+        if ($r.Status -ge 500) {
+            Record 'capture-voice-wav' 'FAIL' "status=$($r.Status) body=$($r.Text)"
+        }
+        elseif ($r.Status -eq 429) {
+            Record 'capture-voice-wav' 'SKIP' 'daily AI quota exhausted (429)'
+        }
+        else {
+            Record 'capture-voice-wav' 'PASS' "status=$($r.Status) body=$($r.Text)"
+            if ($r.Json -and $r.Json.ok -eq $true -and $r.Json.batch_id -and @($r.Json.entries).Count -gt 0) {
+                $wavBatchId = $r.Json.batch_id
+                $ru = Invoke-Api -Method POST -Path "/planner/undo?batch=$wavBatchId" -Auth
+                if ($ru.Status -eq 200 -and $ru.Json -and $ru.Json.ok -eq $true) { Record 'capture-voice-wav-undo' 'PASS' }
+                else { Record 'capture-voice-wav-undo' 'FAIL' "status=$($ru.Status) body=$($ru.Text)" }
+            }
+        }
+    }
+
+    # ── 8. quota regression: at most 3 AI calls happened above (text + voice webm + voice wav) ──────
     $r = Invoke-Api -Method GET -Path '/planner/status'
     $quotaAfter = $quotaBefore
     if ($r.Json -and $r.Json.quota -and $null -ne $r.Json.quota.used) { $quotaAfter = [int]$r.Json.quota.used }
-    if ($quotaAfter -le ($quotaBefore + 2)) { Record 'quota-bound' 'PASS' "used $quotaBefore -> $quotaAfter" }
-    else { Record 'quota-bound' 'FAIL' "used $quotaBefore -> $quotaAfter (grew by more than 2)" }
+    if ($quotaAfter -le ($quotaBefore + 3)) { Record 'quota-bound' 'PASS' "used $quotaBefore -> $quotaAfter" }
+    else { Record 'quota-bound' 'FAIL' "used $quotaBefore -> $quotaAfter (grew by more than 3)" }
 
     # ── 9. negative: logout then /planner/today must 401 ────────────────────────────────────────────
     $r = Invoke-Api -Method POST -Path '/planner/logout' -Auth

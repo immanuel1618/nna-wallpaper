@@ -63,7 +63,7 @@
 .nna-launch .la-item:hover { background: var(--btn-hover); }
 /* иконки приложений */
 .nna-launch .la-item.is-app { flex-direction: column; gap: 7px; padding: 9px 8px 7px; min-width: 66px; border-radius: 16px; }
-.nna-launch .la-ico { width: 28px; height: 28px; object-fit: contain; display: block; transition: filter 0.2s, opacity 0.2s; }
+.nna-launch .la-ico { width: 28px; height: 28px; object-fit: contain; display: block; transition: filter 0.16s, opacity 0.16s; }
 .nna-launch.is-gray .la-ico { filter: grayscale(1) brightness(1.08); opacity: 0.9; }
 .nna-launch.is-gray .la-item:hover .la-ico { filter: none; opacity: 1; }
 .nna-launch .la-ini { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(67,67,67,0.8); display: inline-flex; align-items: center; justify-content: center; font: 500 10px var(--font-mono); letter-spacing: 0.1em; color: var(--fg-body); }
@@ -111,7 +111,7 @@
 /* ---- эквалайзер ---------------------------------------------------------- */
 .nna-eq .eq-canvas { position: absolute; inset: 0; display: block; }
 
-/* ---- фокус v2 ------------------------------------------------------------ */
+/* ---- фокус v3: WORK / CHILL / CYCLES -------------------------------------- */
 .nna-focus { container-type: size; transition: border-color 0.6s; }
 .nna-focus .fo-wrap { position: absolute; inset: 0; }
 .nna-focus .fo-main { position: absolute; inset: 44px 0 96px; cursor: pointer; }
@@ -119,27 +119,35 @@
 .nna-focus .fo-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .nna-focus .fo-track { stroke: var(--fg-ghost); }
 .nna-focus .fo-prog { stroke: var(--fg); transition: stroke-dashoffset 0.5s linear, stroke 0.6s; }
-.nna-focus.is-rest .fo-prog { stroke: #C8C8C8; }
-.nna-focus.is-long .fo-prog { stroke: #808080; }
+.nna-focus.is-chill .fo-prog { stroke: var(--fg-body); }
+.nna-focus.is-done .fo-prog { stroke: var(--fg-muted); }
 .nna-focus.is-running.is-work { border-color: rgba(255,255,255,0.32); }
-.nna-focus.is-running.is-rest { border-color: rgba(200,200,200,0.28); }
-.nna-focus.is-running.is-long { border-color: rgba(128,128,128,0.34); }
+.nna-focus.is-running.is-chill { border-color: rgba(200,200,200,0.28); }
+.nna-focus.is-done { border-color: rgba(128,128,128,0.34); }
 .nna-focus .fo-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .nna-focus .fo-time { font-size: 56px; font-size: 11cqh; }
 .nna-focus .fo-state { font-size: 9px; color: var(--fg-muted); letter-spacing: 0.26em; }
 .nna-focus.is-running .fo-state { color: var(--fg); }
-.nna-focus.is-rest.is-running .fo-state { color: #C8C8C8; }
+.nna-focus.is-chill.is-running .fo-state { color: var(--fg-body); }
+.nna-focus.is-done .fo-state { color: var(--fg-muted); }
 .nna-focus .fo-hint { font-size: 8px; color: var(--fg-ghost); letter-spacing: 0.24em; margin-top: 2px; }
 .nna-focus .fo-main:hover .fo-hint { color: var(--fg-muted); }
 .nna-focus .fo-foot { position: absolute; left: 28px; right: 28px; bottom: 26px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .nna-focus .fo-bar { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .nna-focus .fo-tool { padding: 9px 12px; font-size: 8px; letter-spacing: 0.16em; background: transparent; }
+/* .fo-tool's own background:transparent and .nna-btn.is-on's background:var(--fg) are equal
+   specificity (two classes each), so source order alone decided the winner and made the toggled
+   PRESET/STATS/SET button render dark text (is-on sets color:var(--bg-surface)) on a transparent
+   background instead of on the intended var(--fg) fill — invisible text. Three classes here beats
+   both two-class rules regardless of file order. */
+.nna-focus .fo-tool.is-on { background: var(--fg); color: var(--bg-surface); }
 .nna-focus.is-flash { box-shadow: inset 0 0 0 2px var(--fg); }
-.nna-focus .fo-panel { position: absolute; inset: 60px 34px 96px; display: flex; flex-direction: column; gap: 14px; }
+.nna-focus .fo-panel { position: absolute; inset: 60px 34px 96px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
 .nna-focus .fo-panel-k { font-size: 9px; color: var(--fg-muted); letter-spacing: 0.3em; }
 .nna-focus .fo-row { display: grid; grid-template-columns: 1fr 40px 76px 40px; align-items: center; gap: 8px; }
 .nna-focus .fo-row-k { font-size: 10px; color: var(--fg-body); letter-spacing: 0.2em; }
 .nna-focus .fo-row-v { font-size: 34px; text-align: center; }
+.nna-focus .fo-row-hint { grid-column: 1 / -1; font-size: 8px; color: var(--fg-muted); letter-spacing: 0.1em; margin-top: -6px; }
 .nna-focus .fo-step { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(67,67,67,0.8); background: transparent; color: var(--fg); font: 500 18px/1 var(--font-mono); cursor: pointer; }
 .nna-focus .fo-step:hover { background: var(--btn-hover); }
 .nna-focus .fo-toggle { grid-column: 2 / span 3; justify-self: end; padding: 9px 16px; font-size: 9px; }

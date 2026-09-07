@@ -240,13 +240,13 @@ function renderBeta(panel) {
 
 // ── γ — appearance ────────────────────────────────────────────────
 
-const PRESET_PALETTES = {
-  nna1618: { bgPage: "#050505", bgSurface: "#000000", fg: "#FFFFFF", fgBody: "#C8C8C8", fgMuted: "#808080", fgGhost: "#1D1D1D", border: "#434343", glass: "rgba(139,139,139,0.03)" },
-  "planner-soft": { bgPage: "#0B0B0B", bgSurface: "#000000", fg: "#FFFFFF", fgBody: "#C8C8C8", fgMuted: "#808080", fgGhost: "#1D1D1D", border: "#434343", glass: "rgba(139,139,139,0.03)" },
-};
-
+// One fixed brand theme (see ThemeSettings doc comment in AppSettings.cs) — no palette editor or
+// preset picker here. This tab only edits the geometry/perf knobs the wallpaper page still reads
+// live: dim, radius, gap, pad, blur, fps cap, and the fullscreen-pause toggle. A full redesign of
+// this tab is planned for a later stage; keep it to those fields for now.
 function renderGamma(panel) {
-  const theme = { ...state.config.app.theme, palette: { ...state.config.app.theme.palette }, fonts: { ...state.config.app.theme.fonts } };
+  panel.replaceChildren(); // re-entering this tab (or any future re-render) must not stack a second copy
+  const theme = { ...state.config.app.theme };
   let fpsCap = state.config.app.fpsCap;
   let pauseOnFullscreen = state.config.app.pauseOnFullscreen;
   let saveTimer = null;
@@ -262,30 +262,6 @@ function renderGamma(panel) {
     }, 300);
   };
 
-  const presetSelect = el("select");
-  for (const p of ["nna1618", "planner-soft", "custom"]) presetSelect.append(el("option", { value: p, selected: p === theme.preset }, p));
-  presetSelect.addEventListener("change", (e) => {
-    theme.preset = e.target.value;
-    if (PRESET_PALETTES[theme.preset]) Object.assign(theme.palette, PRESET_PALETTES[theme.preset]);
-    renderGamma(panel);
-    scheduleSave();
-  });
-
-  const paletteGrid = el("div", { class: "palette-grid" });
-  for (const key of Object.keys(theme.palette)) {
-    const input = el("input", { type: "text", value: theme.palette[key] });
-    const color = /^#[0-9a-fA-F]{6}$/.test(theme.palette[key]) ? theme.palette[key] : "#000000";
-    const picker = el("input", { type: "color", value: color });
-    picker.addEventListener("input", (e) => { theme.palette[key] = e.target.value; input.value = e.target.value; theme.preset = "custom"; scheduleSave(); });
-    input.addEventListener("change", (e) => { theme.palette[key] = e.target.value; theme.preset = "custom"; scheduleSave(); });
-    paletteGrid.append(el("div", { class: "field" }, el("label", { text: key }), el("div", { class: "field-row" }, picker, input)));
-  }
-
-  const fontDisplay = el("input", { type: "text", value: theme.fonts.display });
-  fontDisplay.addEventListener("input", (e) => { theme.fonts.display = e.target.value; scheduleSave(); });
-  const fontMono = el("input", { type: "text", value: theme.fonts.mono });
-  fontMono.addEventListener("input", (e) => { theme.fonts.mono = e.target.value; scheduleSave(); });
-
   const numberField = (labelKey, value, onChange, min, max, step) => {
     const input = el("input", { type: "number", value, min, max, step: step || 1 });
     input.addEventListener("input", (e) => { onChange(Number(e.target.value)); scheduleSave(); });
@@ -299,14 +275,8 @@ function renderGamma(panel) {
   const pauseSwitch = switchEl(pauseOnFullscreen, (on) => { pauseOnFullscreen = on; scheduleSave(); });
 
   panel.append(el("div", { class: "page-narrow" },
-    el("div", { class: "h-sec", text: state.t("themePreset") }),
-    el("div", { class: "field" }, presetSelect),
-    el("div", { class: "h-sec", text: state.t("palette") }),
-    paletteGrid,
-    el("div", { class: "h-sec", text: state.t("fonts") }),
-    el("div", { class: "field-row" },
-      el("div", { class: "field" }, el("label", { text: state.t("fontDisplay") }), fontDisplay),
-      el("div", { class: "field" }, el("label", { text: state.t("fontMono") }), fontMono)),
+    el("div", { class: "h-sec", text: state.t("themeGeometry") }),
+    el("div", { class: "field" }, el("label", { text: state.t("dim") }), el("div", { class: "rowflex" }, dimInput, dimValue)),
     el("div", { class: "field-row" },
       numberField("radius", theme.radius, (v) => { theme.radius = v; }, 0),
       numberField("gridGap", theme.gap, (v) => { theme.gap = v; }, 0),
@@ -314,7 +284,6 @@ function renderGamma(panel) {
     el("div", { class: "field-row" },
       numberField("blur", theme.blur, (v) => { theme.blur = v; }, 0),
       numberField("fpsCap", fpsCap, (v) => { fpsCap = v; }, 1, 240)),
-    el("div", { class: "field" }, el("label", { text: state.t("dim") }), el("div", { class: "rowflex" }, dimInput, dimValue)),
     el("div", { class: "setrow" }, el("div", { class: "main" }, el("div", { class: "t", text: state.t("pauseOnFullscreen") })), pauseSwitch)));
 }
 
@@ -431,7 +400,9 @@ async function renderEpsilon(panel) {
   body.append(el("div", { class: "rowflex" },
     el("span", { class: "tag", text: state.t("version") + " " + version }),
     el("span", { class: "sp" }),
-    el("a", { href: "https://github.com/nna1618/nna-wallpaper/blob/main/THIRD-PARTY.md", target: "_blank", class: "tag", text: state.t("licenses") })));
+    el("a", { href: "https://github.com/immanuel1618/nna-wallpaper", target: "_blank", class: "tag", text: state.t("repoLink") }),
+    el("a", { href: "https://github.com/immanuel1618/nna-wallpaper/releases", target: "_blank", class: "tag", text: state.t("releasesLink") }),
+    el("a", { href: "https://github.com/immanuel1618/nna-wallpaper/blob/main/THIRD-PARTY.md", target: "_blank", class: "tag", text: state.t("licenses") })));
 
   panel.append(body);
 }

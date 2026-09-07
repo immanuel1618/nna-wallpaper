@@ -55,8 +55,10 @@
   white-space: nowrap;
 }
 .nna-btn:hover { background: var(--btn-hover); border-color: var(--border-swatch); }
-.nna-btn:active { transform: scale(0.97); }
+.nna-btn:active { transform: scale(0.97); color: var(--fg); }
+.nna-btn:focus-visible { color: var(--fg); }
 .nna-btn.is-on { background: var(--fg); color: var(--bg-surface); border-color: var(--fg); }
+.nna-btn.is-on:active, .nna-btn.is-on:focus-visible { color: var(--bg-surface); }
 .nna-btn.is-busy { opacity: 0.55; pointer-events: none; }
 .nna-btn.is-flash { background: var(--fg); color: var(--bg-surface); }
 .nna-icon-btn {

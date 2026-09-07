@@ -148,6 +148,8 @@ public sealed class AudioSettings
     public bool Enabled { get; set; } = true;
     /// <summary>Render device id for loopback capture; null = default device.</summary>
     public string? Device { get; set; }
+    /// <summary>Preferred capture (microphone) device id for the planner voice block; null = default device.</summary>
+    public string? CaptureDevice { get; set; }
 }
 
 public sealed class GraphLimits

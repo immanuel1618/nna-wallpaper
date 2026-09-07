@@ -12,9 +12,14 @@
       return r.json();
     });
   }
-  function post(path) {
+  function post(path, body) {
     var sep = path.indexOf('?') >= 0 ? '&' : '?';
-    return fetch(cfgHelper.url + path + sep + 't=' + encodeURIComponent(cfgHelper.token), { method: 'POST' })
+    var opts = { method: 'POST' };
+    if (body !== undefined) {
+      opts.headers = { 'Content-Type': 'application/json' };
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(cfgHelper.url + path + sep + 't=' + encodeURIComponent(cfgHelper.token), opts)
       .then(function (r) { return r.json(); });
   }
 

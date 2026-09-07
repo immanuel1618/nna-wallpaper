@@ -47,12 +47,9 @@ const DICT = {
   eventDaily: { ru: "Ежедневные", en: "Daily" },
   addEvent: { ru: "+ событие", en: "+ event" },
 
-  // γ — appearance
-  themePreset: { ru: "Пресет темы", en: "Theme preset" },
-  palette: { ru: "Палитра", en: "Palette" },
-  fonts: { ru: "Шрифты", en: "Fonts" },
-  fontDisplay: { ru: "Заголовочный", en: "Display" },
-  fontMono: { ru: "Моно", en: "Mono" },
+  // γ — appearance (one fixed brand theme now — no palette editor or preset picker, see
+  // ThemeSettings in AppSettings.cs; this tab only edits geometry/perf knobs)
+  themeGeometry: { ru: "Геометрия и производительность", en: "Geometry & performance" },
   radius: { ru: "Скругление", en: "Radius" },
   blur: { ru: "Размытие", en: "Blur" },
   dim: { ru: "Затемнение", en: "Dim" },
@@ -86,6 +83,8 @@ const DICT = {
   openLog: { ru: "Открыть лог", en: "Open log" },
   version: { ru: "Версия", en: "Version" },
   licenses: { ru: "Лицензии", en: "Licenses" },
+  repoLink: { ru: "Репозиторий", en: "Repository" },
+  releasesLink: { ru: "Релизы", en: "Releases" },
 
   // forms.js generic
   formPath: { ru: "Путь", en: "Path" },
@@ -171,12 +170,16 @@ const DICT = {
 
 export function makeT(lang) {
   const l = lang === "en" ? "en" : "ru";
-  return function t(key, ...args) {
+  const t = function t(key, ...args) {
     const entry = DICT[key];
     let s = entry ? (entry[l] || entry.ru || key) : key;
     args.forEach((a, i) => { s = s.replace(`{${i}}`, a); });
     return s;
   };
+  // Exposed so form builders can resolve { ru, en } label/help objects from widget.json
+  // (see settings/forms.js localize()) against the same language this t() uses.
+  t.lang = l;
+  return t;
 }
 
 export function detectLang(explicit) {

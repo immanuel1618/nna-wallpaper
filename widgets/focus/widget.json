@@ -1,24 +1,30 @@
 {
   "id": "focus",
   "name": "Focus timer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "focus" },
   "defaultSize": { "cols": 1, "rows": 8 },
   "minSize": { "cols": 1, "rows": 2 },
   "needs": [],
   "settings": [
-    { "key": "work", "type": "number", "label": "Работа, мин", "default": 25, "min": 1, "max": 180 },
-    { "key": "rest", "type": "number", "label": "Отдых, мин", "default": 5, "min": 1, "max": 60 },
-    { "key": "longRest", "type": "number", "label": "Длинный отдых, мин", "default": 15, "min": 1, "max": 90 },
-    { "key": "sessionsBeforeLong", "type": "number", "label": "Сессий до длинного отдыха", "default": 4, "min": 1, "max": 8 },
-    { "key": "autoNext", "type": "bool", "label": "Автопереход", "default": false },
-    { "key": "presets", "type": "list", "label": "Пресеты",
-      "item": { "id": "string", "label": "string", "work": "number", "rest": "number", "longRest": "number", "per": "number" },
+    { "key": "work", "type": "number", "default": 25, "min": 1, "max": 180,
+      "label": { "ru": "Работа, мин", "en": "Work, min" },
+      "help": { "ru": "Длительность одной рабочей фазы", "en": "Length of one work phase" } },
+    { "key": "chill", "type": "number", "default": 5, "min": 1, "max": 60,
+      "label": { "ru": "Отдых, мин", "en": "Chill, min" },
+      "help": { "ru": "Длительность отдыха между рабочими фазами", "en": "Length of the chill phase between work phases" } },
+    { "key": "cycles", "type": "number", "default": 4, "min": 1, "max": 12,
+      "label": { "ru": "Циклов", "en": "Cycles" },
+      "help": { "ru": "Сколько рабочих фаз до конца сессии: WORK, CHILL, ... пока не наберётся столько WORK, затем DONE", "en": "How many work phases before the session ends: WORK, CHILL, ... until this many WORK phases are done, then DONE" } },
+    { "key": "presets", "type": "list",
+      "label": { "ru": "Пресеты", "en": "Presets" },
+      "help": { "ru": "Готовые сочетания работы, отдыха и числа циклов", "en": "Ready-made work / chill / cycles combinations" },
+      "item": { "id": "string", "label": "string", "work": "number", "chill": "number", "cycles": "number" },
       "default": [
-        { "id": "classic", "label": "25 / 5 ×4", "work": 25, "rest": 5, "longRest": 15, "per": 4 },
-        { "id": "deep", "label": "50 / 10 ×2", "work": 50, "rest": 10, "longRest": 20, "per": 2 },
-        { "id": "flow", "label": "90 / 20 ×1", "work": 90, "rest": 20, "longRest": 30, "per": 1 }
+        { "id": "classic", "label": "25/5 x4", "work": 25, "chill": 5, "cycles": 4 },
+        { "id": "deep", "label": "50/10 x2", "work": 50, "chill": 10, "cycles": 2 },
+        { "id": "flow", "label": "90/20 x1", "work": 90, "chill": 20, "cycles": 1 }
       ] }
   ]
 }

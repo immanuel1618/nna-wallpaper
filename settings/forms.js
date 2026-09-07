@@ -44,12 +44,26 @@ export function renderWidgetForm(container, schema, values, t) {
   return { getValue: () => data };
 }
 
+// field.label / field.help may be a plain string (existing widgets, one language) or a
+// { ru, en } object (see widgets/focus/widget.json) resolved against the settings window's
+// current language (t.lang, set by i18n.js's makeT). Falls back to ru, then en, then undefined.
+function localize(value, t) {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") return value;
+  const lang = (t && t.lang) || "ru";
+  return value[lang] || value.ru || value.en || undefined;
+}
+
 function renderField(field, data, t) {
-  const label = el("label", { text: field.label || field.key });
+  const labelText = localize(field.label, t) || field.key;
+  const label = el("label", { text: labelText });
+  const help = field.help ? el("div", { class: "hint", text: localize(field.help, t) }) : null;
+  const withHelp = (node) => { if (help) node.append(help); return node; };
+
   switch (field.type) {
     case "bool": {
       const row = el("div", { class: "setrow" },
-        el("div", { class: "main" }, el("div", { class: "t", text: field.label || field.key })),
+        el("div", { class: "main" }, el("div", { class: "t", text: labelText }), help),
         switchEl(!!data[field.key], (on) => { data[field.key] = on; }));
       return el("div", { class: "field" }, row);
     }
@@ -60,7 +74,7 @@ function renderField(field, data, t) {
         const text = typeof opt === "object" ? (opt.label || opt.value) : opt;
         select.append(el("option", { value, selected: value === data[field.key] }, text));
       }
-      return el("div", { class: "field" }, label, select);
+      return withHelp(el("div", { class: "field" }, label, select));
     }
     case "color": {
       const hex = el("input", { type: "text", value: data[field.key] || "#000000" });
@@ -68,13 +82,13 @@ function renderField(field, data, t) {
       const sync = (v) => { data[field.key] = v; hex.value = v; picker.value = normalizeHex(v); };
       picker.addEventListener("input", (e) => sync(e.target.value));
       hex.addEventListener("change", (e) => sync(e.target.value));
-      return el("div", { class: "field" }, label, el("div", { class: "field-row" }, picker, hex));
+      return withHelp(el("div", { class: "field" }, label, el("div", { class: "field-row" }, picker, hex)));
     }
     case "path": {
       const input = el("input", { type: "text", value: data[field.key] || "", placeholder: t("formPath") });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value; });
       const browse = el("button", { class: "btn sm", type: "button", text: t("formBrowse") });
-      return el("div", { class: "field" }, label, el("div", { class: "field-row" }, input, browse));
+      return withHelp(el("div", { class: "field" }, label, el("div", { class: "field-row" }, input, browse)));
     }
     case "timezone": {
       const listId = "tz-" + field.key + "-" + Math.random().toString(36).slice(2, 8);
@@ -84,12 +98,12 @@ function renderField(field, data, t) {
       try {
         for (const z of Intl.supportedValuesOf("timeZone")) datalist.append(el("option", { value: z }));
       } catch { /* older runtimes without supportedValuesOf */ }
-      return el("div", { class: "field" }, label, input, datalist);
+      return withHelp(el("div", { class: "field" }, label, input, datalist));
     }
     case "text": {
       const textarea = el("textarea", { text: data[field.key] || "" });
       textarea.addEventListener("input", (e) => { data[field.key] = e.target.value; });
-      return el("div", { class: "field" }, label, textarea);
+      return withHelp(el("div", { class: "field" }, label, textarea));
     }
     case "list":
       return renderListField(field, data, t);
@@ -99,13 +113,13 @@ function renderField(field, data, t) {
         min: field.min, max: field.max, step: field.step || 1,
       });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value === "" ? null : Number(e.target.value); });
-      return el("div", { class: "field" }, label, input);
+      return withHelp(el("div", { class: "field" }, label, input));
     }
     case "string":
     default: {
       const input = el("input", { type: "text", value: data[field.key] ?? "" });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value; });
-      return el("div", { class: "field" }, label, input);
+      return withHelp(el("div", { class: "field" }, label, input));
     }
   }
 }
@@ -148,7 +162,8 @@ function renderListField(field, data, t) {
     redraw();
   });
 
-  return el("div", { class: "field" }, el("label", { text: field.label || field.key }), table, addBtn);
+  const help = field.help ? el("div", { class: "hint", text: localize(field.help, t) }) : null;
+  return el("div", { class: "field" }, el("label", { text: localize(field.label, t) || field.key }), help, table, addBtn);
 }
 
 // ── launch.json editor ──────────────────────────────────────────

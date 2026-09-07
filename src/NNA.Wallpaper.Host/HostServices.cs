@@ -65,6 +65,7 @@ public sealed class HostServices : IDisposable
         Add(new Services.CursorService(_ctx));
         Add(new Services.AudioControlService(_ctx, events));
         Add(new Services.SystemInfoService(_ctx, events));
+        Add(new Services.AudioDevicesService(_ctx));
     }
 
     private void Add(object service)
