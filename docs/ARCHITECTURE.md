@@ -59,6 +59,25 @@ one WebView2 control:
    wallpaper window at all: it opens a small top-level WPF text-entry window that takes real
    keyboard focus and hands the typed text to the page through `PostWebMessageAsJson`. Voice input
    uses the page's own `MediaRecorder` and needs no window focus.
+
+   WebView2 hosting mode (`app.json` → `engine.hosting`, default `"composition"`): a
+   `CoreWebView2CompositionController` renders into a DirectComposition visual
+   (`DCompositionCreateDevice2` → `CreateTargetForHwnd`/`CreateVisual` → `RootVisualTarget`, see
+   `Engine/CompositionHost.cs`) and receives every mouse event through `SendMouseInput` — it owns no
+   input-receiving HWND at all. This exists because the classic path (`"window"`, kept as a
+   fallback) hosts WebView2 with a plain `CoreWebView2Controller`, which creates its own
+   `Chrome_WidgetWin_1` child window; `Engine/InputBridge.cs` re-posts Raw Input mouse messages into
+   that window by hand (since the wallpaper window sits behind the desktop icon layer and never
+   receives real mouse messages itself), and Chromium reacts to each forwarded `WM_MOUSEMOVE` by
+   calling `TrackMouseEvent(TME_LEAVE)` on it. The next *real* cursor move anywhere on the desktop
+   makes Windows resolve "window under the cursor" against the actual, unclipped window tree — the
+   icon list `SysListView32`, not the tracked Chromium window — so Windows immediately fires
+   `WM_MOUSELEAVE` at it. Hover state flips on and off on every real mouse move: the flicker this
+   hosting mode exists to avoid. In composition mode there is no such child window for
+   `TrackMouseEvent` to race against, so hover is stable; `InputBridge` detects a composition-hosted
+   target (`WallpaperWindow.UsesComposition`) and calls `WallpaperWindow.SendMouse` instead of
+   `PostMessage`, and additionally tracks which window last had pointer-hover state so it can send a
+   single `COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE` exactly when the pointer actually leaves it.
 8. Pause: every wallpaper window is paused (WebView2's `TrySuspendAsync`, otherwise resumed) when a
    fullscreen or presentation-mode app is detected in front of it, or the session is locked. The
    app also enforces an FPS cap by telling each page how often to render.
@@ -223,6 +242,26 @@ WebView2:
    отдельное маленькое top-level окно WPF, забирает фокус клавиатуры и передаёт строку странице
    через `PostWebMessageAsJson`. Голосовой ввод использует `MediaRecorder` самой страницы и фокуса
    не требует.
+
+   Режим хостинга WebView2 (`app.json` → `engine.hosting`, по умолчанию `"composition"`):
+   `CoreWebView2CompositionController` рендерится в визуал DirectComposition
+   (`DCompositionCreateDevice2` → `CreateTargetForHwnd`/`CreateVisual` → `RootVisualTarget`, см.
+   `Engine/CompositionHost.cs`), а ввод мыши идёт целиком через `SendMouseInput` — у такого
+   контроллера вообще нет собственного HWND для ввода. Причина: в классическом режиме (`"window"`,
+   оставлен как откат) WebView2 хостится через обычный `CoreWebView2Controller`, который создаёт
+   собственное дочернее окно `Chrome_WidgetWin_1`; `Engine/InputBridge.cs` вручную досылает в него
+   сообщения мыши через Raw Input (окно обоев сидит за слоем иконок и настоящих сообщений мыши не
+   получает), а Chromium в ответ на каждый досланный `WM_MOUSEMOVE` вызывает
+   `TrackMouseEvent(TME_LEAVE)`. При следующем реальном движении курсора Windows определяет «окно
+   под курсором» по настоящему, неусечённому дереву окон рабочего стола — это `SysListView32`
+   (список иконок), а не отслеживаемое окно Chromium, — и тут же посылает ему `WM_MOUSELEAVE`.
+   Hover включается и выключается на каждое реальное движение мыши — это и есть мерцание, ради
+   устранения которого существует режим composition. В нём нет дочернего окна, с которым мог бы
+   конкурировать `TrackMouseEvent`, поэтому hover стабилен; `InputBridge` определяет
+   composition-окно (`WallpaperWindow.UsesComposition`) и вместо `PostMessage` вызывает
+   `WallpaperWindow.SendMouse`, а также помнит, какое окно последним держало hover, чтобы послать
+   ровно одно `COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE` именно в момент, когда курсор реально его
+   покинул.
 8. Пауза: окна обоев приостанавливаются (`TrySuspendAsync` WebView2, иначе возобновляются) при
    полноэкранном приложении или презентационном режиме поверх них, а также при блокировке сессии.
    Дополнительно применяется ограничение FPS.

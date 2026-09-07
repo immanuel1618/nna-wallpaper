@@ -9,8 +9,21 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace NNA.Wallpaper.Engine;
 
 /// <summary>
-/// One wallpaper surface: a child HWND inside the desktop layer covering one monitor,
-/// hosting a CoreWebView2Controller. Must be used on the WPF UI thread.
+/// One wallpaper surface: a child HWND inside the desktop layer covering one monitor, hosting
+/// WebView2. Must be used on the WPF UI thread.
+///
+/// Hosting mode ("app.json" -&gt; <c>engine.hosting</c>, see <see cref="Host.Config.EngineSettings"/>):
+///  - "composition" (default): a <see cref="CompositionHost"/> DirectComposition visual is set as
+///    <c>CoreWebView2CompositionController.RootVisualTarget</c> and all mouse input is delivered
+///    through <c>SendMouseInput</c> (see <see cref="SendMouse"/>). WebView2 owns no input-receiving
+///    HWND in this mode, so Chromium never calls <c>TrackMouseEvent</c> on a child window that the
+///    OS can independently decide the real cursor has left — see <see cref="CompositionHost"/> for
+///    the full explanation of the hover-flicker bug this avoids.
+///  - "window" (fallback/rollback): the original <c>CoreWebView2Controller</c> path, which creates a
+///    <c>Chrome_WidgetWin_1</c> child window that <see cref="InputBridge"/> forwards Raw Input mouse
+///    messages into with <c>PostMessage</c>.
+/// A per-window failure to set up composition hosting (rare — e.g. no DirectComposition support)
+/// falls back to window hosting for that monitor only, logged as a warning.
 /// </summary>
 public sealed class WallpaperWindow : IDisposable
 {
@@ -25,6 +38,9 @@ public sealed class WallpaperWindow : IDisposable
     private readonly Log _log;
     private HwndSource? _source;
     private CoreWebView2Controller? _controller;
+    private CoreWebView2CompositionController? _comp;
+    private CompositionHost? _compHost;
+    private bool _useComposition;
     private bool _disposed;
     private string? _url;
     private string? _html;
@@ -35,14 +51,18 @@ public sealed class WallpaperWindow : IDisposable
     public bool Paused { get; private set; }
     public bool Ready => _controller is not null;
     public bool DevTools { get; set; }
+    /// <summary>True when this window hosts WebView2 through DirectComposition (no input HWND); mouse
+    /// input must go through <see cref="SendMouse"/> instead of <see cref="InputTarget"/>.</summary>
+    public bool UsesComposition => _comp is not null;
 
     public event Action<string>? WebMessage;
 
-    public WallpaperWindow(MonitorInfo monitor, HWND parent, Log log)
+    public WallpaperWindow(MonitorInfo monitor, HWND parent, Log log, string hosting = "composition")
     {
         Monitor = monitor;
         Parent = parent;
         _log = log;
+        _useComposition = !string.Equals(hosting, "window", StringComparison.OrdinalIgnoreCase);
         Create();
     }
 
@@ -65,7 +85,7 @@ public sealed class WallpaperWindow : IDisposable
         _source.AddHook(WndProc);
         PInvoke.SetWindowPos(Hwnd, HwndBottom, x, y, Monitor.Width, Monitor.Height,
             SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
-        _log.Info($"window {Monitor.Id}: hwnd=0x{(nint)Hwnd:X} parent=0x{(nint)Parent:X} at ({x},{y}) {Monitor.Width}x{Monitor.Height} dpi={Monitor.Dpi}");
+        _log.Info($"window {Monitor.Id}: hwnd=0x{(nint)Hwnd:X} parent=0x{(nint)Parent:X} at ({x},{y}) {Monitor.Width}x{Monitor.Height} dpi={Monitor.Dpi} hosting={(_useComposition ? "composition" : "window")}");
     }
 
     private unsafe (int x, int y) MapToParent(int screenX, int screenY)
@@ -90,13 +110,62 @@ public sealed class WallpaperWindow : IDisposable
     public async Task InitAsync(CoreWebView2Environment env)
     {
         if (_disposed) return;
+
+        if (_useComposition)
+        {
+            try
+            {
+                await InitCompositionAsync(env);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"composition hosting failed on {Monitor.Id}, falling back to window hosting: {ex.Message}");
+                _compHost?.Dispose();
+                _compHost = null;
+                _comp = null;
+                _useComposition = false;
+                if (_disposed) return;
+            }
+        }
+
         var controller = await env.CreateCoreWebView2ControllerAsync((nint)Hwnd);
+        if (_disposed) { controller.Close(); return; }
+        _controller = controller;
+        ConfigureController(controller);
+    }
+
+    private async Task InitCompositionAsync(CoreWebView2Environment env)
+    {
+        var host = CompositionHost.Create(Hwnd);
+        CoreWebView2CompositionController comp;
+        try
+        {
+            comp = await env.CreateCoreWebView2CompositionControllerAsync((nint)Hwnd);
+        }
+        catch
+        {
+            host.Dispose();
+            throw;
+        }
         if (_disposed)
         {
-            controller.Close();
+            comp.Close();
+            host.Dispose();
             return;
         }
-        _controller = controller;
+        comp.RootVisualTarget = host.RootVisual;
+        host.Commit(); // see CompositionHost.Commit: required after RootVisualTarget or nothing renders
+        _compHost = host;
+        _comp = comp;
+        _controller = comp;
+        ConfigureController(comp);
+    }
+
+    /// <summary>Settings shared by both hosting modes: background colour, DPI, WebView2 settings,
+    /// event wiring and the initial navigation. Kept identical between modes on purpose.</summary>
+    private void ConfigureController(CoreWebView2Controller controller)
+    {
         controller.DefaultBackgroundColor = Color.FromArgb(255, 5, 5, 5);
         controller.ShouldDetectMonitorScaleChanges = false;
         controller.RasterizationScale = Monitor.Scale;
@@ -160,6 +229,16 @@ public sealed class WallpaperWindow : IDisposable
         try { _controller?.CoreWebView2.PostWebMessageAsJson(json); } catch (Exception ex) { _log.Error("post message", ex); }
     }
 
+    /// <summary>Forwards one mouse event to WebView2 through SendMouseInput (composition hosting
+    /// only — see <see cref="UsesComposition"/>). <paramref name="clientPoint"/> is in the window's
+    /// client coordinates, not screen coordinates.</summary>
+    public void SendMouse(CoreWebView2MouseEventKind kind, CoreWebView2MouseEventVirtualKeys keys, uint mouseData, Point clientPoint)
+    {
+        if (_comp is null) return;
+        try { _comp.SendMouseInput(kind, keys, mouseData, clientPoint); }
+        catch (Exception ex) { _log.Error("send mouse input", ex); }
+    }
+
     private bool _pauseBusy;
 
     public async void SetPaused(bool paused)
@@ -192,9 +271,12 @@ public sealed class WallpaperWindow : IDisposable
         }
     }
 
-    /// <summary>The Chromium child window that receives forwarded mouse input.</summary>
+    /// <summary>The Chromium child window that receives forwarded mouse input in "window" hosting
+    /// mode. Returns <see cref="HWND.Null"/> when <see cref="UsesComposition"/> is true — there is no
+    /// such window, use <see cref="SendMouse"/> instead.</summary>
     public HWND InputTarget()
     {
+        if (UsesComposition) return HWND.Null;
         var w0 = PInvoke.FindWindowEx(Hwnd, HWND.Null, "Chrome_WidgetWin_0", null);
         if (w0 == HWND.Null) return Hwnd;
         var w1 = PInvoke.FindWindowEx(w0, HWND.Null, "Chrome_WidgetWin_1", null);
@@ -222,6 +304,7 @@ public sealed class WallpaperWindow : IDisposable
         {
             _controller.RasterizationScale = monitor.Scale;
             _controller.Bounds = new Rectangle(0, 0, monitor.Width, monitor.Height);
+            if (_useComposition) _controller.NotifyParentWindowPositionChanged();
         }
     }
 
@@ -231,6 +314,9 @@ public sealed class WallpaperWindow : IDisposable
         _disposed = true;
         try { _controller?.Close(); } catch { }
         _controller = null;
+        _comp = null;
+        try { _compHost?.Dispose(); } catch { }
+        _compHost = null;
         try { _source?.Dispose(); } catch { }
         _source = null;
         Hwnd = HWND.Null;
