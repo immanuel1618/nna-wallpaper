@@ -4,6 +4,24 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-07
+
+### Added
+- Settings tab "Taskbar": Windows taskbar toggles (centered icons, hide Search / Task View /
+  Widgets / clock, small size, transparency, auto-hide) with a backup and one-click restore,
+  per-state accent styles (clear / blur / acrylic / opaque), explorer restart.
+- Top bar: an always-on-top strip at the top edge of each monitor (mac-like menu bar) with
+  configurable modules (brand, date, clock, weather, stats, media, planner), reserved work area,
+  auto-hide, per-monitor placement. The wallpaper grid keeps its blocks below the bar.
+- Presets (windows, mac, clear, night, minimal), user presets, JSON export/import.
+- Local API: `GET /taskbar/status`, `POST /taskbar/apply`, `POST /taskbar/reset`,
+  `POST /taskbar/restart-explorer`, `GET/POST /taskbar/presets`, `GET /taskbar/preset?id=`.
+
+### Known limitation
+- Windows 11 builds with the XAML taskbar (24H2 and later) paint their own background, so the
+  accent transparency of the Windows taskbar may have no visible effect there; toggles and the
+  top bar work regardless.
+
 ## [0.1.5] - 2026-09-07
 
 ### Changed

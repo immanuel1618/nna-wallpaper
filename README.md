@@ -102,6 +102,18 @@ widgets ship under `widgets/` in the install folder; user widgets go in
 photos, focus timer, weather and clocks, events, launcher, folder graph, system stats, media
 player, and the NNA Planner block. Writing your own: [docs/WIDGET-SDK.md](docs/WIDGET-SDK.md).
 
+## Taskbar and top bar
+
+The settings tab "Taskbar" styles the Windows taskbar (centered icons, hidden Search / Task View /
+Widgets buttons and clock, auto-hide, transparency toggles; every Windows value is backed up and can
+be restored with one click) and adds an optional **top bar**: a thin always-on-top strip at the top
+edge of each monitor, like the macOS menu bar, with a clock, date, weather, system stats, the current
+track and the planner counter. Windows start below it. Presets (`mac`, `clear`, `night`, `minimal`,
+`windows`) ship with the app; your own presets are JSON files in `%LOCALAPPDATA%\NNA Wallpaper\presets\taskbar`.
+
+Limitation: recent Windows 11 builds paint the taskbar background themselves, so the taskbar
+transparency modes may have no visible effect there. The toggles and the top bar are unaffected.
+
 ## NNA Planner
 
 The Planner block connects to [NNA Planner](https://planner.nna1618.com) through a Telegram

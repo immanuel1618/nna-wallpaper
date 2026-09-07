@@ -251,8 +251,9 @@ public sealed class TaskbarStyler : IDisposable
                 using var k = Registry.CurrentUser.CreateSubKey(key, writable: true);
                 if (k is null) continue;
                 var v = node[id];
-                if (v is null) k.DeleteValue(name, throwOnMissingValue: false);
-                else if (v is JsonValue jv && jv.TryGetValue<int>(out var iv)) k.SetValue(name, iv, RegistryValueKind.DWord);
+                var current = k.GetValue(name);
+                if (v is null) { if (current is not null) k.DeleteValue(name, throwOnMissingValue: false); }
+                else if (v is JsonValue jv && jv.TryGetValue<int>(out var iv) && !(current is int ci && ci == iv)) k.SetValue(name, iv, RegistryValueKind.DWord);
             }
             catch (Exception ex)
             {
