@@ -30,6 +30,7 @@ public sealed class AppSettings
     public PlannerSettings Planner { get; set; } = new();
     public TaskbarSettings Taskbar { get; set; } = new();
     public TopBarSettings TopBar { get; set; } = new();
+    public CursorSettings Cursor { get; set; } = new();
     public EngineSettings Engine { get; set; } = new();
 }
 
@@ -205,4 +206,12 @@ public sealed class BlockSpec
     public int Row { get; set; } = 1;
     public int RowSpan { get; set; } = 1;
     public JsonObject? SettingsOverride { get; set; }
+}
+
+/// <summary>Applied brand cursor scheme (see docs/CURSORS.md and Services/CursorService.cs).
+/// Variant null = system default, untouched by this app.</summary>
+public sealed class CursorSettings
+{
+    public string? Variant { get; set; }
+    public int Size { get; set; } = 32;
 }
