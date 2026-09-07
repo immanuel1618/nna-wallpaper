@@ -54,7 +54,7 @@ one WebView2 control:
    window sets `RasterizationScale` from `GetDpiForMonitor` for the monitor it is on, and reacts to
    `WM_DPICHANGED` / display-settings-changed by recomputing it.
 7. Input: mouse and keyboard reach the wallpaper windows because they are real (if invisible)
-   windows in the desktop's window tree — no global hooks are used. Right-click still opens the
+   windows in the desktop's window tree: no global hooks are used. Right-click still opens the
    normal desktop context menu. Typing into a widget's own input field is not done through the
    wallpaper window at all: it opens a small top-level WPF text-entry window that takes real
    keyboard focus and hands the typed text to the page through `PostWebMessageAsJson`. Voice input
@@ -63,15 +63,15 @@ one WebView2 control:
    WebView2 hosting mode (`app.json` → `engine.hosting`, default `"composition"`): a
    `CoreWebView2CompositionController` renders into a DirectComposition visual
    (`DCompositionCreateDevice2` → `CreateTargetForHwnd`/`CreateVisual` → `RootVisualTarget`, see
-   `Engine/CompositionHost.cs`) and receives every mouse event through `SendMouseInput` — it owns no
+   `Engine/CompositionHost.cs`) and receives every mouse event through `SendMouseInput`: it owns no
    input-receiving HWND at all. This exists because the classic path (`"window"`, kept as a
    fallback) hosts WebView2 with a plain `CoreWebView2Controller`, which creates its own
    `Chrome_WidgetWin_1` child window; `Engine/InputBridge.cs` re-posts Raw Input mouse messages into
    that window by hand (since the wallpaper window sits behind the desktop icon layer and never
    receives real mouse messages itself), and Chromium reacts to each forwarded `WM_MOUSEMOVE` by
    calling `TrackMouseEvent(TME_LEAVE)` on it. The next *real* cursor move anywhere on the desktop
-   makes Windows resolve "window under the cursor" against the actual, unclipped window tree — the
-   icon list `SysListView32`, not the tracked Chromium window — so Windows immediately fires
+   makes Windows resolve "window under the cursor" against the actual, unclipped window tree: the
+   icon list `SysListView32`, not the tracked Chromium window: so Windows immediately fires
    `WM_MOUSELEAVE` at it. Hover state flips on and off on every real mouse move: the flicker this
    hosting mode exists to avoid. In composition mode there is no such child window for
    `TrackMouseEvent` to race against, so hover is stable; `InputBridge` detects a composition-hosted
@@ -89,7 +89,7 @@ registers every feature service's routes on it. CORS is open (`*`, since only lo
 Every request other than `GET`/`HEAD` must carry the app's API token as the `X-Token` header or a
 `t` query parameter; the token is generated on first run and stored in `app.json`.
 
-### Local API — routes that exist today
+### Local API: routes that exist today
 
 | Route | Method | Service | Notes |
 |---|---|---|---|
@@ -164,7 +164,7 @@ vpk pack --packId NNA.Wallpaper --packVersion <version> --packDir publish \
 
 (`build/pack.ps1` wraps these steps, installs the pinned `vpk` tool version, and verifies the
 expected artifacts exist afterward.) The result under `Releases/` is
-`NNA.Wallpaper-win-Setup.exe`, a full package, and `NNA.Wallpaper-win-Portable.zip` — all from the
+`NNA.Wallpaper-win-Setup.exe`, a full package, and `NNA.Wallpaper-win-Portable.zip`: all from the
 same publish output. Publishing a GitHub Release is done with `vpk upload github --publish`, which
 uploads `releases.win.json` alongside the assets so `Velopack.UpdateManager` (configured with a
 `GithubSource` pointing at this repository) can find updates. The client checks once a day and on
@@ -200,27 +200,27 @@ See [THIRD-PARTY.md](../THIRD-PARTY.md) for the full list and licenses.
 
 Один процесс `NNA.Wallpaper.exe` (WPF, .NET 8, `net8.0-windows10.0.19041.0`, x64, self-contained в
 релизе). `Program.Main` сначала вызывает `VelopackApp.Build().Run()` (чтобы корректно обработать
-служебные вызовы exe со стороны установщика — установка/обновление/удаление), затем запускает WPF
+служебные вызовы exe со стороны установщика: установка/обновление/удаление), затем запускает WPF
 `App`. Части решения: `src/NNA.Wallpaper` (WPF-приложение: трей, единственный экземпляр, аргументы
 командной строки, окна настроек и входа, автозапуск, обновления через Velopack, движок обоев),
 `src/NNA.Wallpaper.Host` (библиотека: локальный HTTP/WebSocket API, датчики, медиа, запуск,
 иконки, графы, погода, события, конфиг, сканирование виджетов), `src/NNA.Wallpaper.Tests`
 (тесты xUnit), `wallpaper/` (страница обоев), `settings/` (окно настроек), `widgets/<id>/`
-(встроенные виджеты), `planner/` (справочные копии страницы входа и edge-функции планировщика —
+(встроенные виджеты), `planner/` (справочные копии страницы входа и edge-функции планировщика:
 источник истины остаётся в репозитории NNA Planner).
 
 Страницы грузятся через `SetVirtualHostNameToFolderMapping`, без `file://`.
 
 ## Движок: окно за иконками рабочего стола
 
-По одному окну WPF на монитор, встроенному за иконками (`Progman`/`WorkerW`), в каждом — контрол
+По одному окну WPF на монитор, встроенному за иконками (`Progman`/`WorkerW`), в каждом: контрол
 WebView2:
 
 1. `Progman = FindWindow("Progman", null)`.
 2. Режим рабочего стола определяется по стилю окна, а не по версии Windows: если у `Progman` есть
-   расширенный стиль `WS_EX_NOREDIRECTIONBITMAP` — это новый рабочий стол, где `WorkerW` является
+   расширенный стиль `WS_EX_NOREDIRECTIONBITMAP`: это новый рабочий стол, где `WorkerW` является
    прямым дочерним окном `Progman` (ищется перебором дочерних `WorkerW`, из которых выбирается тот,
-   что **не** содержит `SHELLDLL_DefView` — то окно держит иконки). Иначе, в классическом варианте,
+   что **не** содержит `SHELLDLL_DefView`: то окно держит иконки). Иначе, в классическом варианте,
    приложение посылает `Progman` внутреннее сообщение `0x052C`, чтобы explorer создал отдельный
    `WorkerW`, затем находит окно с `SHELLDLL_DefView` и берёт соседний с ним `WorkerW`. Если
    `WorkerW` не появился сразу, сообщение отправляется повторно.
@@ -229,7 +229,7 @@ WebView2:
    координаты пересчитываются `MapWindowPoints`, окно опускается в конец Z-порядка.
 4. Наблюдатель переустанавливает родителя при пересоздании `WorkerW` (перезапуск explorer, смена
    темы, выход из сна) или изменении набора мониторов.
-5. В каждом окне — один `CoreWebView2Controller` из общего `CoreWebView2Environment` (данные —
+5. В каждом окне: один `CoreWebView2Controller` из общего `CoreWebView2Environment` (данные:
    `%LOCALAPPDATA%\NNA Wallpaper\WebView2`). Контекстное меню, DevTools (кроме `--devtools`),
    акселераторы, зум, pinch-zoom, свайп-навигация, встроенная страница ошибок, автозаполнение и
    сохранение паролей отключены; внешний drop запрещён.
@@ -246,16 +246,16 @@ WebView2:
    Режим хостинга WebView2 (`app.json` → `engine.hosting`, по умолчанию `"composition"`):
    `CoreWebView2CompositionController` рендерится в визуал DirectComposition
    (`DCompositionCreateDevice2` → `CreateTargetForHwnd`/`CreateVisual` → `RootVisualTarget`, см.
-   `Engine/CompositionHost.cs`), а ввод мыши идёт целиком через `SendMouseInput` — у такого
+   `Engine/CompositionHost.cs`), а ввод мыши идёт целиком через `SendMouseInput`: у такого
    контроллера вообще нет собственного HWND для ввода. Причина: в классическом режиме (`"window"`,
    оставлен как откат) WebView2 хостится через обычный `CoreWebView2Controller`, который создаёт
    собственное дочернее окно `Chrome_WidgetWin_1`; `Engine/InputBridge.cs` вручную досылает в него
    сообщения мыши через Raw Input (окно обоев сидит за слоем иконок и настоящих сообщений мыши не
    получает), а Chromium в ответ на каждый досланный `WM_MOUSEMOVE` вызывает
    `TrackMouseEvent(TME_LEAVE)`. При следующем реальном движении курсора Windows определяет «окно
-   под курсором» по настоящему, неусечённому дереву окон рабочего стола — это `SysListView32`
-   (список иконок), а не отслеживаемое окно Chromium, — и тут же посылает ему `WM_MOUSELEAVE`.
-   Hover включается и выключается на каждое реальное движение мыши — это и есть мерцание, ради
+   под курсором» по настоящему, неусечённому дереву окон рабочего стола: это `SysListView32`
+   (список иконок), а не отслеживаемое окно Chromium,: и тут же посылает ему `WM_MOUSELEAVE`.
+   Hover включается и выключается на каждое реальное движение мыши: это и есть мерцание, ради
    устранения которого существует режим composition. В нём нет дочернего окна, с которым мог бы
    конкурировать `TrackMouseEvent`, поэтому hover стабилен; `InputBridge` определяет
    composition-окно (`WallpaperWindow.UsesComposition`) и вместо `PostMessage` вызывает
@@ -269,34 +269,34 @@ WebView2:
 ## Хост: локальный API
 
 `HostServices` создаёт один `LocalApi` (`HttpListener` на `127.0.0.1` с поддержкой WebSocket) и
-регистрирует на нём маршруты каждого сервиса. CORS открыт (`*` — обращаются только локальные
+регистрирует на нём маршруты каждого сервиса. CORS открыт (`*`: обращаются только локальные
 страницы). Любой запрос, кроме `GET`/`HEAD`, должен нести токен API (`X-Token` или `?t=`); токен
 генерируется при первом запуске и хранится в `app.json`.
 
 ### Реально существующие маршруты локального API
 
-Полный список — в английской части этого файла (таблица «Local API — routes that exist today»).
+Полный список: в английской части этого файла (таблица «Local API: routes that exist today»).
 Кратко: `/health`, `/config` (GET/PUT), `/config/full`, `/config/defaults`, `/config/open-folder`,
 `/stats`, `/media*`, `/launch/*`, `/icon/<id>.png`, `/graph`, `/weather`, `/events`, `/pins`,
 `/open`, `/edit`, `/widgets`, `/audio` (WebSocket), `/app/exit`, `/app/reload`,
 `/test/*` (только для тестов), статика `/wallpaper/`, `/settings/`, `/widgets/`.
 
-Маршруты планировщика — `/planner/status`, `/planner/today`, `/planner/done`, `/planner/habit`,
+Маршруты планировщика: `/planner/status`, `/planner/today`, `/planner/done`, `/planner/habit`,
 `/planner/capture`, `/planner/input` (открывает окно ввода текста InputWindow), `/planner/login`,
 `/planner/logout`, `/planner/callback` (принимает редирект от Telegram Login Widget) и
-`/planner/test-delete` (только для тестов) — реализованы; подробности в
+`/planner/test-delete` (только для тестов): реализованы; подробности в
 [docs/PLANNER.md](PLANNER.md).
 
 ## Распространение
 
 Релизы собираются и упаковываются [Velopack](https://velopack.io) (`build/pack.ps1`):
 `dotnet publish` self-contained win-x64 → `vpk pack` → `Releases/NNA.Wallpaper-win-Setup.exe`,
-полный пакет и `NNA.Wallpaper-win-Portable.zip` из одной сборки. Публикация — `vpk upload github
---publish`, который заодно кладёт `releases.win.json` для `Velopack.UpdateManager` (источник —
-`GithubSource` на этот репозиторий); проверка обновлений — раз в сутки и по кнопке.
+полный пакет и `NNA.Wallpaper-win-Portable.zip` из одной сборки. Публикация: `vpk upload github
+--publish`, который заодно кладёт `releases.win.json` для `Velopack.UpdateManager` (источник:
+`GithubSource` на этот репозиторий); проверка обновлений: раз в сутки и по кнопке.
 `.github/workflows/build.yml` собирает и тестирует при каждом push в `main` и в pull request;
 `.github/workflows/release.yml` собирает, упаковывает и (при пуше тега `v*` либо ручном запуске с
-`dry_run=false`) публикует релиз. Сборки не подписаны сертификатом — см. предупреждение о
+`dry_run=false`) публикует релиз. Сборки не подписаны сертификатом: см. предупреждение о
 SmartScreen в [README](../README.md#предупреждение-smartscreen).
 
 ## Границы безопасности

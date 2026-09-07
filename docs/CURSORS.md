@@ -1,7 +1,7 @@
 # Cursors
 
 Three brand cursor sets for Windows: **mark**, **line**, **mono**. Monochrome, no shadows, no
-color gradients — matches the NNA1618 palette (White `#FFFFFF`, Base `#0B0B0B`, Steel `#808080`,
+color gradients: matches the NNA1618 palette (White `#FFFFFF`, Base `#0B0B0B`, Steel `#808080`,
 Signal `#8C1A25` used only as a tip/serif accent, never smaller than 3px at the 32px size).
 
 ## Layout
@@ -37,10 +37,10 @@ python build/cursors-check.py
 2. an external CLI rasterizer found on `PATH`: `resvg`, `rsvg-convert`, `inkscape`, `magick`.
 3. fallback: read `brand/cursors/shapes.json` and draw the same vector primitives directly with
    `PIL.ImageDraw` (polygons, lines, circles, rects/roundrects, capsules, a JetBrains Mono glyph
-   for the `help` "?", and `group` — several fill-only sub-shapes composited with one traced
+   for the `help` "?", and `group`: several fill-only sub-shapes composited with one traced
    outline around their union, e.g. the `hand` role's palm + finger + knuckles + thumb, so
    overlapping parts don't each draw their own outline and leave interior seam lines). This is
-   the path that actually runs today — this machine has `pip install cairosvg` but no system
+   the path that actually runs today: this machine has `pip install cairosvg` but no system
    `cairo-2.dll`, and none of `resvg` / `rsvg-convert` / `inkscape` / `magick` are on `PATH`.
 
 The SVG files under `brand/cursors/<variant>/` and `brand/cursors/shapes.json` are generated from
@@ -54,8 +54,8 @@ downsample with Lanczos) for clean antialiased edges, then writes:
 - **static roles** (11): a single `.cur` per size trio, ICO type-2 container, 32-bit BGRA BMP
   frames + 1bpp AND mask (computed from the alpha channel), hotspot stored in the
   `ICONDIRENTRY.wPlanes` / `wBitCount` fields (that's the real CUR-format repurposing of those
-  two WORDs — BMP over PNG frames because it's the more universally accepted cursor payload).
-- **animated roles** (`wait`, `busy`, 2): a RIFF `ACON` `.ani` — `anih` (36-byte ANIHEADER,
+  two WORDs: BMP over PNG frames because it's the more universally accepted cursor payload).
+- **animated roles** (`wait`, `busy`, 2): a RIFF `ACON` `.ani`: `anih` (36-byte ANIHEADER,
   `AF_ICON | AF_SEQ` flags), `rate` (8 x 4 jiffies = 8 x 60ms), `seq` (0..7), then a `LIST fram`
   containing 8 `icon` chunks, each one a complete, independently valid `.cur` (all three sizes).
 
@@ -64,7 +64,7 @@ line / mono), JetBrains Mono column headers, all 13 roles at 64px with Steel 13p
 bottom Ash-colored strip repeating `arrow`/`hand` for a light-background legibility check.
 
 `presets/cursors/<variant>.json` is regenerated on every build and is committed to the repo (the
-`.cur`/`.ani` binaries under `build/out/` are not — they're gitignored and rebuilt on demand).
+`.cur`/`.ani` binaries under `build/out/` are not: they're gitignored and rebuilt on demand).
 Manifest shape:
 
 ```json
@@ -94,13 +94,13 @@ Checks, per file: `ICONDIR`/RIFF signatures, that all three sizes (32/48/64) are
 DIB header (`BITMAPINFOHEADER`, 32bpp, height = 2x for the AND mask) is internally consistent with
 the declared frame size, that the hotspot falls inside the frame, and for `.ani` files that there
 are exactly 8 animation frames each wrapping a well-formed `.cur`. It then calls
-`user32!LoadCursorFromFileW` via `ctypes` on every file and requires a non-null handle — this is
+`user32!LoadCursorFromFileW` via `ctypes` on every file and requires a non-null handle: this is
 the same API Windows itself uses to load a cursor resource, so a pass here means Windows accepts
 the file, not just that our own parser is happy with it.
 
 ## Installing through the app
 
-`src/NNA.Wallpaper.Host/Services/CursorService.cs` installs a scheme from inside the running app —
+`src/NNA.Wallpaper.Host/Services/CursorService.cs` installs a scheme from inside the running app:
 no manual registry editing needed. The built `.cur`/`.ani` files ship inside the app itself: they
 are copied from `build/out/cursors/<variant>/` into `presets/cursors/<variant>/` (committed to the
 repo, picked up by the existing `presets\**\*` `Content Include` in `NNA.Wallpaper.csproj`, same as
@@ -109,7 +109,7 @@ repo, picked up by the existing `presets\**\*` `Content Include` in `NNA.Wallpap
 Routes (POST needs the usual `X-Token` header/`?t=` query, same as every other write route):
 
 - **`GET /cursor/status`** → `{ active, size, variants, backup, scheme }`.
-  `active` is `"mark"|"line"|"mono"|null` — determined by checking whether the live `Arrow` value
+  `active` is `"mark"|"line"|"mono"|null`: determined by checking whether the live `Arrow` value
   under `HKCU\Control Panel\Cursors` points inside our own `<data>\cursors\<variant>\` folder, not
   by trusting the saved setting (so it reflects reality even if something else changed the
   registry since). `variants` lists all three manifests (`id`, `name`, `description`, `files`
@@ -118,7 +118,7 @@ Routes (POST needs the usual `X-Token` header/`?t=` query, same as every other w
 - **`POST /cursor/apply`** `{ variant: "mark"|"line"|"mono", size?: 32|48|64 }` →
   `{ ok, active, applied }`. First call ever: snapshots **every** value currently under
   `HKCU\Control Panel\Cursors` (all 13 roles, `(Default)`, `Scheme Source`, and anything else
-  present, e.g. `CursorBaseSize`, `NWPen`, `UpArrow`, vendor-specific values — whatever this
+  present, e.g. `CursorBaseSize`, `NWPen`, `UpArrow`, vendor-specific values: whatever this
   machine actually has) into `<data>\cursors-backup.json`; a backup already on disk is never
   rewritten, so switching between `mark`/`line`/`mono` repeatedly always restores back to the
   *original* scheme, not the previous brand variant. Each call copies the 13 files for that
@@ -128,11 +128,11 @@ Routes (POST needs the usual `X-Token` header/`?t=` query, same as every other w
   `SystemParametersInfo(SPI_SETCURSORS, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)` so the change is
   live immediately, no logoff needed. The choice is persisted to `app.json` (`cursor.variant`,
   `cursor.size`) and silently re-applied on the next host startup if the files are missing or the
-  registry no longer points at us (e.g. after a reinstall or another app/scheme taking over) — if
+  registry no longer points at us (e.g. after a reinstall or another app/scheme taking over): if
   it already points at us, startup writes nothing.
 - **`POST /cursor/reset`** → `{ ok, restored }` (or `{ ok: false, error: "no backup" }` if there is
-  nothing to restore). Puts every backed-up value back exactly — role paths, `(Default)`,
-  `Scheme Source`, and anything else that was captured — and deletes any value that didn't exist
+  nothing to restore). Puts every backed-up value back exactly: role paths, `(Default)`,
+  `Scheme Source`, and anything else that was captured: and deletes any value that didn't exist
   before we touched the key. Broadcasts `SPI_SETCURSORS` again, clears `cursor.variant` in
   `app.json`, and deletes the backup file itself, so a second reset with nothing left to restore
   correctly reports `{ ok: false, error: "no backup" }` instead of silently no-op'ing.
@@ -150,7 +150,7 @@ what the app does, or for a machine that will never run the app). Cursor schemes
 under the per-user registry key
 `HKCU\Control Panel\Cursors`. Each value name below must point at an absolute `.cur`/`.ani` path;
 after writing them, broadcast `WM_SETTINGCHANGE` so running apps (and the shell) pick up the
-change without a logoff — that's what
+change without a logoff: that's what
 [`SystemParametersInfo(SPI_SETCURSORS, ...)`](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-systemparametersinfoa)
 does under the hood.
 
@@ -189,11 +189,11 @@ public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, stri
 ```
 
 Applying the scheme (writing the registry keys + `SPI_SETCURSORS`) is intentionally **not**
-performed by `build/cursors.py` — that script only builds and validates the files. It is instead
+performed by `build/cursors.py`: that script only builds and validates the files. It is instead
 handled by the running app, with a backup/restore the snippet above doesn't have (see "Installing
 through the app" above).
 
 ## License
 
-Original artwork (own vector geometry, no third-party assets) — MIT, same as the rest of this
+Original artwork (own vector geometry, no third-party assets): MIT, same as the rest of this
 repository. See `LICENSE` at the repo root.
