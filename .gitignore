@@ -24,3 +24,7 @@ WebView2/
 *.secret.*
 secrets/
 !*.example
+
+# Local publish output (never commit build output)
+.pubbin/
+publish/
