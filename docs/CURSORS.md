@@ -98,9 +98,56 @@ are exactly 8 animation frames each wrapping a well-formed `.cur`. It then calls
 the same API Windows itself uses to load a cursor resource, so a pass here means Windows accepts
 the file, not just that our own parser is happy with it.
 
+## Installing through the app
+
+`src/NNA.Wallpaper.Host/Services/CursorService.cs` installs a scheme from inside the running app —
+no manual registry editing needed. The built `.cur`/`.ani` files ship inside the app itself: they
+are copied from `build/out/cursors/<variant>/` into `presets/cursors/<variant>/` (committed to the
+repo, picked up by the existing `presets\**\*` `Content Include` in `NNA.Wallpaper.csproj`, same as
+`presets/taskbar`) so a normal build/install carries them without a separate asset step.
+
+Routes (POST needs the usual `X-Token` header/`?t=` query, same as every other write route):
+
+- **`GET /cursor/status`** → `{ active, size, variants, backup, scheme }`.
+  `active` is `"mark"|"line"|"mono"|null` — determined by checking whether the live `Arrow` value
+  under `HKCU\Control Panel\Cursors` points inside our own `<data>\cursors\<variant>\` folder, not
+  by trusting the saved setting (so it reflects reality even if something else changed the
+  registry since). `variants` lists all three manifests (`id`, `name`, `description`, `files`
+  count). `backup` is whether a pre-install snapshot exists. `scheme` is the current
+  `(Default)` value of the registry key (the scheme's display name).
+- **`POST /cursor/apply`** `{ variant: "mark"|"line"|"mono", size?: 32|48|64 }` →
+  `{ ok, active, applied }`. First call ever: snapshots **every** value currently under
+  `HKCU\Control Panel\Cursors` (all 13 roles, `(Default)`, `Scheme Source`, and anything else
+  present, e.g. `CursorBaseSize`, `NWPen`, `UpArrow`, vendor-specific values — whatever this
+  machine actually has) into `<data>\cursors-backup.json`; a backup already on disk is never
+  rewritten, so switching between `mark`/`line`/`mono` repeatedly always restores back to the
+  *original* scheme, not the previous brand variant. Each call copies the 13 files for that
+  variant into `<data>\cursors\<variant>\`, points all 13 registry roles at the copies, sets
+  `(Default)` to `"NNA <variant>"` and `Scheme Source` to `1` (user scheme), sets
+  `CursorBaseSize` to `size` only if that value already existed on this machine, then calls
+  `SystemParametersInfo(SPI_SETCURSORS, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)` so the change is
+  live immediately, no logoff needed. The choice is persisted to `app.json` (`cursor.variant`,
+  `cursor.size`) and silently re-applied on the next host startup if the files are missing or the
+  registry no longer points at us (e.g. after a reinstall or another app/scheme taking over) — if
+  it already points at us, startup writes nothing.
+- **`POST /cursor/reset`** → `{ ok, restored }` (or `{ ok: false, error: "no backup" }` if there is
+  nothing to restore). Puts every backed-up value back exactly — role paths, `(Default)`,
+  `Scheme Source`, and anything else that was captured — and deletes any value that didn't exist
+  before we touched the key. Broadcasts `SPI_SETCURSORS` again, clears `cursor.variant` in
+  `app.json`, and deletes the backup file itself, so a second reset with nothing left to restore
+  correctly reports `{ ok: false, error: "no backup" }` instead of silently no-op'ing.
+
+`tests/cursor-probe.ps1 -Port <p>` drives all three routes end-to-end against a headless instance,
+including the token gate and a full key-by-key comparison between the backup and what `/cursor/reset`
+actually restores; see the script's own header comment for why it is safe to run against a shared
+`HKCU` key (it always resets in a `finally` block, even on failure).
+
 ## Installing manually
 
-Cursor schemes on Windows live under the per-user registry key
+The app's own `/cursor/apply`+`/cursor/reset` routes above are the supported path and the only
+one with a backup/restore story; the steps below are the same thing done by hand (e.g. to inspect
+what the app does, or for a machine that will never run the app). Cursor schemes on Windows live
+under the per-user registry key
 `HKCU\Control Panel\Cursors`. Each value name below must point at an absolute `.cur`/`.ani` path;
 after writing them, broadcast `WM_SETTINGCHANGE` so running apps (and the shell) pick up the
 change without a logoff — that's what
@@ -141,9 +188,10 @@ public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, stri
 [Win32.Native]::SystemParametersInfo(0x0057 /* SPI_SETCURSORS */, 0, $null, 0) | Out-Null
 ```
 
-Applying the scheme (writing the registry keys + `SPI_SETCURSORS`) is a separate installer stage
-in this project and is intentionally **not** performed by `build/cursors.py` — this script only
-builds and validates the files.
+Applying the scheme (writing the registry keys + `SPI_SETCURSORS`) is intentionally **not**
+performed by `build/cursors.py` — that script only builds and validates the files. It is instead
+handled by the running app, with a backup/restore the snippet above doesn't have (see "Installing
+through the app" above).
 
 ## License
 

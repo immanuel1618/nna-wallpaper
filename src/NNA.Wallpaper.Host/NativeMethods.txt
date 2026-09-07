@@ -49,3 +49,6 @@ GetApplicationUserModelId
 CreateToolhelp32Snapshot
 Process32First
 Process32Next
+
+// Brand cursor scheme install/reset (CursorService).
+SystemParametersInfo
