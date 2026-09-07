@@ -93,7 +93,7 @@
        "y": 20.112000000000002,
        "w": 1.84,
        "h": 1.84,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -223,7 +223,7 @@
        "y": 25.5,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -269,7 +269,7 @@
        "y": 4.0,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "rect",
@@ -277,7 +277,7 @@
        "y": 26.0,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -1440,7 +1440,7 @@
        "y": 18.810000000000002,
        "w": 1.7,
        "h": 1.7,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "circle",
@@ -1509,7 +1509,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1577,7 +1577,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1645,7 +1645,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1713,7 +1713,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1781,7 +1781,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1849,7 +1849,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1917,7 +1917,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -1985,7 +1985,7 @@
         "y": 18.810000000000002,
         "w": 1.7,
         "h": 1.7,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -2421,7 +2421,7 @@
        "y": 15.532000000000002,
        "w": 1.24,
        "h": 1.24,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "circle",
@@ -2502,7 +2502,7 @@
        "y": 15.0,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "rect",
@@ -2510,7 +2510,7 @@
        "y": 15.0,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "rect",
@@ -2518,7 +2518,7 @@
        "y": 5.0,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "rect",
@@ -2526,7 +2526,7 @@
        "y": 25.0,
        "w": 2.0,
        "h": 2.0,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     }
@@ -2723,7 +2723,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -3877,7 +3877,7 @@
        "cx": 5.0,
        "cy": 3.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "circle",
@@ -3892,7 +3892,7 @@
        "cx": 25.0,
        "cy": 22.9,
        "r": 1.6,
-       "fill": "signal",
+       "fill": "white",
        "outline": null,
        "width": 1.0
       }
@@ -3937,7 +3937,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -3952,7 +3952,7 @@
         "cx": 25.0,
         "cy": 22.9,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -3996,7 +3996,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4011,7 +4011,7 @@
         "cx": 27.192031021678297,
         "cy": 23.807968978321703,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4055,7 +4055,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4070,7 +4070,7 @@
         "cx": 28.1,
         "cy": 26.0,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4114,7 +4114,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4129,7 +4129,7 @@
         "cx": 27.192031021678297,
         "cy": 28.192031021678297,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4173,7 +4173,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4188,7 +4188,7 @@
         "cx": 25.0,
         "cy": 29.1,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4232,7 +4232,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4247,7 +4247,7 @@
         "cx": 22.807968978321703,
         "cy": 28.192031021678297,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4291,7 +4291,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4306,7 +4306,7 @@
         "cx": 21.9,
         "cy": 26.0,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4350,7 +4350,7 @@
         "cx": 5.0,
         "cy": 3.0,
         "r": 1.6,
-        "fill": "signal"
+        "fill": "white"
        },
        {
         "type": "circle",
@@ -4365,7 +4365,7 @@
         "cx": 22.807968978321703,
         "cy": 23.807968978321703,
         "r": 1.6,
-        "fill": "signal",
+        "fill": "white",
         "outline": null,
         "width": 1.0
        }
@@ -4432,7 +4432,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -4496,7 +4496,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -4560,7 +4560,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -4624,7 +4624,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -4737,7 +4737,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -4770,7 +4770,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     },
@@ -4818,7 +4818,7 @@
        "cx": 4.0,
        "cy": 4.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       },
       {
        "type": "circle",
@@ -4897,7 +4897,7 @@
        "cx": 16.0,
        "cy": 16.0,
        "r": 1.6,
-       "fill": "signal"
+       "fill": "white"
       }
      ]
     }

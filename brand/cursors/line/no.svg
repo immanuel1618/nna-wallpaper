@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="16.00,16.00">
   <circle cx="16.00" cy="16.00" r="10.50" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
   <line x1="8.44" y1="23.56" x2="23.56" y2="8.44" stroke="#FFFFFF" stroke-width="2.0" stroke-linecap="round"/>
-  <circle cx="16.00" cy="16.00" r="1.60" fill="#8C1A25" stroke="none" stroke-width="1.0"/>
+  <circle cx="16.00" cy="16.00" r="1.60" fill="#FFFFFF" stroke="none" stroke-width="1.0"/>
 </svg>

@@ -11,5 +11,5 @@
   <line x1="13.50" y1="11.00" x2="13.50" y2="15.50" stroke="#0B0B0B" stroke-width="1.0"/>
   <line x1="19.50" y1="12.00" x2="19.50" y2="16.00" stroke="#0B0B0B" stroke-width="1.0"/>
   <line x1="25.50" y1="13.00" x2="25.50" y2="16.50" stroke="#0B0B0B" stroke-width="1.0"/>
-  <rect x="15.00" y="25.50" width="2.00" height="2.00" fill="#8C1A25"/>
+  <rect x="15.00" y="25.50" width="2.00" height="2.00" fill="#FFFFFF"/>
 </svg>
