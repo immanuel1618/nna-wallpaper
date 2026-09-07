@@ -62,6 +62,14 @@ public sealed class Hotkeys : IDisposable
 
     private VoiceCaptureService? _voice;
     private DispatcherTimer? _pollTimer;
+    private DispatcherTimer? _safetyTimer;
+    private int _finishing;
+
+    /// <summary>Belt-and-braces on top of VoiceCaptureService's own 60s buffer cap (which stops
+    /// growing the recording and asks to finish, but still depends on the poll timer/dispatcher
+    /// running to actually tear things down): if a press somehow hasn't finished 5s after the cap
+    /// should have fired, force it closed rather than leave the mic open and the rec indicator lit.</summary>
+    private static readonly TimeSpan SafetyTimeout = TimeSpan.FromSeconds(65);
 
     public Hotkeys(HostContext ctx, Dispatcher dispatcher)
     {
@@ -165,17 +173,36 @@ public sealed class Hotkeys : IDisposable
             return;
         }
 
-        _voice ??= new VoiceCaptureService(_ctx);
+        if (_voice is null)
+        {
+            _voice = new VoiceCaptureService(_ctx);
+            // VoiceCaptureService's own 60s buffer cap notifies on a thread-pool thread (never
+            // synchronously from its WASAPI callback); wire it to the exact same "finish" path
+            // releasing the key uses, so hitting the cap behaves like an ordinary key-up.
+            _voice.MaxDurationReached += OnMaxDurationReached;
+        }
         if (!_voice.Start(out var err))
         {
             _ctx.Log.Warn("hotkey: mic start failed: " + err);
             return;
         }
 
+        _finishing = 0;
         BroadcastRec(true);
         _pollTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = TimeSpan.FromMilliseconds(50) };
         _pollTimer.Tick += (_, _) => PollKeyState();
         _pollTimer.Start();
+
+        // Safety net in case the cap notification above is ever lost or delayed (e.g. the dispatcher
+        // is backed up): forces the same finish path 5s past where VoiceCaptureService's own cutoff
+        // should have already fired, so a press can never keep the mic open indefinitely.
+        _safetyTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = SafetyTimeout };
+        _safetyTimer.Tick += (_, _) =>
+        {
+            _ctx.Log.Warn("hotkey: safety timeout (" + SafetyTimeout.TotalSeconds + "s) hit, forcing capture to finish");
+            FinishCapture("desktop-hotkey-maxlen");
+        };
+        _safetyTimer.Start();
     }
 
     private void PollKeyState()
@@ -183,13 +210,33 @@ public sealed class Hotkeys : IDisposable
         var state = GetAsyncKeyState((int)_vk);
         var stillHeld = (state & 0x8000) != 0;
         if (stillHeld) return;
+        FinishCapture("desktop-hotkey");
+    }
 
-        _pollTimer?.Stop();
-        _pollTimer = null;
+    /// <summary>Called off-thread (thread pool) when VoiceCaptureService's 60s buffer cap fires.</summary>
+    private void OnMaxDurationReached() => FinishCapture("desktop-hotkey-maxlen");
+
+    /// <summary>Stops the poll/safety timers and the capture, and sends whatever was recorded — the
+    /// single path shared by an ordinary key-up (<see cref="PollKeyState"/>), the mic's own max-length
+    /// cutoff (<see cref="OnMaxDurationReached"/>) and the safety-net timer, guarded so only the first
+    /// caller for a given press does anything (the other two are exactly the backstops for this one).</summary>
+    private void FinishCapture(string source)
+    {
+        if (Interlocked.Exchange(ref _finishing, 1) == 1) return;
+
+        void StopTimers()
+        {
+            _pollTimer?.Stop();
+            _pollTimer = null;
+            _safetyTimer?.Stop();
+            _safetyTimer = null;
+        }
+        if (_dispatcher.CheckAccess()) StopTimers();
+        else _dispatcher.Invoke(StopTimers);
 
         var bytes = _voice?.Stop();
         BroadcastRec(false);
-        SendCaptured(bytes, "desktop-hotkey");
+        SendCaptured(bytes, source);
     }
 
     private static void BroadcastRec(bool on) => EventsService.Current?.Broadcast(new { type = "voice-rec", on });
@@ -250,6 +297,9 @@ public sealed class Hotkeys : IDisposable
     {
         try { _pollTimer?.Stop(); } catch { /* best-effort */ }
         _pollTimer = null;
+        try { _safetyTimer?.Stop(); } catch { /* best-effort */ }
+        _safetyTimer = null;
+        try { if (_voice is not null) _voice.MaxDurationReached -= OnMaxDurationReached; } catch { /* best-effort */ }
         try { _voice?.Stop(); } catch { /* best-effort */ }
         Unregister();
         try

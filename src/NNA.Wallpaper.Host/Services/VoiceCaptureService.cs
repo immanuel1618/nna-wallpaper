@@ -29,6 +29,13 @@ public sealed class VoiceCaptureService
     private WasapiCapture? _capture;
     private List<float> _mono = new();
     private int _sourceRate = TargetSampleRate;
+    private bool _capNotified;
+
+    /// <summary>Fired at most once per <see cref="Start"/> when the buffer hits <see cref="MaxSeconds"/>
+    /// of audio, on a thread-pool thread (never from inside the WASAPI callback that raised it — calling
+    /// <see cref="Stop"/> synchronously from OnDataAvailable would call back into WasapiCapture from its
+    /// own capture thread). Hotkeys wires this to the same "finish the recording" path key-release uses.</summary>
+    public event Action? MaxDurationReached;
 
     public VoiceCaptureService(HostContext ctx)
     {
@@ -71,6 +78,7 @@ public sealed class VoiceCaptureService
                 var capture = new WasapiCapture(device);
                 _sourceRate = capture.WaveFormat.SampleRate > 0 ? capture.WaveFormat.SampleRate : 48000;
                 _mono = new List<float>(_sourceRate * 2);
+                _capNotified = false;
                 capture.DataAvailable += OnDataAvailable;
                 capture.RecordingStopped += (_, e) =>
                 {
@@ -106,20 +114,36 @@ public sealed class VoiceCaptureService
         var frames = e.BytesRecorded / frameBytes;
         if (frames <= 0) return;
 
+        var notify = false;
         lock (_lock)
         {
             if (_capture is null) return; // Stop() already claimed the buffer
             var cap = (long)_sourceRate * MaxSeconds;
-            if (_mono.Count >= cap) return; // safety cutoff hit: keep the device running, stop growing the buffer
-
-            for (var i = 0; i < frames && _mono.Count < cap; i++)
+            if (_mono.Count >= cap)
             {
-                var baseIdx = i * frameBytes;
-                float sum = 0;
-                for (var c = 0; c < channels; c++) sum += ReadSample(e.Buffer, baseIdx + c * bytesPerSample, isFloat, bytesPerSample);
-                _mono.Add(sum / channels);
+                // Safety cutoff hit. Previously this just stopped growing the buffer and left the
+                // device running until the physical key-up — a held (or stuck) key could keep WASAPI
+                // capturing indefinitely. Now the cap itself ends the recording: fire the notification
+                // once (never off this thread — see MaxDurationReached's doc) so the caller stops the
+                // capture and sends what was recorded, exactly as if the key had just been released.
+                if (!_capNotified)
+                {
+                    _capNotified = true;
+                    notify = true;
+                }
+            }
+            else
+            {
+                for (var i = 0; i < frames && _mono.Count < cap; i++)
+                {
+                    var baseIdx = i * frameBytes;
+                    float sum = 0;
+                    for (var c = 0; c < channels; c++) sum += ReadSample(e.Buffer, baseIdx + c * bytesPerSample, isFloat, bytesPerSample);
+                    _mono.Add(sum / channels);
+                }
             }
         }
+        if (notify) _ = Task.Run(() => MaxDurationReached?.Invoke());
     }
 
     private static float ReadSample(byte[] buffer, int offset, bool isFloat, int bytesPerSample)

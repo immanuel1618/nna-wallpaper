@@ -187,7 +187,7 @@
     }
 
     el.addEventListener('click', function () {
-      if (loggedOut) { ctx.get('/planner/login').catch(function () {}); return; }
+      if (loggedOut) { ctx.post('/planner/login').catch(function () {}); return; }
       ctx.post('/app/settings?tab=planner').catch(function () {});
     });
 
