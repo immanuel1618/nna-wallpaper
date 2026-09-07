@@ -175,7 +175,11 @@ function renderActivePage() {
   const body = document.getElementById("page-body");
   if (!body) return;
   body.innerHTML = "";
-  page.mod.render(body, ctx());
+  // Each render gets its own host element: an async page render that resolves after the user has
+  // switched pages writes into a detached element instead of over the new page.
+  const host = el("div", { class: "page-host", "data-page": page.key });
+  body.append(host);
+  Promise.resolve(page.mod.render(host, ctx())).catch((err) => console.error("page render failed", page.key, err));
   if (state.query) highlightGroups();
 }
 

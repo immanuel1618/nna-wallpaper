@@ -4,6 +4,22 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-09-08
+
+### Added
+- Layout editor: monitors in real proportions, visible grid, drag, resize, delete, widget palette,
+  live preview on the desktop, Apply / Cancel, undo and redo, keyboard.
+- Blocks page: cards with previews (live capture from the desktop or a static picture), block pages
+  with grouped settings and plain-language help; manifests carry `description`, `icon`, `groups`, `help`.
+- Planner page: profile with Telegram avatar and name, day and week stats, TASKS sections, voice
+  settings; push-to-talk hotkey (`Ctrl+Shift+Space` by default) records through the host and sends to
+  the planner; recording indicator in the top bar.
+- Top bar and dock are composition-hosted: clicking them no longer steals focus from the active app;
+  the cursor follows the page. Popup chain logged.
+
+### Fixed
+- `player` and `stats` manifests declared a minimum size larger than the default.
+
 ## [0.3.2] - 2026-09-07
 
 ### Added

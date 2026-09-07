@@ -81,6 +81,7 @@ export async function render(container, ctx) {
   if (liveMonitors.length === 0) {
     liveMonitors = synthesizeLiveMonitors(ctx.config.monitors?.monitors || []);
   }
+  if (!container.isConnected) return; // the user switched pages while /health was in flight
 
   mountLayoutTab(container, {
     t: tt,
