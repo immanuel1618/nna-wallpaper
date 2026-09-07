@@ -1,0 +1,181 @@
+/* NNA1618 — док (stage 9): плавающая панель снизу монитора, macOS-like.
+   Окно хоста непрозрачно (фон Base, см. Dock/DockWindow.xaml.cs) — .dk-wrap остаётся прозрачным
+   и просто задаёт отступ 13px вокруг полосы, полоса (.dk-bar) несёт свой Surface-фон и границу.
+   Цвета только переменными из /ui/tokens.css (см. docs/DESIGN-SYSTEM.md), ES5 в dock.js. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  font-family: var(--font-text);
+  color: var(--ash);
+}
+
+.dk-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 13px 13px;
+}
+
+.dk-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 13px;
+  padding: 8px 13px 5px;
+  box-sizing: border-box;
+  background: rgba(22, 22, 22, .82);
+  border: 1px solid rgba(67, 67, 67, .5);
+  border-radius: 21px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ---- иконка -------------------------------------------------------------- */
+.dk-icon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--dk-size, 55px);
+  height: var(--dk-size, 55px);
+  cursor: pointer;
+}
+
+.dk-icon-img {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transform-origin: 50% 100%;
+  transition: transform 120ms ease;
+  overflow: hidden;
+}
+.dk-icon-img img,
+.dk-icon-img svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+.dk-icon-img svg { fill: var(--ash); }
+
+/* монограмма вместо иконки: не удалось извлечь (или заглушки ?mock=1) */
+.dk-icon-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(128, 128, 128, .24);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: calc(var(--dk-size, 55px) * 0.36);
+  color: var(--ash);
+}
+
+/* подпись над иконкой, только по наведению */
+.dk-icon-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(22, 22, 22, .92);
+  border: 1px solid rgba(67, 67, 67, .5);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.dk-icon:hover .dk-icon-tip { opacity: 1; }
+
+/* точка под запущенными: Steel — фоново, White — на переднем плане */
+.dk-icon-dot {
+  position: absolute;
+  bottom: -8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--steel);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.dk-icon.is-running .dk-icon-dot { opacity: 1; }
+.dk-icon.is-foreground .dk-icon-dot { background: var(--white); }
+
+/* прыжок при запуске — на внешнем контейнере, независимо от transform увеличения на .dk-icon-img */
+@keyframes dk-jump {
+  0%, 100% { transform: translateY(0); }
+  15% { transform: translateY(-21px); }
+  30% { transform: translateY(0); }
+  45% { transform: translateY(-13px); }
+  60% { transform: translateY(0); }
+  75% { transform: translateY(-8px); }
+  90% { transform: translateY(0); }
+}
+.dk-icon.is-jumping { animation: dk-jump 1.1s ease-in-out; }
+
+/* разделитель */
+.dk-sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 8px 3px;
+  background: var(--slate);
+  opacity: .5;
+}
+
+/* ---- веер папки ------------------------------------------------------- */
+.dk-fan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 68px);
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.dk-fan-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 68px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 8px;
+}
+.dk-fan-item:hover { background: rgba(128, 128, 128, .12); }
+.dk-fan-item img { width: 34px; height: 34px; object-fit: contain; }
+.dk-fan-item span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--steel);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-fan-empty {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--steel);
+  padding: 13px;
+}

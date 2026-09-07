@@ -31,6 +31,7 @@ public sealed class AppSettings
     public TaskbarSettings Taskbar { get; set; } = new();
     public TopBarSettings TopBar { get; set; } = new();
     public CursorSettings Cursor { get; set; } = new();
+    public DockSettings Dock { get; set; } = new();
     public EngineSettings Engine { get; set; } = new();
 }
 
@@ -216,4 +217,27 @@ public sealed class CursorSettings
 {
     public string? Variant { get; set; }
     public int Size { get; set; } = 32;
+}
+
+/// <summary>
+/// Our own mac-like dock at the bottom edge (stage 9). <see cref="Pinned"/> holds launch.json
+/// item ids in display order; empty means "derive automatically" (items flagged
+/// <c>"dock": true</c> in launch.json, else the first 8 items of a "work" group, else the first
+/// 8 items overall — see Services/DockService.cs). <see cref="Size"/> follows the Fibonacci row
+/// used elsewhere in the design system (34/55/89).
+/// </summary>
+public sealed class DockSettings
+{
+    public bool Enabled { get; set; } = false;
+    public string Monitors { get; set; } = "all";
+    public int Size { get; set; } = 55;
+    public bool Magnify { get; set; } = true;
+    public double MagnifyMax { get; set; } = 1.6;
+    public bool AutoHide { get; set; } = false;
+    public bool ReserveSpace { get; set; } = false;
+    public List<string> Folders { get; set; } = new() { "%USERPROFILE%\\Downloads", "%USERPROFILE%\\Desktop" };
+    public bool ShowTrash { get; set; } = true;
+    public bool ShowRunning { get; set; } = true;
+    public List<string> Pinned { get; set; } = new();
+    public SurfaceStyle Style { get; set; } = new() { Mode = "acrylic", Color = "#0B0B0B", Opacity = 0.6 };
 }

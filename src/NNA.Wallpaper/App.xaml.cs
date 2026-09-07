@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using Hardcodet.Wpf.TaskbarNotification;
+using NNA.Wallpaper.Dock;
 using NNA.Wallpaper.Engine;
 using NNA.Wallpaper.Host;
 using NNA.Wallpaper.Host.Config;
@@ -23,6 +24,7 @@ public partial class App : Application
     private TrayIcon? _tray;
     private TaskbarStyler? _taskbar;
     private TopBarManager? _topBar;
+    private DockManager? _dock;
     /// <summary>Sorted monitor ids as of the last known-good config, used by <see cref="OnConfigChanged"/>
     /// to tell "a monitor was added/removed" (needs a full reload) from "a block moved" (patched live
     /// by the wallpaper pages over /events).</summary>
@@ -138,6 +140,8 @@ public partial class App : Application
             _taskbar.Apply();
             _topBar = new TopBarManager(Host, Dispatcher);
             _topBar.Apply();
+            _dock = new DockManager(Host, Dispatcher);
+            _dock.Apply();
         }
         catch (Exception ex)
         {
@@ -219,7 +223,7 @@ public partial class App : Application
         }
         if (what == "app")
         {
-            Dispatcher.BeginInvoke(() => { try { _taskbar?.Apply(); _topBar?.Apply(); } catch (Exception ex) { Log?.Error("taskbar/top bar apply", ex); } });
+            Dispatcher.BeginInvoke(() => { try { _taskbar?.Apply(); _topBar?.Apply(); _dock?.Apply(); } catch (Exception ex) { Log?.Error("taskbar/top bar apply", ex); } });
         }
         if (what == "app" && !Args.Headless)
         {
@@ -313,6 +317,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        try { _dock?.Dispose(); } catch { }
         try { _topBar?.Dispose(); } catch { }
         try { _taskbar?.Dispose(); } catch { }
         try { _tray?.Dispose(); } catch { }

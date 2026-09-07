@@ -183,7 +183,11 @@ public sealed class WindowsService : IHostService
         return info?.ExePath is not null && IconExtractor.TryExtract(info.ExePath, info.Aumid, outFile);
     }
 
-    // --------------------------------------------------------------------------- matching (LaunchService)
+    /// <summary>The current (cached, up to 500ms stale) window list — used by DockService to detect
+    /// when the open-window set changes without re-enumerating on every poll tick.</summary>
+    public List<WindowInfo> Snapshot() => GetWindowsCached();
+
+    // --------------------------------------------------------------------------- matching (LaunchService, DockService)
 
     /// <summary>
     /// Finds an already-open window for a launch item: by AUMID first, then by the launch
@@ -224,6 +228,46 @@ public sealed class WindowsService : IHostService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Same matching rules as <see cref="FindForItem"/> but returns every match instead of the
+    /// first one — the dock needs the full window list of a pinned app (right-click menu, window
+    /// count under the running dot), not just one to raise.
+    /// </summary>
+    public List<WindowInfo> FindAllForItem(string? aumid, string? cmd)
+    {
+        var windows = EnumerateWindowsNow();
+
+        if (!string.IsNullOrEmpty(aumid))
+        {
+            var byAumid = windows.Where(w => string.Equals(w.Aumid, aumid, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (byAumid.Count > 0) return byAumid;
+        }
+
+        if (!string.IsNullOrEmpty(cmd))
+        {
+            if (Path.IsPathRooted(cmd))
+            {
+                string? full = null;
+                try { full = Path.GetFullPath(cmd); } catch { }
+                if (full is not null)
+                {
+                    var byPath = windows.Where(w => w.ExePath is not null && PathsEqual(w.ExePath, full)).ToList();
+                    if (byPath.Count > 0) return byPath;
+                }
+            }
+
+            string? name = null;
+            try { name = Path.GetFileNameWithoutExtension(cmd); } catch { }
+            if (!string.IsNullOrEmpty(name))
+            {
+                var byName = windows.Where(w => string.Equals(w.ProcessName, name, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (byName.Count > 0) return byName;
+            }
+        }
+
+        return new List<WindowInfo>();
     }
 
     /// <summary>Finds a window belonging to <paramref name="rootPid"/> or one of its descendants (up to 3 levels deep).</summary>
