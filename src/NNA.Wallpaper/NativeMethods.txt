@@ -103,3 +103,6 @@ WM_SIZE
 WM_SYSKEYDOWN
 WM_SYSKEYUP
 WindowFromPoint
+// Popup window rounded corners (PopupWindow).
+CreateRoundRectRgn
+SetWindowRgn

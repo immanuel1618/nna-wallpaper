@@ -167,8 +167,15 @@ public partial class PopupWindow : Window
         var hwnd = (HWND)new WindowInteropHelper(this).Handle;
         if (hwnd != HWND.Null)
         {
+            var wPx = (int)Math.Round(wPhysical);
+            var hPx = (int)Math.Round(hPhysical);
             PInvoke.SetWindowPos(hwnd, new HWND(-1), (int)Math.Round(leftPhysical), topPhysical,
-                (int)Math.Round(wPhysical), (int)Math.Round(hPhysical), SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
+                wPx, hPx, SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
+            // Rounded corners (13 px CSS, like the cards inside): the window is opaque, so the shape
+            // comes from a window region. The system owns the region after SetWindowRgn.
+            var r = (int)Math.Round(13 * _scale) * 2;
+            var rgn = PInvoke.CreateRoundRectRgn(0, 0, wPx + 1, hPx + 1, r, r);
+            if (!rgn.IsNull) PInvoke.SetWindowRgn(hwnd, rgn, true);
         }
     }
 
