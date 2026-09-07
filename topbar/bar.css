@@ -44,7 +44,7 @@ html, body {
   gap: 8px;
   margin-left: 18px;
   font: 500 var(--tb-font-size, 12px)/1 var(--font-mono);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--fg-body);
   white-space: nowrap;
@@ -64,8 +64,8 @@ html, body {
 .tb-mod.tb-clickable { cursor: pointer; }
 .tb-mod.tb-clickable:hover { color: var(--fg); }
 
-.tb-brand { font-family: var(--font-display); letter-spacing: 0.04em; font-size: calc(var(--tb-font-size, 12px) + 3px); }
-.tb-clock { font-family: var(--font-display); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; font-size: calc(var(--tb-font-size, 12px) + 2px); }
+.tb-brand { font-family: var(--font-display); letter-spacing: var(--track-label); font-size: calc(var(--tb-font-size, 12px) + 3px); }
+.tb-clock { font-family: var(--font-display); letter-spacing: var(--track-number); font-variant-numeric: tabular-nums; font-size: calc(var(--tb-font-size, 12px) + 2px); }
 
 /* внутренние точки составных строк (stats/media) */
 .tb-dot { color: var(--fg-muted); margin: 0 2px; }
@@ -87,7 +87,7 @@ html, body {
 
 /* ---- v2-модули: control/volume/network/battery/layout/nna -------------------------------- */
 .tb-nna svg { display: block; height: 13px; width: 13px; fill: currentColor; }
-.tb-layout { font-size: 10px; letter-spacing: 0.14em; }
+.tb-layout { font-size: 10px; letter-spacing: var(--track-label); }
 .tb-battery.is-charging .tb-icon { color: var(--white); }
 
 /* ---- tooltip: один переиспользуемый div из TB.tooltip (topbar/bar.js) -------------------- */
@@ -100,7 +100,7 @@ html, body {
   padding: 5px 8px;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--fg-body);
   pointer-events: none;

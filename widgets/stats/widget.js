@@ -3,49 +3,69 @@
   'use strict';
   var N = window.NNA, C = N.config, L = C.labels || {};
 
+  /* Стрелки NET (down/up): маленькие inline-SVG вместо символов ↓/↑ — см. docs/DESIGN-SYSTEM.md
+     (никаких пиктограмм-символов в строках интерфейса). Заливки нет, обводка currentColor —
+     стиль в .st-net-arrow (wallpaper/nna-blocks.css). */
+  var ARROW_DOWN_D = 'M12 4 L12 16 M6 10 L12 16 L18 10';
+  var ARROW_UP_D = 'M12 20 L12 8 M6 14 L12 8 L18 14';
+  function arrow(d) { var s = N.svg(d); s.setAttribute('class', 'st-net-arrow'); return s; }
+
   N.stats = function (mount, ctx) {
     var b = N.block('stats', L.system || 'SYSTEM', { needsHelper: true });
     var corner = N.el('div', 'nna-corner');
     b.root.appendChild(corner);
 
+    /* Сетка 2×2 (CPU, GPU, RAM, NET) сверху, диски отдельной секцией снизу — число метрики
+       живёт в одной строке со своей меткой (метка слева моно, число справа Roboto Flex 42),
+       а не крупным блоком у правого края колонки; см. nna-blocks.css:.nna-stats. */
     var grid = N.el('div', 'st-grid');
-    var colA = N.el('div', 'st-col'), colB = N.el('div', 'st-col');
-    grid.appendChild(colA); grid.appendChild(colB);
+    var metrics = N.el('div', 'st-metrics');
+    grid.appendChild(metrics);
     b.body.appendChild(grid);
 
     // --- CPU
-    var cpu = row(colA, 'CPU');
+    var cpu = row(metrics, 'CPU');
     var cores = N.el('div', 'st-cores');
     cpu.root.appendChild(cores);
     var coreBars = [];
 
     // --- GPU
-    var gpu = row(colA, 'GPU');
+    var gpu = row(metrics, 'GPU');
     var vram = barLine(gpu.root, 'VRAM');
 
     // --- RAM
-    var ram = row(colB, 'RAM');
+    var ram = row(metrics, 'RAM');
     var ramBar = barLine(ram.root, 'USED');
 
-    // --- DISKS
-    var disks = row(colB, 'DISKS', true);
-    var diskLines = {};
-
     // --- NET
-    var net = row(colB, 'NET', true);
-    var netUp = N.el('div', 'st-net'), netDown = N.el('div', 'st-net');
+    var net = row(metrics, 'NET');
+    var netDown = N.el('div', 'st-net'), netUp = N.el('div', 'st-net');
     net.root.appendChild(netDown); net.root.appendChild(netUp);
+    var netDownK = N.el('span', 'st-net-k nna-mono'), netUpK = N.el('span', 'st-net-k nna-mono');
+    netDownK.appendChild(arrow(ARROW_DOWN_D)); netDownK.appendChild(N.text ? N.text('DOWN') : document.createTextNode('DOWN'));
+    netUpK.appendChild(arrow(ARROW_UP_D)); netUpK.appendChild(N.text ? N.text('UP') : document.createTextNode('UP'));
     var netDownV = N.el('span', 'st-net-v nna-big'), netUpV = N.el('span', 'st-net-v nna-big');
-    netDown.appendChild(N.el('span', 'st-net-k nna-mono', '↓ DOWN')); netDown.appendChild(netDownV);
-    netUp.appendChild(N.el('span', 'st-net-k nna-mono', '↑ UP')); netUp.appendChild(netUpV);
+    netDown.appendChild(netDownK); netDown.appendChild(netDownV);
+    netUp.appendChild(netUpK); netUp.appendChild(netUpV);
+
+    // --- DISKS (во всю ширину, под сеткой 2×2 — числа CPU/GPU/RAM больше не наезжают на список)
+    var disksWrap = N.el('div', 'st-disks');
+    var disksHead = N.el('div', 'st-disks-head');
+    var disksK = N.el('span', 'st-k nna-mono', 'DISKS');
+    var disksV = N.el('span', 'st-disks-v nna-mono', '');
+    disksHead.appendChild(disksK); disksHead.appendChild(disksV);
+    var disksList = N.el('div', 'st-disks-list');
+    disksWrap.appendChild(disksHead); disksWrap.appendChild(disksList);
+    grid.appendChild(disksWrap);
+    var diskLines = {};
 
     mount.appendChild(b.root);
 
-    function row(col, name, compact) {
-      var r = N.el('div', 'st-row' + (compact ? ' is-compact' : ''));
+    function row(col, name) {
+      var r = N.el('div', 'st-row');
       var head = N.el('div', 'st-head');
       var k = N.el('span', 'st-k nna-mono', name);
-      var v = N.el('span', 'st-v nna-big', '—');
+      var v = N.el('span', 'st-v nna-big', '·');
       var sub = N.el('div', 'st-sub nna-mono', '');
       head.appendChild(k); head.appendChild(v);
       r.appendChild(head); r.appendChild(sub);
@@ -90,22 +110,22 @@
         vram.fill.style.width = vp.toFixed(1) + '%';
         vram.text.textContent = (s.gpu.mem_used_mb / 1024).toFixed(1) + ' / ' + (s.gpu.mem_total_mb / 1024).toFixed(0) + ' GB';
       } else {
-        gpu.v.textContent = '—'; gpu.sub.textContent = 'NO GPU DATA';
+        gpu.v.textContent = '·'; gpu.sub.textContent = 'NO GPU DATA';
       }
       // RAM
       ram.v.textContent = pct(s.mem.percent);
       ram.sub.textContent = N.fmtGB(s.mem.used) + ' / ' + N.fmtGB(s.mem.total) + ' GB';
       ramBar.fill.style.width = s.mem.percent + '%';
       ramBar.text.textContent = N.fmtGB(s.mem.total - s.mem.used) + ' GB FREE';
-      // DISKS
+      // DISKS (секция во всю ширину под сеткой 2×2, см. disksWrap/disksList выше)
       (s.disks || []).forEach(function (d) {
         var line = diskLines[d.mount];
-        if (!line) { line = diskLines[d.mount] = barLine(disks.root, d.mount); }
+        if (!line) { line = diskLines[d.mount] = barLine(disksList, d.mount); }
         line.fill.style.width = d.percent + '%';
         line.text.textContent = N.fmtGB(d.total - d.used) + ' GB FREE';
         line.bar.classList.toggle('is-hot', d.percent > 90);
       });
-      disks.v.textContent = (s.disks || []).length + ' VOL';
+      disksV.textContent = (s.disks || []).length + ' VOL';
       // NET
       netDownV.textContent = N.fmtBytes(s.net.down_bps, true);
       netUpV.textContent = N.fmtBytes(s.net.up_bps, true);

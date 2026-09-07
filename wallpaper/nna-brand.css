@@ -1,6 +1,17 @@
 /* NNA1618 — общий стиль блоков для обоих обоев. Токены v3: H:\brand\tokens-v3.css, см. ui/tokens.css. */
 @import url('/ui/tokens.css');
 
+/* ---- живая тема (wallpaper/layout.js:setThemeVars из /config) ------------
+   --font-scale: множитель var(--fs-*) у .nna-big/.nna-label/.nna-body-text (theme.fontScale
+   90/100/110 -> 0.9/1/1.1; default 1 — без изменения вида).
+   --accent: точка состояния и подчёркивание активного пункта у .nna-label b (theme.accent
+   none/signal/chrome -> transparent/var(--signal)/var(--chrome-flat); default transparent —
+   без изменения вида, пока элемент явно не помечен .is-accented/.nna-dot-state). */
+:root {
+  --font-scale: 1;
+  --accent: transparent;
+}
+
 /* ---- блок ---------------------------------------------------------------- */
 .nna-block {
   position: relative;
@@ -18,7 +29,7 @@
 
 .nna-label {
   position: absolute; top: 24px; left: 30px;
-  font: 400 13px/1 var(--font-mono);
+  font: 400 calc(var(--fs-13) * var(--font-scale))/1 var(--font-mono);
   letter-spacing: var(--track-label); text-transform: uppercase;
   color: var(--fg-muted);
   z-index: 6; pointer-events: none;
@@ -27,6 +38,14 @@
 .nna-label b { color: var(--fg); font-weight: 500; }
 .nna-label.is-clickable { pointer-events: auto; cursor: pointer; }
 .nna-label.is-clickable:hover b { text-decoration: underline; text-underline-offset: 3px; }
+/* акцент темы: точка состояния (--accent, 5px) и подчёркивание активного пункта — опциональные
+   классы, ничего в текущей разметке их не ставит, поэтому default (--accent: transparent)
+   не меняет вид ни одного блока. */
+.nna-label b.is-accented { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.nna-label .nna-dot-state {
+  display: inline-block; width: var(--sp-5); height: var(--sp-5); margin-left: var(--sp-5);
+  border-radius: 50%; background: var(--accent); vertical-align: middle;
+}
 .nna-corner {
   position: absolute; top: 24px; right: 30px;
   font: 400 13px/1 var(--font-mono);
@@ -35,16 +54,20 @@
 }
 
 /* ---- типографика --------------------------------------------------------- */
-.nna-big { font-family: var(--font-display); font-variation-settings: "wdth" 148, "wght" 300; color: var(--fg); line-height: 0.95; letter-spacing: var(--track-display); font-variant-numeric: tabular-nums; }
-.nna-mono { font-family: var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; }
+/* font-size — база под --font-scale; конкретные блоки (nna-blocks.css) почти всегда её
+   переопределяют собственным px (тот же уровень специфичности, файл грузится позже — см.
+   wallpaper/index.html), так что видимый эффект --font-scale сегодня — только .nna-label и
+   .nna-body-text; .nna-big отмасштабирован на будущее для мест без собственного размера. */
+.nna-big { font-family: var(--font-display); font-variation-settings: "wdth" 148, "wght" 300; color: var(--fg); line-height: 0.95; letter-spacing: var(--track-display); font-variant-numeric: tabular-nums; font-size: calc(var(--fs-68) * var(--font-scale)); }
+.nna-mono { font-family: var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; }
 .nna-muted { color: var(--fg-muted); }
-.nna-body-text { color: var(--fg-body); }
+.nna-body-text { color: var(--fg-body); font-size: calc(var(--fs-16) * var(--font-scale)); }
 
 /* ---- кнопки -------------------------------------------------------------- */
 .nna-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font: 500 11px/1 var(--font-mono);
-  letter-spacing: 0.18em; text-transform: uppercase;
+  letter-spacing: var(--track-label); text-transform: uppercase;
   color: var(--fg);
   background: var(--btn);
   border: 1px solid rgba(67, 67, 67, 0.7);
@@ -85,20 +108,20 @@
   content: 'HELPER OFFLINE';
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font: 500 11px var(--font-mono); letter-spacing: 0.34em;
+  font: 500 11px var(--font-mono); letter-spacing: var(--track-label);
   color: var(--fg-muted);
   background: rgba(11, 11, 11, 0.72);
   z-index: 9;
 }
 .nna-toast {
   position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px);
-  font: 500 11px var(--font-mono); letter-spacing: 0.22em; text-transform: uppercase;
+  font: 500 11px var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase;
   color: var(--bg-surface); background: var(--fg);
   padding: 12px 22px; border-radius: 111px;
   opacity: 0; transition: opacity 0.2s, transform 0.2s; z-index: 99; pointer-events: none;
 }
 .nna-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.nna-dim { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 9999; }
+.nna-dim { position: fixed; inset: 0; background: var(--base); pointer-events: none; z-index: 9999; }
 .nna-dots { display: inline-flex; gap: 6px; }
 .nna-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg-ghost); }
 .nna-dots i.is-on { background: var(--fg); }

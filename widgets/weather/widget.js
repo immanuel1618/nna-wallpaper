@@ -7,8 +7,8 @@
   N.weather = function (mount, ctx) {
     var b = N.block('weather', L.weather || 'WEATHER', { needsHelper: true });
     var wrap = N.el('div', 'we-wrap');
-    var city = N.el('div', 'we-city nna-mono', '—');
-    var temp = N.el('div', 'we-temp nna-big', '—');
+    var city = N.el('div', 'we-city nna-mono', 'нет данных');
+    var temp = N.el('div', 'we-temp nna-big', '·');
     var cond = N.el('div', 'we-cond nna-mono', '');
     var meta = N.el('div', 'we-meta nna-mono', '');
     var days = N.el('div', 'we-days');
@@ -30,10 +30,10 @@
       return { v: v, d: d, fmtT: fmtT, fmtD: fmtD };
     });
 
-    function deg(x) { return x == null ? '—' : Math.round(x) + '°'; }
+    function deg(x) { return x == null ? '·' : Math.round(x) + '°'; }
     function renderWeather(w) {
-      city.textContent = w.name || '—';
-      if (!w.ok) { temp.textContent = '—'; cond.textContent = 'NO DATA'; meta.textContent = ''; return; }
+      city.textContent = w.name || 'нет данных';
+      if (!w.ok) { temp.textContent = '·'; cond.textContent = 'NO DATA'; meta.textContent = ''; return; }
       temp.textContent = deg(w.temp);
       cond.textContent = w.text || '';
       meta.textContent = 'FEELS ' + deg(w.feels) + ' · WIND ' + Math.round(w.wind_ms || 0) + ' M/S · HUM ' + Math.round(w.humidity || 0) + '%';

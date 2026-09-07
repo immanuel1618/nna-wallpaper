@@ -41,9 +41,9 @@
       '.nna-planner .pl-sec{display:flex;flex-direction:column;gap:10px;min-height:0}' +
       '.nna-planner .pl-sec.is-grow{flex:1;min-height:0}' +
       '.nna-planner .pl-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px}' +
-      '.nna-planner .pl-k{font-size:11px;color:var(--fg-muted);letter-spacing:0.18em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-k{font-size:11px;color:var(--fg-muted);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono)}' +
       '.nna-planner .pl-v{font-size:64px}' +
-      '.nna-planner .pl-sub{font-size:11px;color:var(--fg-body);letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-sub{font-size:11px;color:var(--fg-body);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono)}' +
       '.nna-planner .pl-list{display:flex;flex-direction:column;gap:16px;overflow:hidden;min-height:0}' +
       '.nna-planner .pl-row{display:flex;align-items:center;gap:14px;cursor:pointer;min-width:0}' +
       '.nna-planner .pl-row:hover .pl-title{color:var(--fg)}' +
@@ -51,10 +51,10 @@
       '.nna-planner .pl-row.is-done .pl-check{background:var(--fg);border-color:var(--fg)}' +
       '.nna-planner .pl-row.is-done .pl-title{text-decoration:line-through;color:var(--fg-muted)}' +
       '.nna-planner .pl-title{font-size:15px;color:var(--fg-body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color 0.2s}' +
-      '.nna-planner .pl-time{font-size:10px;color:var(--fg-muted);letter-spacing:0.16em;font-family:var(--font-mono);flex:none}' +
+      '.nna-planner .pl-time{font-size:10px;color:var(--fg-muted);letter-spacing:var(--track-number);font-family:var(--font-mono);flex:none}' +
       '.nna-planner .pl-time.is-over{color:var(--fg)}' +
-      '.nna-planner .pl-more{font-size:10px;color:var(--fg-muted);letter-spacing:0.18em;font-family:var(--font-mono);text-transform:uppercase}' +
-      '.nna-planner .pl-empty{font-size:11px;color:var(--fg-muted);letter-spacing:0.18em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-more{font-size:10px;color:var(--fg-muted);letter-spacing:var(--track-label);font-family:var(--font-mono);text-transform:uppercase}' +
+      '.nna-planner .pl-empty{font-size:11px;color:var(--fg-muted);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono)}' +
       '.nna-planner .pl-brief{font-size:12px;color:var(--fg-body);line-height:1.55;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}' +
       '.nna-planner .pl-meet{display:flex;align-items:baseline;gap:14px;min-width:0}' +
       '.nna-planner .pl-meet-t{font-family:var(--font-display);font-size:22px;color:var(--fg);flex:none;font-variant-numeric:tabular-nums}' +
@@ -63,7 +63,7 @@
       '.nna-planner .pl-chip{padding:9px 14px;font-size:10px}' +
       '.nna-planner .pl-money-v{font-size:38px}' +
       '.nna-planner .pl-cats{display:flex;flex-direction:column;gap:6px}' +
-      '.nna-planner .pl-cat{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--fg-body);letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-cat{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--fg-body);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono)}' +
       '.nna-planner .pl-add{display:flex;gap:12px;align-items:center;flex:none}' +
       '.nna-planner .pl-add-btn{flex:1;justify-content:flex-start;text-align:left;padding:14px 22px;font-size:11px}' +
       '.nna-planner .pl-mic-wrap{position:relative;width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center}' +
@@ -72,14 +72,14 @@
       '.nna-planner .pl-mic{width:44px;height:44px;flex:none;position:relative;z-index:1}' +
       '.nna-planner .pl-mic svg{width:18px;height:18px;fill:currentColor}' +
       '.nna-planner .pl-mic.is-rec{background:var(--fg);color:var(--bg-surface);border-color:var(--fg)}' +
-      '.nna-planner .pl-voice-timer{font-size:10px;color:var(--fg-muted);letter-spacing:0.12em;font-family:var(--font-mono);font-variant-numeric:tabular-nums;flex:none;opacity:0;transition:opacity 0.15s}' +
+      '.nna-planner .pl-voice-timer{font-size:10px;color:var(--fg-muted);letter-spacing:var(--track-number);font-family:var(--font-mono);font-variant-numeric:tabular-nums;flex:none;opacity:0;transition:opacity 0.15s}' +
       '.nna-planner .pl-voice-timer.is-show{opacity:1}' +
       // .is-hidden (shared utility, display:none!important) takes the note/result panel fully out
       // of .nna-planner's gapped flex flow while empty — a short block (e.g. the vertical layout's
       // TASKS slot, ~93px for five stacked sections) would otherwise lose flex height to their
       // gap alone even at zero content height, since flex `gap` applies between rendered items
       // regardless of how small they are.
-      '.nna-planner .pl-voice-note{font-size:9px;color:var(--fg-muted);letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);margin-top:8px}' +
+      '.nna-planner .pl-voice-note{font-size:9px;color:var(--fg-muted);letter-spacing:var(--track-label);text-transform:uppercase;font-family:var(--font-mono);margin-top:8px}' +
       '.nna-planner .pl-voice-result{display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:14px 18px;border-radius:16px;background:var(--btn);border:1px solid rgba(67,67,67,0.5);opacity:0;transition:opacity 0.2s}' +
       '.nna-planner .pl-voice-result.is-show{opacity:1}' +
       '.nna-planner .pl-voice-result-text{font-size:12px;color:var(--fg-body);line-height:1.5}' +
@@ -87,7 +87,7 @@
       '.nna-planner .pl-voice-undo{padding:9px 16px;font-size:10px}' +
       '.nna-planner .pl-login{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}' +
       '.nna-planner .pl-login .pl-brand{font-size:92px;font-size:16cqh}' +
-      '.nna-planner .pl-login .pl-hint{font-size:12px;color:var(--fg-muted);letter-spacing:0.4em;font-family:var(--font-mono);text-transform:uppercase}' +
+      '.nna-planner .pl-login .pl-hint{font-size:12px;color:var(--fg-muted);letter-spacing:var(--track-label);font-family:var(--font-mono);text-transform:uppercase}' +
       '.nna-planner .pl-login .nna-btn{padding:14px 26px;font-size:11px}';
     document.head.appendChild(style);
   }
@@ -209,7 +209,7 @@
 
     function renderBriefing(data, col) {
       var sec = section(text('plannerBriefing', 'БРИФИНГ'));
-      var p = N.el('div', 'pl-brief', data.briefing || text('plannerNoBriefing', '—'));
+      var p = N.el('div', 'pl-brief', data.briefing || text('plannerNoBriefing', 'НЕТ ДАННЫХ'));
       p.title = data.briefing || '';
       sec.appendChild(p);
       col.appendChild(sec);
@@ -221,7 +221,7 @@
       if (!meetings.length) sec.appendChild(N.el('div', 'pl-empty', text('plannerNoMeetings', 'НЕТ ВСТРЕЧ')));
       meetings.forEach(function (m) {
         var row = N.el('div', 'pl-meet');
-        row.appendChild(N.el('span', 'pl-meet-t', fmtTime(m.starts_at) || '—'));
+        row.appendChild(N.el('span', 'pl-meet-t', fmtTime(m.starts_at) || '·'));
         var name = N.el('span', 'pl-meet-n', m.title || '');
         name.title = m.title || '';
         row.appendChild(name);
@@ -503,7 +503,7 @@
       voiceUiActive = true;
       if (voiceResultEl) {
         voiceResultEl.textContent = '';
-        voiceResultEl.appendChild(N.el('div', 'pl-voice-result-text', recognized || '—'));
+        voiceResultEl.appendChild(N.el('div', 'pl-voice-result-text', recognized || text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ')));
         var batchId = json.batch_id;
         if (batchId && entries.length) {
           var row = N.el('div', 'pl-voice-result-row');

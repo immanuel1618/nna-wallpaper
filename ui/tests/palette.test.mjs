@@ -82,3 +82,86 @@ for (const file of targets) {
     assert.deepEqual(offenders, [], `off-palette colors in ${rel}: ${offenders.join(", ")}`);
   });
 }
+
+/* ── js/html: то же правило распространяется на строковые литералы и inline-style,
+   которые собирают DOM/canvas из скриптов (topbar/dock/wallpaper/widgets/settings/ui).
+   Комментарии (// и /* *\/) вырезаются перед сканом, presets/ исключён целиком. ── */
+
+function listFiles(dir, exts) {
+  const out = [];
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const name of entries) {
+    if (name === "presets") continue;
+    const full = path.join(dir, name);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      out.push(...listFiles(full, exts));
+    } else if (exts.some((ext) => name.endsWith(ext))) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+// Убирает /* ... */ и // ... комментарии, сохраняя переносы строк (номера строк не сбиваются).
+function stripJsComments(src) {
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const two = src.slice(i, i + 2);
+    if (two === "/*") {
+      const end = src.indexOf("*/", i + 2);
+      const block = end === -1 ? src.slice(i) : src.slice(i, end + 2);
+      out += block.replace(/[^\n]/g, " ");
+      i += block.length;
+    } else if (two === "//") {
+      let end = src.indexOf("\n", i);
+      if (end === -1) end = n;
+      out += " ".repeat(end - i);
+      i = end;
+    } else {
+      out += src[i];
+      i += 1;
+    }
+  }
+  return out;
+}
+
+// Убирает <!-- ... --> комментарии из HTML, сохраняя переносы строк.
+function stripHtmlComments(src) {
+  return src.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
+}
+
+const jsHtmlRoots = ["ui", "topbar", "dock", "wallpaper", "widgets", "settings"].map((d) =>
+  path.join(repoRoot, d)
+);
+const jsHtmlTargets = new Set(jsHtmlRoots.flatMap((dir) => listFiles(dir, [".js", ".html"])));
+
+test("scanned js/html file set is non-empty (sanity check for the glob above)", () => {
+  assert.ok(jsHtmlTargets.size >= 10, `expected at least 10 js/html files, found ${jsHtmlTargets.size}`);
+});
+
+for (const file of jsHtmlTargets) {
+  const rel = path.relative(repoRoot, file);
+  test(`palette: ${rel} uses only NNA1618 v3 hex colors (strings/inline-style)`, () => {
+    const raw = readFileSync(file, "utf8");
+    const src = file.endsWith(".html") ? stripHtmlComments(raw) : stripJsComments(raw);
+    const offenders = [];
+    let m;
+    HEX_RE.lastIndex = 0;
+    while ((m = HEX_RE.exec(src))) {
+      const hex = expandShortHex(m[1]).toUpperCase();
+      if (!ALLOWED.has(hex)) {
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders.push(`#${m[1]} (as #${hex}) at line ${line}`);
+      }
+    }
+    assert.deepEqual(offenders, [], `off-palette colors in ${rel}: ${offenders.join(", ")}`);
+  });
+}
