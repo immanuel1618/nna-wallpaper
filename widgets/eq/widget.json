@@ -1,6 +1,7 @@
 {
   "id": "eq",
   "name": "Audio equalizer",
+  "title": { "ru": "Эквалайзер", "en": "Equalizer" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "eq" },

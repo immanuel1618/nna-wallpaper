@@ -148,10 +148,10 @@ the right: the owner's chosen reference is macOS, the palette/type stay on token
 |---|---|---|---|---|
 | 1 | α | `layout` | `pages/layout.js` | thin wrapper owning this page's own ru/en dictionary (`i18n.js` was being edited by another agent this stage) that delegates to `layout-editor.js`'s `mountLayoutTab`: see "Layout: canvas, live preview, Apply/Cancel/Undo" below. |
 | 2 | β | `blocks` | `pages/blocks.js` | widget/launch/events row list (icon + on/off toggle) on the left, `forms.js`-generated form on the right. The toggle flips `widgetSettings[id].enabled` (default true): a forward-compatible flag, not read by any widget yet; full preview cards are a later stage. |
-| 3 | γ | `appearance` | `pages/appearance.js` | dim/radius/gap/pad/blur/fps/pause: the old geometry-only γ tab, rebuilt on `NNAUI.slider`/`NNAUI.toggle`. |
+| 3 | γ | `appearance` | `pages/appearance.js` | dim/radius/gap/pad/blur/fps/pause: the old geometry-only γ tab, rebuilt on `NNAUI.slider`/`NNAUI.toggle`, plus a "font and accent" card (owner decision D6): `theme.fontScale` (90/100/110%, segmented) and `theme.accent` (`none`/`signal`/`chrome`, segmented): read by the wallpaper page. |
 | 4 | δ | `topbar` | `pages/topbar.js` | new page: our own always-on-top bar (`app.topBar`). Enable/monitors/height, style (segmented mode + color + opacity), auto-hide/reserve-space, and a drag-and-drop module editor across three zones (left/center/right, HTML5 DnD). Replaces the inline "top bar" section the old ζ tab used to render. |
-| 5 | ε | `dock` | `pages/dock.js` | new page, `app.dock` (`DockSettings`: **not a real `AppSettings` field in this branch**, see "Dock: not persisted" below). |
-| 6 | ζ | `taskbar` | `pages/taskbar.js` | the real Windows taskbar: preset picker + per-state styling + Windows toggles, moved in from `taskbar-tab.js` (now `mountTaskbarTab(el, {..., showTopBar:false})`: the top-bar section moved to its own page, item 4). Adds a "Windows taskbar mode" select (`normal` / `autohide` / `win-only`) next to the existing tri-state toggles. |
+| 5 | ε | `dock` | `pages/dock.js` | new page, `app.dock` (`DockSettings` in `AppSettings.cs`): enable/monitors/size, magnify, auto-hide/reserve-space, folders/pinned/trash/running, style (segmented mode + palette-swatch color + opacity). Round-trips through `PUT /config` like every other page. |
+| 6 | ζ | `taskbar` | `pages/taskbar.js` | the real Windows taskbar: preset picker (a collapsed "Advanced" card holds JSON import/export) + per-state styling + Windows toggles, moved in from `taskbar-tab.js` (now `mountTaskbarTab(el, {..., showTopBar:false})`: the top-bar section moved to its own page, item 4). Adds a "Windows taskbar mode" select (`normal` / `autohide` / `win-only`, `TaskbarWindowsSettings.Mode`) next to the existing tri-state toggles. Fully on the design system now: `NNAUI.select`/`toggle`/`slider`, `.ui-btn`, and `settings/icons.js` glyphs (`chevron-up/down`, `close`, `arrow-up/down`) instead of the old ▲/▼/✕ text symbols. |
 | 7 | η | `cursor` | `pages/cursor.js` | the three brand cursor variants (`GET/POST /cursor/*`), preview cards built from the real `arrow.svg`/`hand.svg` copied to `settings/assets/cursors/<variant>/` (source: `brand/cursors/<variant>/*.svg`), size 32/48/64, apply/reset, backup status. |
 | 8 | θ | `planner` | `pages/planner.js` | login status + what-to-show: old δ tab, carried over near-verbatim; redesign is a later stage. |
 | 9 | ι | `general` | `pages/general.js` | autostart, language, API port, updates, **microphone pick** (new: `GET/PUT /audio/capture-device`, used by the planner voice block), import from folder, data/log folders. |
@@ -175,8 +175,9 @@ and only **Apply** writes it to `monitors.json`.
   mutual position (hidden when there is only one), and a big editable grid for the selected
   monitor: thin `Slate` grid lines honoring `colWeights`/`gap`/`pad`, hatched `Steel` bars for a
   reserved top bar/dock (`app.topBar`/`app.dock`) when enabled, block cards (icon from
-  `settings/icons.js` by widget id, else the first letter; delete button; a single bottom-right
-  resize handle), a widget palette on the right (click adds via `layout-model.js`'s `addBlock`
+  `settings/icons.js` by the widget manifest's `icon` field, else the generic "blocks" tile:
+  never a bare letter initial; name from the manifest's `title:{ru,en}`, falling back to `name`;
+  delete button; a single bottom-right resize handle), a widget palette on the right (click adds via `layout-model.js`'s `addBlock`
   auto-placement), and keyboard shortcuts on the focused canvas (arrows move, Shift+arrows resize,
   Delete/Backspace removes, Ctrl+Z/Ctrl+Y undo/redo). Dragging shows a dashed "ghost" at the
   snapped target cell while the card itself follows the pointer. It never mutates model state or
@@ -248,7 +249,12 @@ keys (`alpha`→layout, `beta`→blocks, `gamma`→appearance, `delta`→planner
    matches against. Prefer `window.NNAUI.select/toggle/slider/segmented` for controls; wrap
    `select`/`slider` in `settingRow` (not directly in a bare flex row): both set `width:100%` on
    themselves, and `settingRow`'s `.row-control` column is what caps that width so it doesn't
-   swallow the row's label.
+   swallow the row's label. Wrap the page body in `.page-narrow` or `.page-wide` (design-system.css
+   sets both to `max-width: 760px`: one content width across every page, System Settings-style;
+   the layout (α) canvas is the deliberate exception, see `layout.css`'s `.lay-page`). A surface
+   color needs a palette, not a picker: use `paletteSwatchField(mount, t, hexValue, onChange)`
+   (`dom.js`) rather than `<input type="color">`. A collapsed-by-default card (JSON import/export,
+   advanced settings) is `collapsibleCard(id, titleText, ...rows)`.
 3. Register the page in `settings/shell.js`'s `PAGES` array (icon in `settings/icons.js`'s
    `ICONS`, nav label key `nav_<name>` in `i18n.js`), and add the key to
    `settings/shell-logic.js`'s `mapTabName` passthrough list.
@@ -266,21 +272,30 @@ adds `.match` (a Signal-colored left border) to any group whose title contains t
 light-weight, DOM-scan approach rather than routing every page's groups through a shared
 metadata structure.
 
-### Dock: not persisted yet
+### Dock and taskbar mode: now persisted
 
-`pages/dock.js` always renders (with defaults when `app.dock` is absent) and calls `PUT /config
-{app:{dock:{...}}}` on every change: the request succeeds (`{ok:true}`), but nothing is actually
-saved: `AppSettings` has no `Dock` property in this branch yet (it ships from a parallel branch),
-and `ConfigApiService.PutConfig` deserializes the merged `app` patch straight into `AppSettings`
-with `System.Text.Json`'s default behavior of silently ignoring unknown members (see `Json.cs`:
-no `UnmappedMemberHandling.Disallow`). The page shows a hint line saying so when `app.dock` is
-absent from `GET /config/full`. The taskbar page's new "Windows taskbar mode" select
-(`taskbar.windows.mode`) has the same fate for the same reason (`TaskbarWindowsSettings` has no
-`Mode` property yet): both are wired ahead of their C# fields on purpose, so the pages need no
-further JS changes once those fields land.
+`AppSettings.Dock` (`DockSettings`) and `TaskbarWindowsSettings.Mode` both landed in this branch's
+`AppSettings.cs`, so `pages/dock.js` and the taskbar page's "Windows taskbar mode" select round-trip
+through `PUT /config`/`GET /config/full` like every other field: no more "not persisted yet" hint.
+
+### Palette-only surface colors (no color pickers)
+
+Every surface-color row (`pages/topbar.js`, `pages/dock.js`, `pages/taskbar.js`'s per-state cards,
+`forms.js`, `pages/blocks.js`'s widget `color` settings) uses `dom.js`'s `paletteSwatchField`
+instead of a native `<input type="color">`: a `NNAUI.segmented` restricted to the four neutral
+palette tones (Base/Surface/Slate/Steel: see `docs/DESIGN-SYSTEM.md`), each item prefixed with a
+small color swatch. The stored value is still a plain hex string; only the picker UI changed.
+
+### Signal is a mark, not a color for text or a full border
+
+Per the brand rule (Signal only as a dot/serif/underline, never body text or a whole shape's
+outline): error/match/conflict states now keep their frame neutral (Slate/Line) and their text
+Ash, with Signal reduced to a small dot or a 2px left notch: see `.hdr-status.err`, `.group.match`,
+`.toast`, `.lay-block.bad`, `.lay-palette-item.no-room` in `design-system.css`/`layout.css`.
 
 Window rules (unchanged): no emoji, no exclamation marks, no em/en dashes, uppercase mono labels
-where the old tabs used them, dark theme, default size 1100x720, minimum 900x600.
+where the old tabs used them, dark theme, default size 1100x720, minimum 900x600. Enforced for
+every settings page's string literals by `settings/tests/voice.test.mjs` (`node --test`).
 
 ---
 

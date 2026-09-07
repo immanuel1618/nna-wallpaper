@@ -7,23 +7,22 @@
 // history and when to POST /layout/preview. See docs/SETTINGS.md "Раскладка: холст" for the
 // state/actions contract.
 
-import { el } from "./dom.js";
+import { el, widgetLabel } from "./dom.js";
 import { ICONS } from "./icons.js";
 import { clampToGrid } from "./layout-model.js";
 
 const MAX_STAGE_H = 560;
 const MIN_STAGE_H = 220;
 const MAX_MINIMAP_H = 96;
+const MIN_MINIMAP_MON_W = 144; // --sp-144: a monitor thumbnail on the minimap is never narrower than this
 
-function iconFor(id) {
-  return ICONS[id] || null;
-}
-
-function widgetIcon(id) {
-  const svg = iconFor(id);
+// `iconName` is the widget manifest's own `icon` field (see widgets/<id>/widget.json), not the
+// widget id — the two used to be assumed equal (they mostly aren't: "photos" vs. icon "photo",
+// "planner" vs. icon "tasks"), which silently fell back to a bare capital-letter initial instead
+// of the real glyph. Falls back to the generic "blocks" tile icon, never a letter.
+function widgetIcon(iconName) {
   const span = el("span", { class: "lay-block-icon" });
-  if (svg) span.innerHTML = svg;
-  else span.textContent = (id || "?").slice(0, 1).toUpperCase();
+  span.innerHTML = ICONS[iconName] || ICONS.blocks || "";
   return span;
 }
 
@@ -138,13 +137,18 @@ export function createLayoutCanvas(container, actions) {
     const bboxW = Math.max(1, maxX - minX);
     const bboxH = Math.max(1, maxY - minY);
     const availW = Math.max(200, minimap.clientWidth || wrap.clientWidth || 600);
-    const scale = Math.min(availW / bboxW, MAX_MINIMAP_H / bboxH);
+    let scale = Math.min(availW / bboxW, MAX_MINIMAP_H / bboxH);
+    // Monitors are not duplicated elsewhere on this canvas (the toggle cards above show the same
+    // set, this minimap only shows *position*), but a very small monitor next to a huge one could
+    // scale down to an unreadable sliver — never let a thumbnail get narrower than 144px.
+    const minMonW = Math.min(...mons.map((m) => m.width || 1));
+    scale = Math.max(scale, MIN_MINIMAP_MON_W / minMonW);
     minimap.style.height = Math.max(34, Math.round(bboxH * scale)) + "px";
     for (const m of mons) {
       const rect = el("div", {
         class: "lay-minimap-mon" + (m.id === state.selectedId ? " sel" : "") + (m.enabled === false ? " off" : ""),
         style: `left:${Math.round((m.x - minX) * scale)}px;top:${Math.round((m.y - minY) * scale)}px;width:${Math.round(m.width * scale)}px;height:${Math.round(m.height * scale)}px`,
-        title: `${m.name || m.id} — ${m.width}x${m.height}`,
+        title: `${m.name || m.id} · ${m.width}x${m.height}`,
         onclick: () => actions.onMonitorSelect(m.id),
       }, el("span", { class: "lay-minimap-label", text: m.name || m.id }));
       minimap.append(rect);
@@ -153,7 +157,7 @@ export function createLayoutCanvas(container, actions) {
 
   function drawStage(state) {
     stage.innerHTML = "";
-    const { tt, layout, widgets, selectedBlock, conflictIdxs, topBar, dock } = state;
+    const { tt, lang, layout, widgets, selectedBlock, conflictIdxs, topBar, dock } = state;
     const monitor = (state.monitors || []).find((m) => m.id === state.selectedId);
     if (!monitor) {
       stage.append(el("div", { class: "empty" }, el("div", { class: "txt", text: tt("emptyMonitors") })));
@@ -207,8 +211,8 @@ export function createLayoutCanvas(container, actions) {
         "data-index": String(idx),
       });
       const head = el("div", { class: "lay-block-head" },
-        widgetIcon(block.widget),
-        el("span", { class: "lay-block-name", text: (meta && meta.name) || block.widget }));
+        widgetIcon(meta && meta.icon),
+        el("span", { class: "lay-block-name", text: widgetLabel(meta, lang) || block.widget }));
       const delBtn = el("button", { class: "lay-block-del", type: "button", title: tt("deleteBlock"), text: "×" });
       delBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
       delBtn.addEventListener("click", (e) => { e.stopPropagation(); actions.onBlockDelete(idx); });
@@ -311,13 +315,13 @@ export function createLayoutCanvas(container, actions) {
 
   function drawPalette(state) {
     palette.innerHTML = "";
-    const { tt, widgets } = state;
+    const { tt, lang, widgets } = state;
     palette.append(el("div", { class: "lay-palette-title", text: tt("paletteTitle") }));
     const list = el("div", { class: "lay-palette-list" });
     for (const w of widgets || []) {
       const item = el("div", { class: "lay-palette-item", "data-widget": w.id, onclick: () => actions.onWidgetAdd(w.id) },
-        widgetIcon(w.id),
-        el("span", { class: "t", text: w.name || w.id }));
+        widgetIcon(w.icon),
+        el("span", { class: "t", text: widgetLabel(w, lang) }));
       list.append(item);
     }
     if (!widgets || !widgets.length) list.append(el("div", { class: "s", text: tt("emptyWidgets") }));

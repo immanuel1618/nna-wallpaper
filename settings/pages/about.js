@@ -27,19 +27,24 @@ export async function render(container, ctx) {
     el("div", { class: "t-signature about-signature", text: "NNA1618 CLUSTER" }));
 
   const checkBtn = el("button", {
-    class: "btn primary", type: "button", text: t("checkNow"),
+    class: "ui-btn primary", type: "button", text: t("checkNow"),
     onclick: async () => {
       try { const r = await ctx.api("POST", "/app/check-updates"); ctx.onStatus(JSON.stringify(r), false); }
       catch (err) { ctx.onStatus(t("statusError", err.message), true); }
     },
   });
 
+  const linkRow = (label, href) => el("a", { href, target: "_blank", rel: "noreferrer", class: "row" },
+    el("div", { class: "main" },
+      el("div", { class: "t", text: label }),
+      el("div", { class: "m about-link-addr", text: href })));
+
   const links = groupCard("links", t("links"),
     el("div", { class: "stack" },
-      el("a", { href: REPO, target: "_blank", class: "row", text: t("repoLink") }),
-      el("a", { href: REPO + "/releases", target: "_blank", class: "row", text: t("releasesLink") }),
-      el("a", { href: REPO + "/blob/main/THIRD-PARTY.md", target: "_blank", class: "row", text: t("licenses") }),
-      el("a", { href: REPO + "/blob/main/CHANGELOG.md", target: "_blank", class: "row", text: t("changelogLink") })));
+      linkRow(t("repoLink"), REPO),
+      linkRow(t("releasesLink"), REPO + "/releases"),
+      linkRow(t("licenses"), REPO + "/blob/main/THIRD-PARTY.md"),
+      linkRow(t("changelogLink"), REPO + "/blob/main/CHANGELOG.md")));
 
   const license = groupCard("license", t("license"), el("div", { class: "hint", text: t("mitNote") }));
 

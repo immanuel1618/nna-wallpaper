@@ -69,7 +69,7 @@ export async function render(container, ctx) {
   const channelMount = el("div");
   const updateResult = el("span", { class: "tag" });
   const checkBtn = el("button", {
-    class: "btn", type: "button", text: t("checkNow"),
+    class: "ui-btn", type: "button", text: t("checkNow"),
     onclick: async () => {
       try { const r = await ctx.api("POST", "/app/check-updates"); updateResult.textContent = JSON.stringify(r); }
       catch (err) { updateResult.textContent = err.message; }
@@ -91,15 +91,15 @@ export async function render(container, ctx) {
     el("div", { class: "field-row" },
       el("div", { class: "field" }, importInput),
       el("button", {
-        class: "btn", type: "button", text: t("importBtn"),
+        class: "ui-btn", type: "button", text: t("importBtn"),
         onclick: async () => {
           try { await ctx.api("POST", "/app/import?dir=" + encodeURIComponent(importInput.value)); importResult.textContent = t("statusSaved"); }
           catch (err) { importResult.textContent = err.status === 404 ? t("importHint") : err.message; }
         },
       })), importResult,
     el("div", { class: "rowflex" },
-      el("button", { class: "btn", type: "button", text: t("openDataFolder"), onclick: () => ctx.api("POST", "/config/open-folder?what=data").catch(() => {}) }),
-      el("button", { class: "btn", type: "button", text: t("openLog"), onclick: () => ctx.api("POST", "/config/open-folder?what=logs").catch(() => {}) })));
+      el("button", { class: "ui-btn", type: "button", text: t("openDataFolder"), onclick: () => ctx.api("POST", "/config/open-folder?what=data").catch(() => {}) }),
+      el("button", { class: "ui-btn", type: "button", text: t("openLog"), onclick: () => ctx.api("POST", "/config/open-folder?what=logs").catch(() => {}) })));
 
   page.append(general, micGroup, updates, foldersGroup);
 }

@@ -3,31 +3,13 @@
 // /taskbar/* orchestrator endpoints. Every /taskbar/* call is expected to 404 until the C# side
 // lands — this module must stay usable (PUT /config always works; the orchestrator calls just
 // degrade to a visible "unavailable" note instead of breaking the page.
+//
+// Built entirely on the shared design system (docs/DESIGN-SYSTEM.md): NNAUI.select/toggle/slider/
+// segmented for every control, groupCard/settingRow for layout, .ui-btn for buttons, icons.js for
+// glyphs — no native <select>/<input type=range>/checkboxes and no ▲▼✕ text symbols.
 
-function el(tag, attrs, ...children) {
-  const node = document.createElement(tag);
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      if (k === "class") node.className = v;
-      else if (k === "text") node.textContent = v;
-      else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
-      else if (v !== undefined && v !== null && v !== false) node.setAttribute(k, v === true ? "" : v);
-    }
-  }
-  for (const c of children) {
-    if (c === null || c === undefined) continue;
-    node.append(c.nodeType ? c : document.createTextNode(String(c)));
-  }
-  return node;
-}
-
-function switchEl(checked, onToggle) {
-  const sw = el("div", { class: "sw" + (checked ? " on" : ""), role: "switch", tabindex: "0" });
-  const toggle = () => { const on = !sw.classList.contains("on"); sw.classList.toggle("on", on); onToggle(on); };
-  sw.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
-  sw.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
-  return sw;
-}
+import { el, groupCard, settingRow, collapsibleCard, paletteSwatchField } from "./dom.js";
+import { iconEl } from "./icons.js";
 
 function clone(v) { return v === undefined ? v : JSON.parse(JSON.stringify(v)); }
 
@@ -37,6 +19,7 @@ const WINDOWS_TOGGLES = [
   "centered", "hideSearch", "hideTaskView", "hideWidgets", "hideClock",
   "small", "transparency", "oledTransparency", "autoHide",
 ];
+const SIDES = ["left", "center", "right"];
 
 function defaultSurfaceStyle() { return { mode: "normal", color: "#0B0B0B", opacity: 0.5 }; }
 
@@ -49,10 +32,8 @@ function defaultTaskbar() {
     normal: defaultSurfaceStyle(),
     maximized: { mode: "opaque", color: "#0B0B0B", opacity: 1 },
     fullscreen: defaultSurfaceStyle(),
-    // "mode" (not yet a real field on TaskbarWindowsSettings — lands with a parallel branch,
-    // see docs/SETTINGS.md "Панель задач: режим Windows") sits alongside the tri-state toggles
-    // below; until the C# side ships this is accepted by PUT /config and silently dropped, same
-    // as app.dock (see settings/pages/dock.js) — the select still shows "normal" either way.
+    // "mode" (TaskbarWindowsSettings.Mode, see docs/SETTINGS.md "Панель задач: режим Windows")
+    // sits alongside the tri-state toggles below.
     windows: { mode: "normal", ...Object.fromEntries(WINDOWS_TOGGLES.map((k) => [k, null])) },
     secondary: true,
   };
@@ -88,7 +69,7 @@ function slugify(name) {
 
 /**
  * Mounts the ζ "taskbar" tab.
- * ctx = { t, put(body), api(method, path, body), taskbar, topBar, onStatus(text, isError) }
+ * ctx = { t, lang, put(body), api(method, path, body), taskbar, topBar, onStatus(text, isError) }
  */
 export function mountTaskbarTab(container, ctx) {
   const { t } = ctx;
@@ -131,45 +112,110 @@ export function mountTaskbarTab(container, ctx) {
     container.innerHTML = "";
     container.append(
       renderPresetSection(),
-      el("div", { class: "hr" }),
+      renderAdvancedSection(),
       renderWindowsSection());
     // topBar (our own top bar) now has its own page (settings/pages/topbar.js); this section stays
     // available for callers that still want it inline (ctx.showTopBar), off by default when unset
     // so a caller has to opt in explicitly.
-    if (ctx.showTopBar) container.append(el("div", { class: "hr" }), renderTopBarSection());
+    if (ctx.showTopBar) container.append(renderTopBarSection());
   }
 
   // ── 1. Preset ─────────────────────────────────────────────────
 
   function renderPresetSection() {
-    const box = el("div", { class: "page-narrow" });
-    box.append(el("div", { class: "h-sec" }, el("span", { class: "g", text: "ζ" }), t("taskbarPresetSection")));
-
-    const select = el("select");
-    select.append(el("option", { value: "", text: t("presetNone") }));
+    const selectMount = el("div");
     const entries = new Map(); // value -> { kind, id, file }
-    box.append(el("div", { class: "field" }, el("label", { text: t("presetSelectLabel") }), select));
 
-    const applyBtn = el("button", { class: "btn primary", type: "button", text: t("presetApply"), disabled: true });
-    const saveAsBtn = el("button", { class: "btn", type: "button", text: t("presetSaveAs") });
-    const exportBtn = el("button", { class: "btn", type: "button", text: t("presetExport") });
-    box.append(el("div", { class: "rowflex" }, applyBtn, saveAsBtn, exportBtn));
+    const selectCtl = window.NNAUI.select(selectMount, {
+      value: "",
+      options: [{ value: "", label: t("presetNone") }],
+      onChange: () => { applyBtn.disabled = !entries.has(selectCtl.value); },
+    });
 
-    const exportArea = el("textarea", { rows: "10", readonly: true, style: "font-family:var(--mono);display:none;" });
-    box.append(el("div", { class: "field" }, exportArea));
+    const applyBtn = el("button", { class: "ui-btn primary", type: "button", text: t("presetApply"), disabled: true });
+    const saveAsBtn = el("button", { class: "ui-btn", type: "button", text: t("presetSaveAs") });
 
-    box.append(el("div", { class: "h-sec" }, t("presetImport")));
-    const importArea = el("textarea", { rows: "10", style: "font-family:var(--mono);" });
-    const importBtn = el("button", { class: "btn", type: "button", text: t("presetImportBtn") });
-    box.append(el("div", { class: "field" }, importArea), el("div", { class: "rowflex" }, importBtn));
+    applyBtn.addEventListener("click", async () => {
+      const entry = entries.get(selectCtl.value);
+      if (!entry) return;
+      try {
+        const data = entry.kind === "builtin"
+          ? await ctx.api("GET", "/presets/taskbar/" + entry.file)
+          : await ctx.api("GET", "/taskbar/preset?id=" + encodeURIComponent(entry.id));
+        if (data.taskbar) taskbar = { ...defaultTaskbar(), ...clone(data.taskbar), windows: { ...defaultTaskbar().windows, ...(data.taskbar.windows || {}) } };
+        if (data.topBar) topBar = { ...defaultTopBar(), ...clone(data.topBar) };
+      } catch (err) {
+        ctx.onStatus(t("statusError", err.message), true);
+        return;
+      }
+      render();
+      await applyAll();
+    });
 
+    saveAsBtn.addEventListener("click", async () => {
+      const name = window.prompt(t("presetNamePrompt"));
+      if (!name) return;
+      const id = slugify(name);
+      try {
+        await ctx.api("POST", "/taskbar/presets", { id, name: { ru: name, en: name }, taskbar, topBar });
+        ctx.onStatus(t("statusSaved"), false);
+        loadPresetList();
+      } catch (err) {
+        ctx.onStatus(err.status === 404 ? t("statusError", t("taskbarUnavailable")) : t("statusError", err.message), true);
+      }
+    });
+
+    async function loadPresetList() {
+      let builtin = [];
+      let user = [];
+      try {
+        const r = await ctx.api("GET", "/taskbar/presets");
+        builtin = r.builtin || [];
+        user = r.user || [];
+      } catch {
+        try {
+          const idx = await ctx.api("GET", "/presets/taskbar/index.json");
+          builtin = Array.isArray(idx) ? idx : [];
+        } catch { /* nothing available — select stays empty */ }
+      }
+      entries.clear();
+      const options = [{ value: "", label: t("presetNone") }];
+      for (const p of builtin) {
+        const value = "builtin:" + p.id;
+        entries.set(value, { kind: "builtin", id: p.id, file: p.file });
+        const label = (p.name && (p.name[ctx.lang] || p.name.ru || p.name.en)) || p.id;
+        options.push({ value, label, hint: t("presetGroupBuiltin") });
+      }
+      for (const p of user) {
+        const value = "user:" + p.id;
+        entries.set(value, { kind: "user", id: p.id, file: p.file });
+        const label = (p.name && (p.name[ctx.lang] || p.name.ru || p.name.en)) || p.id;
+        options.push({ value, label, hint: t("presetGroupUser") });
+      }
+      selectCtl.setOptions(options);
+      applyBtn.disabled = entries.size === 0;
+    }
+    loadPresetList();
+
+    return groupCard("preset", t("taskbarPresetSection"),
+      settingRow(t("presetSelectLabel"), null, selectMount),
+      el("div", { class: "rowflex" }, applyBtn, saveAsBtn));
+  }
+
+  // ── 1b. Advanced: JSON import/export, collapsed by default ─────
+
+  function renderAdvancedSection() {
+    const exportArea = el("textarea", { rows: "10", readonly: true, hidden: true });
+    const exportBtn = el("button", { class: "ui-btn sm", type: "button", text: t("presetExport") });
     exportBtn.addEventListener("click", () => {
-      exportArea.style.display = "";
+      exportArea.hidden = false;
       exportArea.value = JSON.stringify({ taskbar, topBar }, null, 2);
       exportArea.focus();
       exportArea.select();
     });
 
+    const importArea = el("textarea", { rows: "10" });
+    const importBtn = el("button", { class: "ui-btn sm", type: "button", text: t("presetImportBtn") });
     importBtn.addEventListener("click", async () => {
       let parsed;
       try {
@@ -186,151 +232,92 @@ export function mountTaskbarTab(container, ctx) {
       await importOnly();
     });
 
-    saveAsBtn.addEventListener("click", async () => {
-      const name = window.prompt(t("presetNamePrompt"));
-      if (!name) return;
-      const id = slugify(name);
-      try {
-        await ctx.api("POST", "/taskbar/presets", { id, name: { ru: name, en: name }, taskbar, topBar });
-        ctx.onStatus(t("statusSaved"), false);
-        loadPresetList();
-      } catch (err) {
-        ctx.onStatus(err.status === 404 ? t("statusError", t("taskbarUnavailable")) : t("statusError", err.message), true);
-      }
-    });
-
-    applyBtn.addEventListener("click", async () => {
-      const entry = entries.get(select.value);
-      if (!entry) return;
-      try {
-        const data = entry.kind === "builtin"
-          ? await ctx.api("GET", "/presets/taskbar/" + entry.file)
-          : await ctx.api("GET", "/taskbar/preset?id=" + encodeURIComponent(entry.id));
-        if (data.taskbar) taskbar = { ...defaultTaskbar(), ...clone(data.taskbar), windows: { ...defaultTaskbar().windows, ...(data.taskbar.windows || {}) } };
-        if (data.topBar) topBar = { ...defaultTopBar(), ...clone(data.topBar) };
-      } catch (err) {
-        ctx.onStatus(t("statusError", err.message), true);
-        return;
-      }
-      render();
-      await applyAll();
-    });
-
-    async function loadPresetList() {
-      let builtin = [];
-      let user = [];
-      try {
-        const r = await ctx.api("GET", "/taskbar/presets");
-        builtin = r.builtin || [];
-        user = r.user || [];
-      } catch {
-        try {
-          const idx = await ctx.api("GET", "/presets/taskbar/index.json");
-          builtin = Array.isArray(idx) ? idx : [];
-        } catch { /* nothing available — select stays empty */ }
-      }
-      select.innerHTML = "";
-      entries.clear();
-      select.append(el("option", { value: "", text: t("presetNone") }));
-      if (builtin.length) {
-        const group = el("optgroup", { label: t("presetGroupBuiltin") });
-        for (const p of builtin) {
-          const value = "builtin:" + p.id;
-          entries.set(value, { kind: "builtin", id: p.id, file: p.file });
-          const label = (p.name && (p.name[ctx.lang] || p.name.ru || p.name.en)) || p.id;
-          group.append(el("option", { value, text: label }));
-        }
-        select.append(group);
-      }
-      if (user.length) {
-        const group = el("optgroup", { label: t("presetGroupUser") });
-        for (const p of user) {
-          const value = "user:" + p.id;
-          entries.set(value, { kind: "user", id: p.id, file: p.file });
-          const label = (p.name && (p.name[ctx.lang] || p.name.ru || p.name.en)) || p.id;
-          group.append(el("option", { value, text: label }));
-        }
-        select.append(group);
-      }
-      applyBtn.disabled = entries.size === 0;
-    }
-    loadPresetList();
-
-    return box;
+    return collapsibleCard("advanced", t("advancedSection"),
+      el("div", { class: "rowflex" }, exportBtn),
+      el("div", { class: "field" }, exportArea),
+      el("div", { class: "h-sec", text: t("presetImport") }),
+      el("div", { class: "field" }, importArea),
+      el("div", { class: "rowflex" }, importBtn));
   }
 
   // ── 2. Windows taskbar ───────────────────────────────────────────
 
   function surfaceStateCard(labelKey, style) {
-    const modeSelect = el("select");
-    for (const m of MODES) modeSelect.append(el("option", { value: m, selected: m === style.mode, text: t("mode_" + m) }));
-    modeSelect.addEventListener("change", (e) => { style.mode = e.target.value; });
+    const modeMount = el("div");
+    const colorMount = el("div");
+    const opacityMount = el("div");
 
-    const hex = el("input", { type: "text", value: style.color });
-    const picker = el("input", { type: "color", value: normalizeHex(style.color) });
-    const syncColor = (v) => { style.color = v; hex.value = v; picker.value = normalizeHex(v); };
-    picker.addEventListener("input", (e) => syncColor(e.target.value));
-    hex.addEventListener("change", (e) => syncColor(e.target.value));
+    const card = el("div", { class: "ui-card stack taskbar-state-card" },
+      el("div", { class: "group-title", text: t(labelKey) }),
+      el("div", { class: "field" }, el("label", { text: t("surfaceMode") }), modeMount),
+      el("div", { class: "field" }, el("label", { text: t("surfaceColor") }), colorMount),
+      el("div", { class: "field" }, el("label", { text: t("surfaceOpacity") }), opacityMount));
 
-    const opacityInput = el("input", { type: "range", min: 0, max: 1, step: 0.05, value: style.opacity });
-    const opacityTag = el("span", { class: "tag", text: style.opacity });
-    opacityInput.addEventListener("input", (e) => { style.opacity = Number(e.target.value); opacityTag.textContent = style.opacity; });
+    window.NNAUI.select(modeMount, {
+      value: style.mode,
+      options: MODES.map((m) => ({ value: m, label: t("mode_" + m) })),
+      onChange: (v) => { style.mode = v; },
+    });
+    paletteSwatchField(colorMount, t, normalizeHex(style.color), (v) => { style.color = v; });
+    window.NNAUI.slider(opacityMount, {
+      min: 0, max: 1, step: 0.05, value: style.opacity,
+      format: (v) => v.toFixed(2),
+      onInput: (v) => { style.opacity = v; },
+    });
 
-    return el("div", { class: "card stack" },
-      el("div", { class: "h-sec", text: t(labelKey) }),
-      el("div", { class: "field" }, el("label", { text: t("surfaceMode") }), modeSelect),
-      el("div", { class: "field" }, el("label", { text: t("surfaceColor") }), el("div", { class: "field-row" }, picker, hex)),
-      el("div", { class: "field" }, el("label", { text: t("surfaceOpacity") }), el("div", { class: "rowflex" }, opacityInput, opacityTag)));
+    return card;
   }
 
   function triStateField(labelKey, windowsObj, key) {
-    const value = windowsObj[key];
-    const select = el("select");
-    for (const opt of ["null", "true", "false"]) {
-      select.append(el("option", {
-        value: opt,
-        selected: (value === null || value === undefined ? "null" : String(value)) === opt,
-        text: opt === "null" ? t("triStateUnset") : opt === "true" ? t("triStateOn") : t("triStateOff"),
-      }));
-    }
-    select.addEventListener("change", (e) => { windowsObj[key] = e.target.value === "null" ? null : e.target.value === "true"; });
-    return el("div", { class: "field" }, el("label", { text: t(labelKey) }), select);
+    const mount = el("div");
+    const current = windowsObj[key] === null || windowsObj[key] === undefined ? "null" : String(windowsObj[key]);
+    window.NNAUI.select(mount, {
+      value: current,
+      options: [
+        { value: "null", label: t("triStateUnset") },
+        { value: "true", label: t("triStateOn") },
+        { value: "false", label: t("triStateOff") },
+      ],
+      onChange: (v) => { windowsObj[key] = v === "null" ? null : v === "true"; },
+    });
+    return settingRow(t(labelKey), null, mount);
   }
 
   function renderWindowsSection() {
-    const box = el("div", { class: "page-narrow" });
-    box.append(el("div", { class: "h-sec" }, el("span", { class: "g", text: "ζ" }), t("taskbarWindowsSection")));
-
-    box.append(el("div", { class: "setrow" },
-      el("div", { class: "main" }, el("div", { class: "t", text: t("taskbarEnabled") })),
-      switchEl(!!taskbar.enabled, (on) => { taskbar.enabled = on; })));
-
-    const modeSelect = el("select");
-    for (const m of WINDOWS_MODES) modeSelect.append(el("option", { value: m, selected: m === (taskbar.windows.mode || "normal"), text: t("windowsMode_" + m.replace("-", "")) }));
-    modeSelect.addEventListener("change", (e) => { taskbar.windows.mode = e.target.value; });
-    box.append(el("div", { class: "field" }, el("label", { text: t("windowsModeLabel") }), modeSelect, el("div", { class: "hint", text: t("windowsModeHint") })));
-
+    const enabledMount = el("div");
+    const modeMount = el("div");
+    const secondaryMount = el("div");
     const statusNote = el("div", { class: "hint" });
-    box.append(statusNote);
+
+    const box = groupCard("windows", t("taskbarWindowsSection"),
+      settingRow(t("taskbarEnabled"), null, enabledMount),
+      settingRow(t("windowsModeLabel"), t("windowsModeHint"), modeMount),
+      statusNote);
+
+    window.NNAUI.toggle(enabledMount, { checked: !!taskbar.enabled, onChange: (on) => { taskbar.enabled = on; } });
+    window.NNAUI.select(modeMount, {
+      value: taskbar.windows.mode || "normal",
+      options: WINDOWS_MODES.map((m) => ({ value: m, label: t("windowsMode_" + m.replace("-", "")) })),
+      onChange: (v) => { taskbar.windows.mode = v; },
+    });
     refreshStatusNote(statusNote);
 
-    box.append(el("div", { class: "field-row" },
+    box.append(el("div", { class: "taskbar-states" },
       surfaceStateCard("stateNormal", taskbar.normal),
       surfaceStateCard("stateMaximized", taskbar.maximized),
       surfaceStateCard("stateFullscreen", taskbar.fullscreen)));
 
-    box.append(el("div", { class: "setrow" },
-      el("div", { class: "main" }, el("div", { class: "t", text: t("taskbarSecondary") })),
-      switchEl(!!taskbar.secondary, (on) => { taskbar.secondary = on; })));
+    box.append(settingRow(t("taskbarSecondary"), null, secondaryMount));
+    window.NNAUI.toggle(secondaryMount, { checked: !!taskbar.secondary, onChange: (on) => { taskbar.secondary = on; } });
 
     box.append(el("div", { class: "h-sec", text: t("winToggles") }));
     const togglesGrid = el("div", { class: "palette-grid" });
     for (const key of WINDOWS_TOGGLES) togglesGrid.append(triStateField("winToggle_" + key, taskbar.windows, key));
     box.append(togglesGrid);
 
-    const applyBtn = el("button", { class: "btn primary", type: "button", text: t("taskbarApply"), onclick: applyAll });
+    const applyBtn = el("button", { class: "ui-btn primary", type: "button", text: t("taskbarApply"), onclick: applyAll });
     const restartBtn = el("button", {
-      class: "btn", type: "button", text: t("restartExplorer"),
+      class: "ui-btn", type: "button", text: t("restartExplorer"),
       onclick: async () => {
         if (!window.confirm(t("confirmRestartExplorer"))) return;
         try {
@@ -342,7 +329,7 @@ export function mountTaskbarTab(container, ctx) {
       },
     });
     const resetBtn = el("button", {
-      class: "btn", type: "button", text: t("resetWindows"),
+      class: "ui-btn", type: "button", text: t("resetWindows"),
       onclick: async () => {
         try {
           await ctx.api("POST", "/taskbar/reset");
@@ -369,39 +356,38 @@ export function mountTaskbarTab(container, ctx) {
     target.textContent = taskbarStatus && taskbarStatus.note ? taskbarStatus.note : (taskbarStatus ? "" : t("taskbarUnavailable"));
   }
 
-  // ── 3. Top bar ────────────────────────────────────────────────
+  // ── 3. Top bar (legacy inline section; the live app now uses settings/pages/topbar.js — see
+  // ctx.showTopBar above) ─────────────────────────────────────────
 
   function renderTopBarSection() {
-    const box = el("div", { class: "page-narrow" });
-    box.append(el("div", { class: "h-sec" }, el("span", { class: "g", text: "ζ" }), t("taskbarTopbarSection")));
+    const enabledMount = el("div");
+    const monitorsMount = el("div");
+    const heightMount = el("div");
+    const fontSizeMount = el("div");
 
-    box.append(el("div", { class: "setrow" },
-      el("div", { class: "main" }, el("div", { class: "t", text: t("topbarEnabled") })),
-      switchEl(!!topBar.enabled, (on) => { topBar.enabled = on; })));
+    const box = groupCard("topbarLegacy", t("taskbarTopbarSection"),
+      settingRow(t("topbarEnabled"), null, enabledMount),
+      settingRow(t("topbarMonitors"), null, monitorsMount),
+      settingRow(t("topbarHeight"), null, heightMount),
+      settingRow(t("topbarFontSize"), null, fontSizeMount));
 
-    const monitorsSelect = el("select");
-    for (const m of ["all", "primary"]) monitorsSelect.append(el("option", { value: m, selected: m === topBar.monitors, text: t(m === "all" ? "monitorsAll" : "monitorsPrimary") }));
-    monitorsSelect.addEventListener("change", (e) => { topBar.monitors = e.target.value; });
-
-    const heightInput = el("input", { type: "number", value: topBar.height, min: 24, max: 48 });
-    heightInput.addEventListener("input", (e) => { topBar.height = Number(e.target.value); });
-
-    const fontSizeInput = el("input", { type: "number", value: topBar.fontSize, min: 8, max: 24 });
-    fontSizeInput.addEventListener("input", (e) => { topBar.fontSize = Number(e.target.value); });
-
-    box.append(el("div", { class: "field-row" },
-      el("div", { class: "field" }, el("label", { text: t("topbarMonitors") }), monitorsSelect),
-      el("div", { class: "field" }, el("label", { text: t("topbarHeight") }), heightInput),
-      el("div", { class: "field" }, el("label", { text: t("topbarFontSize") }), fontSizeInput)));
+    window.NNAUI.toggle(enabledMount, { checked: !!topBar.enabled, onChange: (on) => { topBar.enabled = on; } });
+    window.NNAUI.select(monitorsMount, {
+      value: topBar.monitors,
+      options: [{ value: "all", label: t("monitorsAll") }, { value: "primary", label: t("monitorsPrimary") }],
+      onChange: (v) => { topBar.monitors = v; },
+    });
+    window.NNAUI.slider(heightMount, { min: 24, max: 48, step: 1, value: topBar.height, format: (v) => Math.round(v) + " px", onInput: (v) => { topBar.height = v; } });
+    window.NNAUI.slider(fontSizeMount, { min: 8, max: 24, step: 1, value: topBar.fontSize, format: (v) => Math.round(v) + " px", onInput: (v) => { topBar.fontSize = v; } });
 
     box.append(surfaceStateCard("surfaceStyleLabel", topBar.style));
 
-    box.append(el("div", { class: "setrow" },
-      el("div", { class: "main" }, el("div", { class: "t", text: t("topbarAutoHide") })),
-      switchEl(!!topBar.autoHide, (on) => { topBar.autoHide = on; })));
-    box.append(el("div", { class: "setrow" },
-      el("div", { class: "main" }, el("div", { class: "t", text: t("topbarReserveSpace") })),
-      switchEl(!!topBar.reserveSpace, (on) => { topBar.reserveSpace = on; })));
+    const autoHideMount = el("div");
+    const reserveMount = el("div");
+    box.append(settingRow(t("topbarAutoHide"), null, autoHideMount));
+    box.append(settingRow(t("topbarReserveSpace"), null, reserveMount));
+    window.NNAUI.toggle(autoHideMount, { checked: !!topBar.autoHide, onChange: (on) => { topBar.autoHide = on; } });
+    window.NNAUI.toggle(reserveMount, { checked: !!topBar.reserveSpace, onChange: (on) => { topBar.reserveSpace = on; } });
 
     box.append(el("div", { class: "h-sec", text: t("topbarModules") }));
     const table = el("table", { class: "list-table" });
@@ -409,32 +395,29 @@ export function mountTaskbarTab(container, ctx) {
       table.innerHTML = "";
       table.append(el("tr", null, el("th", { text: t("moduleId") }), el("th", { text: t("moduleSide") }), el("th", {})));
       topBar.modules.forEach((mod, idx) => {
-        const idSelect = el("select");
-        for (const id of MODULE_IDS) idSelect.append(el("option", { value: id, selected: id === mod.id, text: t("module_" + id) }));
-        idSelect.addEventListener("change", (e) => { mod.id = e.target.value; });
+        const idMount = el("div");
+        const sideMount = el("div");
+        window.NNAUI.select(idMount, { value: mod.id, options: MODULE_IDS.map((id) => ({ value: id, label: t("module_" + id) })), onChange: (v) => { mod.id = v; } });
+        window.NNAUI.select(sideMount, { value: mod.side, options: SIDES.map((s) => ({ value: s, label: t("side" + s[0].toUpperCase() + s.slice(1)) })), onChange: (v) => { mod.side = v; } });
 
-        const sideSelect = el("select");
-        for (const side of ["left", "center", "right"]) sideSelect.append(el("option", { value: side, selected: side === mod.side, text: t("side" + side[0].toUpperCase() + side.slice(1)) }));
-        sideSelect.addEventListener("change", (e) => { mod.side = e.target.value; });
-
-        const upBtn = el("button", { class: "btn sm", type: "button", text: "▲", disabled: idx === 0 });
+        const upBtn = el("button", { class: "ui-icon-btn", type: "button", disabled: idx === 0 }, iconEl("arrow-up", "util"));
         upBtn.addEventListener("click", () => { [topBar.modules[idx - 1], topBar.modules[idx]] = [topBar.modules[idx], topBar.modules[idx - 1]]; redrawModules(); });
-        const downBtn = el("button", { class: "btn sm", type: "button", text: "▼", disabled: idx === topBar.modules.length - 1 });
+        const downBtn = el("button", { class: "ui-icon-btn", type: "button", disabled: idx === topBar.modules.length - 1 }, iconEl("arrow-down", "util"));
         downBtn.addEventListener("click", () => { [topBar.modules[idx + 1], topBar.modules[idx]] = [topBar.modules[idx], topBar.modules[idx + 1]]; redrawModules(); });
-        const removeBtn = el("button", { class: "btn sm danger", type: "button", text: "✕" });
+        const removeBtn = el("button", { class: "ui-icon-btn", type: "button" }, iconEl("close", "util"));
         removeBtn.addEventListener("click", () => { topBar.modules.splice(idx, 1); redrawModules(); });
 
         table.append(el("tr", null,
-          el("td", null, idSelect), el("td", null, sideSelect),
+          el("td", null, idMount), el("td", null, sideMount),
           el("td", null, el("div", { class: "rowflex" }, upBtn, downBtn, removeBtn))));
       });
     };
     redrawModules();
-    const addModuleBtn = el("button", { class: "btn sm", type: "button", text: t("addModule") });
+    const addModuleBtn = el("button", { class: "ui-btn sm", type: "button", text: t("addModule") });
     addModuleBtn.addEventListener("click", () => { topBar.modules.push({ id: "spacer", side: "right" }); redrawModules(); });
     box.append(table, addModuleBtn);
 
-    box.append(el("div", { class: "rowflex" }, el("button", { class: "btn primary", type: "button", text: t("taskbarApply"), onclick: applyAll })));
+    box.append(el("div", { class: "rowflex" }, el("button", { class: "ui-btn primary", type: "button", text: t("taskbarApply"), onclick: applyAll })));
 
     return box;
   }

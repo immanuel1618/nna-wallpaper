@@ -1,6 +1,8 @@
 // DOM form builders: widget settings (driven by widget.json's settings[]), plus the two
 // hand-rolled editors for launch.json and events.json (their shape is fixed, not manifest-driven).
 
+import { paletteSwatchField } from "./dom.js";
+
 function el(tag, attrs, ...children) {
   const node = document.createElement(tag);
   if (attrs) {
@@ -16,14 +18,6 @@ function el(tag, attrs, ...children) {
     node.append(c.nodeType ? c : document.createTextNode(String(c)));
   }
   return node;
-}
-
-function switchEl(checked, onToggle) {
-  const sw = el("div", { class: "sw" + (checked ? " on" : ""), role: "switch", tabindex: "0" });
-  const toggle = () => { const on = !sw.classList.contains("on"); sw.classList.toggle("on", on); onToggle(on); };
-  sw.addEventListener("click", toggle);
-  sw.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
-  return sw;
 }
 
 /**
@@ -62,32 +56,28 @@ function renderField(field, data, t) {
 
   switch (field.type) {
     case "bool": {
+      const mount = el("div");
       const row = el("div", { class: "setrow" },
         el("div", { class: "main" }, el("div", { class: "t", text: labelText }), help),
-        switchEl(!!data[field.key], (on) => { data[field.key] = on; }));
-      return el("div", { class: "field" }, row);
+        el("div", { class: "row-control" }, mount));
+      window.NNAUI.toggle(mount, { checked: !!data[field.key], onChange: (v) => { data[field.key] = v; } });
+      return row;
     }
     case "select": {
-      const select = el("select", { onchange: (e) => { data[field.key] = e.target.value; } });
-      for (const opt of field.options || []) {
-        const value = typeof opt === "object" ? opt.value : opt;
-        const text = typeof opt === "object" ? (opt.label || opt.value) : opt;
-        select.append(el("option", { value, selected: value === data[field.key] }, text));
-      }
-      return withHelp(el("div", { class: "field" }, label, select));
+      const mount = el("div");
+      const options = (field.options || []).map((opt) => (typeof opt === "object" ? opt : { value: opt, label: opt }));
+      window.NNAUI.select(mount, { value: data[field.key], options, onChange: (v) => { data[field.key] = v; } });
+      return withHelp(el("div", { class: "field" }, label, mount));
     }
     case "color": {
-      const hex = el("input", { type: "text", value: data[field.key] || "#000000" });
-      const picker = el("input", { type: "color", value: normalizeHex(data[field.key]) });
-      const sync = (v) => { data[field.key] = v; hex.value = v; picker.value = normalizeHex(v); };
-      picker.addEventListener("input", (e) => sync(e.target.value));
-      hex.addEventListener("change", (e) => sync(e.target.value));
-      return withHelp(el("div", { class: "field" }, label, el("div", { class: "field-row" }, picker, hex)));
+      const mount = el("div");
+      paletteSwatchField(mount, t, normalizeHex(data[field.key]), (v) => { data[field.key] = v; });
+      return withHelp(el("div", { class: "field" }, label, mount));
     }
     case "path": {
       const input = el("input", { type: "text", value: data[field.key] || "", placeholder: t("formPath") });
       input.addEventListener("input", (e) => { data[field.key] = e.target.value; });
-      const browse = el("button", { class: "btn sm", type: "button", text: t("formBrowse") });
+      const browse = el("button", { class: "ui-btn sm", type: "button", text: t("formBrowse") });
       return withHelp(el("div", { class: "field" }, label, el("div", { class: "field-row" }, input, browse)));
     }
     case "timezone": {
@@ -147,14 +137,14 @@ function renderListField(field, data, t) {
         input.addEventListener("input", (e) => { row[c] = type === "number" ? Number(e.target.value) : e.target.value; });
         return el("td", null, input);
       });
-      const removeBtn = el("button", { class: "btn sm", type: "button", text: t("formRemove") });
+      const removeBtn = el("button", { class: "ui-btn sm", type: "button", text: t("formRemove") });
       removeBtn.addEventListener("click", () => { rows.splice(idx, 1); redraw(); });
       table.append(el("tr", null, ...cells, el("td", null, removeBtn)));
     });
   };
   redraw();
 
-  const addBtn = el("button", { class: "btn sm", type: "button", text: t("formAdd") });
+  const addBtn = el("button", { class: "ui-btn sm", type: "button", text: t("formAdd") });
   addBtn.addEventListener("click", () => {
     const blank = {};
     for (const c of columns) blank[c] = itemSchema[c] === "number" ? 0 : "";
@@ -180,7 +170,7 @@ export function renderLaunchForm(container, launchData, t) {
   const redraw = () => {
     wrap.innerHTML = "";
     data.groups.forEach((group, gi) => wrap.append(renderGroup(group, gi)));
-    const addGroupBtn = el("button", { class: "btn", type: "button", text: t("addGroup") });
+    const addGroupBtn = el("button", { class: "ui-btn", type: "button", text: t("addGroup") });
     addGroupBtn.addEventListener("click", () => {
       let n = 1;
       while (data.groups.some((g) => g.id === "group" + n)) n++;
@@ -196,14 +186,14 @@ export function renderLaunchForm(container, launchData, t) {
     const labelInput = el("input", { type: "text", value: group.label });
     labelInput.addEventListener("input", (e) => { group.label = e.target.value; });
 
-    const removeGroupBtn = el("button", { class: "btn sm danger", type: "button", text: t("remove") });
+    const removeGroupBtn = el("button", { class: "ui-btn sm danger", type: "button", text: t("remove") });
     removeGroupBtn.addEventListener("click", () => { data.groups.splice(gi, 1); redraw(); });
 
     const itemsBox = el("div", { class: "stack" });
     const redrawItems = () => {
       itemsBox.innerHTML = "";
       group.items.forEach((itemId, ii) => itemsBox.append(renderItem(group, itemId, ii, redrawItems)));
-      const addItemBtn = el("button", { class: "btn sm", type: "button", text: t("addItem") });
+      const addItemBtn = el("button", { class: "ui-btn sm", type: "button", text: t("addItem") });
       addItemBtn.addEventListener("click", () => {
         let n = 1;
         while (data.items["item" + n]) n++;
@@ -253,7 +243,7 @@ export function renderLaunchForm(container, launchData, t) {
     const badgeInput = el("input", { type: "text", value: item.badge || "", placeholder: "badge" });
     badgeInput.addEventListener("input", (e) => { item.badge = e.target.value || undefined; });
 
-    const removeBtn = el("button", { class: "btn sm danger", type: "button", text: t("remove") });
+    const removeBtn = el("button", { class: "ui-btn sm danger", type: "button", text: t("remove") });
     removeBtn.addEventListener("click", () => {
       group.items.splice(ii, 1);
       if (!data.groups.some((g) => g.items.includes(itemId))) delete data.items[itemId];
@@ -292,11 +282,11 @@ export function renderEventsForm(container, eventsData, t) {
         labelInput.addEventListener("input", (e) => { row.label = e.target.value; });
         const valueInput = el("input", { type: dateOrTime, value: row[dateOrTime] || "" });
         valueInput.addEventListener("input", (e) => { row[dateOrTime] = e.target.value; });
-        const removeBtn = el("button", { class: "btn sm danger", type: "button", text: t("remove") });
+        const removeBtn = el("button", { class: "ui-btn sm danger", type: "button", text: t("remove") });
         removeBtn.addEventListener("click", () => { list.splice(idx, 1); redraw(); });
         box.append(el("div", { class: "field-row" }, labelInput, valueInput, removeBtn));
       });
-      const addBtn = el("button", { class: "btn sm", type: "button", text: addLabel });
+      const addBtn = el("button", { class: "ui-btn sm", type: "button", text: addLabel });
       addBtn.addEventListener("click", () => { list.push({ label: "", [dateOrTime]: "" }); redraw(); });
       box.append(addBtn);
     };

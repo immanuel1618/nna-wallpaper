@@ -31,9 +31,9 @@ const STR = {
     micDevice: "Микрофон",
     micDefault: "По умолчанию",
     hotkey: "Горячая клавиша",
-    hotkeyHint: "Нажмите кнопку и затем — комбинацию клавиш",
+    hotkeyHint: "Нажмите кнопку и затем комбинацию клавиш",
     hotkeyCapture: "Нажмите клавиши…",
-    hotkeyEsc: "Esc — отмена",
+    hotkeyEsc: "Esc: отмена",
     hotkeyOk: "Хоткей зарегистрирован",
     hotkeyFail: "Не удалось зарегистрировать хоткей",
     showRecognized: "Показывать распознанный текст перед отправкой",
@@ -186,7 +186,7 @@ function renderProfileCard(status, profile, s, ctx, refresh) {
   const expires = p.expires_at ? new Date(p.expires_at * 1000) : null;
   const locale = ctx.lang === "en" ? "en-US" : "ru-RU";
   const info = el("div", { class: "pl-profile-info" },
-    el("div", { class: "pl-profile-name", text: name || "—" }),
+    el("div", { class: "pl-profile-name", text: name || "·" }),
     p.username ? el("div", { class: "pl-profile-username", text: "@" + p.username }) : null,
     el("div", { class: "pl-profile-meta" },
       el("span", { class: "tag", text: (p.tier || "free").toUpperCase() }),

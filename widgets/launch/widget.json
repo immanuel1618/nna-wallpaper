@@ -1,6 +1,7 @@
 {
   "id": "launch",
   "name": "Launch",
+  "title": { "ru": "Лаунчпад", "en": "Launch" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "launch" },

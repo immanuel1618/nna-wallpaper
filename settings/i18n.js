@@ -1,7 +1,7 @@
 // Tiny i18n: a flat key -> {ru, en} dictionary and a t(key) factory. No framework, no build step.
 
 const DICT = {
-  appTitle: { ru: "Настройки — NNA Wallpaper", en: "Settings — NNA Wallpaper" },
+  appTitle: { ru: "Настройки · NNA Wallpaper", en: "Settings · NNA Wallpaper" },
   statusIdle: { ru: "Готово", en: "Ready" },
   statusSaving: { ru: "Сохранение…", en: "Saving…" },
   statusSaved: { ru: "Сохранено", en: "Saved" },
@@ -28,7 +28,7 @@ const DICT = {
   addBlock: { ru: "+ блок", en: "+ block" },
   deleteBlock: { ru: "Удалить", en: "Delete" },
   noFreeSlot: { ru: "Нет места для блока такого размера", en: "No room for a block of this size" },
-  overlapWarning: { ru: "Блоки пересекаются — сохранение остановлено", en: "Blocks overlap — save blocked" },
+  overlapWarning: { ru: "Блоки пересекаются: сохранение остановлено", en: "Blocks overlap: save blocked" },
   emptyWidgets: { ru: "Нет доступных виджетов", en: "No widgets available" },
   emptyMonitors: { ru: "Нет подключённых мониторов", en: "No monitors detected" },
 
@@ -78,7 +78,7 @@ const DICT = {
   channel: { ru: "Канал", en: "Channel" },
   importFolder: { ru: "Импорт из папки", en: "Import from folder" },
   importBtn: { ru: "Импортировать", en: "Import" },
-  importHint: { ru: "Недоступно из приложения — используйте флаг командной строки --import <папка>", en: "Not available from the app — use the --import <folder> command-line flag" },
+  importHint: { ru: "Недоступно из приложения: используйте флаг командной строки --import <папка>", en: "Not available from the app: use the --import <folder> command-line flag" },
   openDataFolder: { ru: "Открыть папку данных", en: "Open data folder" },
   openLog: { ru: "Открыть лог", en: "Open log" },
   version: { ru: "Версия", en: "Version" },
@@ -218,10 +218,6 @@ const DICT = {
   dockShowTrash: { ru: "Показывать корзину", en: "Show trash" },
   dockFolders: { ru: "Папки", en: "Folders" },
   dockPinned: { ru: "Закреплённые", en: "Pinned" },
-  dockNotPersistedYet: {
-    ru: "Пока не сохраняется на сервере — поле app.dock появится в отдельной ветке.",
-    en: "Not persisted by the host yet — app.dock ships in a separate branch.",
-  },
 
   // η — cursor (new page, settings/pages/cursor.js)
   cursorVariantsSection: { ru: "Вариант", en: "Variant" },
@@ -244,8 +240,27 @@ const DICT = {
   // κ — about (new page, settings/pages/about.js)
   links: { ru: "Ссылки", en: "Links" },
   license: { ru: "Лицензия", en: "License" },
-  mitNote: { ru: "MIT — свободное использование с указанием авторства.", en: "MIT — free to use with attribution." },
+  mitNote: { ru: "MIT: свободное использование с указанием авторства.", en: "MIT: free to use with attribution." },
   changelogLink: { ru: "Журнал изменений", en: "Changelog" },
+  linkAddress: { ru: "Адрес", en: "Address" },
+
+  // ζ — taskbar: "Advanced" JSON import/export card (collapsed by default, see taskbar-tab.js)
+  advancedSection: { ru: "Дополнительно", en: "Advanced" },
+
+  // Base/Surface/Slate/Steel palette swatches (dom.js paletteSwatchField) — replaces native
+  // <input type="color"> pickers in topbar.js/dock.js/forms.js/blocks.js surface-color rows.
+  swatchBase: { ru: "Base", en: "Base" },
+  swatchSurface: { ru: "Surface", en: "Surface" },
+  swatchSlate: { ru: "Slate", en: "Slate" },
+  swatchSteel: { ru: "Steel", en: "Steel" },
+
+  // γ — appearance: font scale + accent knobs (owner decision D6: one theme, a few dials)
+  themeKnobsSection: { ru: "Шрифт и акцент", en: "Font and accent" },
+  fontScale: { ru: "Размер шрифта", en: "Font size" },
+  accent: { ru: "Акцент", en: "Accent" },
+  accent_none: { ru: "Нет", en: "None" },
+  accent_signal: { ru: "Signal", en: "Signal" },
+  accent_chrome: { ru: "Chrome", en: "Chrome" },
 };
 
 /** Both languages' "Saved" strings — used by settings/api.js's setStatus to color the status

@@ -24,13 +24,12 @@
 .lay-mon-card .tag { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
 
 /* ── grid parameters ─────────────────────────────────────────────────── */
-.lay-grid-fields { display: flex; flex-wrap: wrap; gap: 10px; }
-.lay-grid-fields .field { width: 96px; }
+.lay-grid-field { width: 96px; }
 
 /* ── canvas wrap: minimap + stage(+palette) ──────────────────────────── */
 .lay-canvas-wrap { display: flex; flex-direction: column; gap: 10px; }
 
-.lay-minimap { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); }
+.lay-minimap { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); overflow-x: auto; }
 .lay-minimap-mon {
   position: absolute; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--chip);
   display: flex; align-items: flex-end; padding: 4px; cursor: pointer; overflow: hidden;
@@ -76,7 +75,14 @@
   display: flex; flex-direction: column; user-select: none; touch-action: none;
 }
 .lay-block:hover, .lay-block.sel { border-color: var(--fg); background: var(--chip-hi); }
-.lay-block.bad { border-color: var(--bad); background: rgba(140, 26, 37, .18); }
+/* Conflict (overlapping blocks): frame stays Slate like any other block — Signal is only the dot
+   in the corner, the tinted fill carries the rest (a fill, not text/border, see tokens.css --blood
+   on why that's fine). */
+.lay-block.bad { border-color: var(--slate); background: rgba(140, 26, 37, .18); }
+.lay-block.bad::after {
+  content: ""; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--signal);
+}
 .lay-block.dragging, .lay-block.resizing { z-index: 3; box-shadow: 0 8px 21px rgba(0, 0, 0, .4); }
 .lay-block-head { display: flex; align-items: center; gap: 6px; padding: 6px 6px 0 7px; cursor: grab; }
 .lay-block.dragging .lay-block-head { cursor: grabbing; }
@@ -87,7 +93,7 @@
   font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg);
 }
 .lay-block-del { flex: 0 0 auto; color: var(--muted); font-family: var(--mono); font-size: 13px; line-height: 1; padding: 2px 4px; }
-.lay-block-del:hover { color: var(--bad); }
+.lay-block-del:hover { color: var(--ash); text-decoration: underline; text-decoration-color: var(--signal); }
 .lay-block-handle {
   position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize;
   border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); border-radius: 0 0 6px 0;
@@ -105,13 +111,20 @@
 }
 .lay-palette-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 5px; overflow: auto; }
 .lay-palette-item {
+  position: relative;
   display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
   background: var(--chip); border: 1px solid var(--line); cursor: pointer;
 }
 .lay-palette-item:hover { border-color: var(--line-strong); }
 .lay-palette-item .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--fg); }
 .lay-palette-item .lay-block-icon { color: var(--muted); }
-.lay-palette-item.no-room { border-color: var(--bad); animation: lay-shake .5s; }
+/* No room for this widget: the shake is the signal, the frame stays neutral — a small Signal dot
+   in the corner echoes the conflict-block treatment above instead of a full red border. */
+.lay-palette-item.no-room { border-color: var(--line-strong); animation: lay-shake .5s; }
+.lay-palette-item.no-room::after {
+  content: ""; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--signal);
+}
 @keyframes lay-shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-4px); }
@@ -125,4 +138,4 @@
   flex: 0 0 auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-card); padding: 13px;
 }
-.lay-conflict-note { font-family: var(--mono); font-size: 11px; color: var(--bad); flex: 1 1 100%; }
+.lay-conflict-note { font-family: var(--mono); font-size: 11px; color: var(--ash); flex: 1 1 100%; }
