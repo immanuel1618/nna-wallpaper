@@ -90,6 +90,7 @@ public partial class App : Application
             Engine.SettingsRequested += tab => SettingsWindow.Open(Host!, tab);
             Engine.LoginRequested += () => PlannerLoginWindow.Open(Host!);
             Host.App = Engine;
+            InputWindow.Attach(Engine, Host);
             await Engine.StartAsync();
             log.Info($"engine started: {Engine.Windows.Count} monitor(s), desktop {Engine.DesktopMode}");
         }

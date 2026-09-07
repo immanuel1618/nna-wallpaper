@@ -10,6 +10,7 @@ implemented from Microsoft documentation and our own code.
 | Velopack | 1.2.0 | MIT | Installer, portable build, auto-update from GitHub Releases |
 | vpk (dotnet tool) | 1.2.0 | MIT | Packaging releases |
 | NAudio | 2.2.1 | MIT | WASAPI loopback capture for the equalizer spectrum |
+| System.Drawing.Common | 8.0.10 | MIT | Rendering extracted PNG icons for launcher items |
 | Hardcodet.NotifyIcon.Wpf | 2.0.1 | MIT | Tray icon |
 | Microsoft.Windows.CsWin32 | 0.3.333 | MIT | Generated Win32 P/Invoke |
 | System.Diagnostics.PerformanceCounter | 10.0.11 | MIT | CPU frequency counter |

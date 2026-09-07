@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/immanuel1618/nna-wallpaper/tree/main/docs
+    about: Architecture, widget SDK, settings schema and planner integration docs.
