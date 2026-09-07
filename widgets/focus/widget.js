@@ -39,8 +39,11 @@
     loadModel().then(function (Model) {
       if (disposed) return; // unmounted while model.js was loading
       initFocus(Model, b, wrap, ctx);
-    }).catch(function () {
-      if (!disposed) wrap.appendChild(N.el('div', 'pl-empty', 'FOCUS MODEL LOAD FAILED'));
+    }).catch(function (err) {
+      if (!disposed) {
+        wrap.appendChild(N.el('div', 'pl-empty', 'FOCUS MODEL LOAD FAILED'));
+        if (ctx && ctx.fail) ctx.fail(err);
+      }
     });
 
     return b;
@@ -315,6 +318,7 @@
     bReset.addEventListener('click', function (e) { e.stopPropagation(); resetTimer(true); N.toast(text('focusReset', 'FOCUS RESET')); });
 
     render();
+    if (ctx && ctx.ready) ctx.ready(); // кольцо не зависит от сети — готово сразу после первого рендера
     ctx.setInterval(render, 500);
   }
 })();

@@ -113,7 +113,16 @@
       corner.textContent = uptime(s.uptime_s || 0);
     }
 
-    function poll() { N.get('/stats').then(render, function () {}); }
+    var readyReported = false, failReported = false;
+    function poll() {
+      N.get('/stats').then(function (s) {
+        failReported = false;
+        render(s);
+        if (!readyReported) { readyReported = true; if (ctx && ctx.ready) ctx.ready(); }
+      }, function (err) {
+        if (!failReported) { failReported = true; if (ctx && ctx.fail) ctx.fail(err); }
+      });
+    }
     poll();
     ctx.setInterval(poll, (C.poll && C.poll.stats) || 1000);
     return b;

@@ -52,7 +52,30 @@ public sealed class ApiRequest
         Response.ContentLength64 = data.Length;
         try
         {
-            await Response.OutputStream.WriteAsync(data).ConfigureAwait(false);
+            // HEAD must not send a body (RFC 7231 4.3.2) — writing one anyway is not just wasted
+            // work: .NET's HttpListenerResponse can throw ProtocolViolationException for it
+            // ("Bytes to be written to the stream exceed the Content-Length bytes size
+            // specified"), which happened in production against a static /widgets/*/widget.js
+            // request. That left the underlying keep-alive connection framed for a body that was
+            // never fully sent, so the client (WebView2) hangs waiting for the rest of that
+            // response forever — and every later request the page queues on the same connection
+            // (retries, /planner/status polls) stalls behind it until something forces a new
+            // connection, e.g. a full page reload. Skipping the write for HEAD avoids the
+            // exception — and hence the stuck connection — entirely.
+            if (Method != "HEAD")
+            {
+                await Response.OutputStream.WriteAsync(data).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            // Whatever went wrong mid-write, the promised Content-Length vs. bytes actually sent
+            // may now disagree. Abort drops the TCP connection outright instead of trying to
+            // gracefully finish it, so the client sees a clean disconnect (and can retry on a
+            // fresh connection) rather than hanging forever waiting for bytes that will never
+            // arrive.
+            try { Response.Abort(); } catch { }
+            throw;
         }
         finally
         {

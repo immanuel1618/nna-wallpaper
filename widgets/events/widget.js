@@ -91,7 +91,16 @@
         }
       });
     }
-    function load() { N.get('/events').then(function (d) { data = d; rebuild(); }, function () {}); }
+    var readyReported = false, failReported = false;
+    function load() {
+      N.get('/events').then(function (d) {
+        failReported = false;
+        data = d; rebuild();
+        if (!readyReported) { readyReported = true; if (ctx && ctx.ready) ctx.ready(); }
+      }, function (err) {
+        if (!failReported) { failReported = true; if (ctx && ctx.fail) ctx.fail(err); }
+      });
+    }
 
     prev.addEventListener('click', function () { if (page > 0) { page--; renderPage(); } });
     next.addEventListener('click', function () { if ((page + 1) * PER < items.length) { page++; renderPage(); } });

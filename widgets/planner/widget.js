@@ -565,14 +565,52 @@
       });
     }
 
+    // ---- readiness / self-heal ------------------------------------------------------------------
+    // A /planner/status answer counts as "data" the moment it arrives, whether or not the user is
+    // logged in — the empty-LAUNCH/stuck-TASKS incident this guards against showed a status of
+    // false/never-arriving is exactly the failure mode layout.js's remount watchdog needs to know
+    // about promptly, not 8s of silent guessing.
+    var reportedReady = false;
+    function reportReady() {
+      if (reportedReady) return;
+      reportedReady = true;
+      if (ctx && ctx.ready) ctx.ready();
+    }
+    var MAX_STATUS_RETRIES = 5;
+    var statusRetryCount = 0;
+    var loggedOutPollId = null;
+
+    function clearLoggedOutPoll() {
+      if (loggedOutPollId != null) { clearTimeout(loggedOutPollId); loggedOutPollId = null; }
+    }
+
     function tick() {
       N.get('/planner/status').then(function (s) {
+        statusRetryCount = 0;
+        reportReady();
         loggedIn = !!s.loggedIn;
         profile = s.profile || null;
-        if (!loggedIn) { renderLogin(); return; }
+        clearLoggedOutPoll();
+        if (!loggedIn) {
+          renderLogin();
+          // refreshSec (default 60s) is meant for the logged-in data cadence; a stuck "sign in"
+          // screen while the host is actually already logged in (session restored a few seconds
+          // after this page booted) must not wait a full minute to notice — recheck every 30s too.
+          loggedOutPollId = ctx.setTimeout(tick, 30000);
+          return;
+        }
         loadToday();
-      }).catch(function () {
-        // host offline: keep the last render; the page-wide .nna-offline class dims everything.
+      }).catch(function (err) {
+        // Network error / host offline: retry sooner than the refreshSec cadence, up to a point,
+        // then fall back to it (and let the layout-level remount watchdog take over if this widget
+        // still never became ready).
+        if (statusRetryCount < MAX_STATUS_RETRIES) {
+          statusRetryCount++;
+          ctx.setTimeout(tick, 3000);
+        } else {
+          statusRetryCount = 0;
+          if (ctx && ctx.fail) ctx.fail(err);
+        }
       });
     }
 

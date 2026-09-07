@@ -23,7 +23,13 @@
     b.body.appendChild(items);
     mount.appendChild(b.root);
 
-    var loaded = false, lastSig = '';
+    var loaded = false, lastSig = '', loadRetries = 0, readyReported = false;
+    var MAX_LOAD_RETRIES = 5;
+    function reportReady() {
+      if (readyReported) return;
+      readyReported = true;
+      if (ctx && ctx.ready) ctx.ready();
+    }
 
     function flash(btn, ok) {
       btn.classList.add(ok ? 'is-flash' : 'is-busy');
@@ -113,9 +119,25 @@
         items.appendChild(set);
       }
       loaded = true;
+      reportReady();
     }
+    // ошибка первого /launch/list раньше повторялась только пока !loaded (т.е. до первого успеха) —
+    // но если помощник завис (не ошибка, а зависший запрос/соединение), сама эта проверка бесполезна:
+    // повторяем безусловно до успеха, максимум 5 раз с паузой 4с, дальше ctx.fail() и ждём обычного
+    // 20-секундного опроса (он тоже проходит через N.get, у которого есть свой сетевой ретрай).
     function load() {
-      N.get('/launch/list').then(render, function () { if (!loaded) ctx.setTimeout(load, 4000); });
+      N.get('/launch/list').then(function (cfg) {
+        loadRetries = 0;
+        render(cfg);
+      }, function (err) {
+        if (loadRetries < MAX_LOAD_RETRIES) {
+          loadRetries++;
+          ctx.setTimeout(load, 4000);
+        } else {
+          loadRetries = 0;
+          if (ctx && ctx.fail) ctx.fail(err);
+        }
+      });
     }
     edit.addEventListener('click', function () {
       N.post('/edit?what=launch').then(function (r) { N.toast(r && r.ok ? 'OPENING LAUNCH.JSON' : (r && r.error) || 'FAILED'); },

@@ -136,27 +136,75 @@
     return S.scriptsLoaded[id];
   }
 
-  /* ---- монтирование/размонтирование одной ячейки ------------------------------------------- */
+  function pageLog(level, msg) {
+    if (window.NNA && window.NNA.log) window.NNA.log(level, msg);
+  }
 
-  function mountModuleAtCell(key, cell, block, settings, theme) {
+  /* ---- монтирование/размонтирование одной ячейки -------------------------------------------
+     Самовосстановление модульных виджетов: каждый монтаж получает 8с на позвать ctx.ready() (см.
+     ниже); если не позвал — считаем виджет подвисшим (обычно значит, что первый запрос к
+     помощнику завис без ответа/ошибки — см. app.log про ProtocolViolationException на статике,
+     из-за которой соединение WebView2 могло держать зависший keep-alive), логируем warn и
+     перемонтируем его же ячейку (attempt 1, ещё 15с). Если и это не помогло — logируем error и
+     оставляем как есть, дальше виджет живёт как обычно (или так и остаётся пустым/в ошибке). */
+  var WIDGET_READY_TIMEOUT_MS = [8000, 15000];
+
+  function mountModuleAtCell(key, cell, block, settings, theme, attempt) {
+    attempt = attempt || 0;
     var fn = window.NNA.widgets[block.widget];
     if (typeof fn !== 'function') { markNotFoundCell(cell, block.widget); return; }
     var lifecycle = window.NNA.createLifecycle();
+    var settled = false;
+    var mountStart = Date.now();
+    var readyTimer = null;
+
+    function reportReady() {
+      if (settled) return;
+      settled = true;
+      if (readyTimer) { clearTimeout(readyTimer); readyTimer = null; }
+      pageLog('info', 'ready: widget=' + block.widget + ' in ' + (Date.now() - mountStart) + 'ms');
+    }
+    function reportFail(err) {
+      var msg = (err && err.message) ? err.message : String(err == null ? 'unknown' : err);
+      pageLog('error', 'widget ' + block.widget + ' failed: ' + msg);
+    }
+
     var ctx = {
       settings: settings, monitor: monitorId, block: block,
       helper: { get: window.NNA.get, post: window.NNA.post }, theme: theme,
       setInterval: lifecycle.setInterval, setTimeout: lifecycle.setTimeout, raf: lifecycle.raf,
-      on: lifecycle.on, onDispose: lifecycle.onDispose, dispose: lifecycle.dispose
+      on: lifecycle.on, onDispose: lifecycle.onDispose, dispose: lifecycle.dispose,
+      ready: reportReady, fail: reportFail
     };
     try {
       fn(cell, ctx);
     } catch (e) {
+      pageLog('error', 'widget ' + block.widget + ' mount threw: ' + ((e && e.message) || e) +
+        (e && e.stack ? ' ' + String(e.stack).slice(0, 300) : ''));
       lifecycle.dispose();
       markNotFoundCell(cell, block.widget);
       return;
     }
-    cell.__nna = { dispose: lifecycle.dispose, widgetId: block.widget, key: key };
+    cell.__nna = { dispose: lifecycle.dispose, widgetId: block.widget, key: key, readyTimer: null };
     if (S.cellsByKey[key]) S.cellsByKey[key].kind = 'module';
+
+    if (attempt < WIDGET_READY_TIMEOUT_MS.length) {
+      readyTimer = setTimeout(function () {
+        readyTimer = null;
+        if (settled || lifecycle.isDisposed()) return;
+        var entry = S.cellsByKey[key];
+        if (!entry || entry.cell !== cell) return; // ячейка уже легитимно заменена/удалена
+        if (attempt + 1 < WIDGET_READY_TIMEOUT_MS.length) {
+          pageLog('warn', 'widget ' + block.widget + ' not ready in ' + Math.round(WIDGET_READY_TIMEOUT_MS[attempt] / 1000) + 's, remounting');
+          lifecycle.dispose();
+          cell.innerHTML = '';
+          mountModuleAtCell(key, cell, block, settings, theme, attempt + 1);
+        } else {
+          pageLog('error', 'widget ' + block.widget + ' still not ready after remount, giving up');
+        }
+      }, WIDGET_READY_TIMEOUT_MS[attempt]);
+      cell.__nna.readyTimer = readyTimer;
+    }
   }
 
   function mountPageAtCell(key, cell, block, settings, theme) {
@@ -200,7 +248,10 @@
     if (kind === 'module') {
       ensureWidgetScriptLoaded(block.widget).then(function () {
         mountModuleAtCell(key, cell, block, settings, theme);
-      }, function () { markNotFoundCell(cell, block.widget); });
+      }, function (err) {
+        pageLog('error', 'widget script load failed: ' + block.widget + ' :: ' + ((err && err.message) || err));
+        markNotFoundCell(cell, block.widget);
+      });
     } else if (kind === 'page') {
       mountPageAtCell(key, cell, block, settings, theme);
     } else {
@@ -211,8 +262,11 @@
   function unmountCell(key) {
     var entry = S.cellsByKey[key];
     if (!entry) return;
-    if (entry.cell.__nna && typeof entry.cell.__nna.dispose === 'function') {
-      try { entry.cell.__nna.dispose(); } catch (e) { /* noop */ }
+    if (entry.cell.__nna) {
+      if (entry.cell.__nna.readyTimer) clearTimeout(entry.cell.__nna.readyTimer);
+      if (typeof entry.cell.__nna.dispose === 'function') {
+        try { entry.cell.__nna.dispose(); } catch (e) { /* noop */ }
+      }
     }
     if (entry.cell.parentNode) entry.cell.parentNode.removeChild(entry.cell);
     delete S.cellsByKey[key];
@@ -236,8 +290,11 @@
           } catch (e) { /* noop */ }
         }
       } else {
-        if (entry.cell.__nna && typeof entry.cell.__nna.dispose === 'function') {
-          try { entry.cell.__nna.dispose(); } catch (e) { /* noop */ }
+        if (entry.cell.__nna) {
+          if (entry.cell.__nna.readyTimer) clearTimeout(entry.cell.__nna.readyTimer);
+          if (typeof entry.cell.__nna.dispose === 'function') {
+            try { entry.cell.__nna.dispose(); } catch (e) { /* noop */ }
+          }
         }
         entry.cell.innerHTML = '';
         mountModuleAtCell(key, entry.cell, entry.block, settings, theme);
@@ -260,7 +317,10 @@
       chain = chain.then(function () {
         return fetchJson('/widgets/' + id + '/widget.json').then(function (m) {
           S.manifests[id] = m;
-        }, function () { S.manifests[id] = null; });
+        }, function (err) {
+          S.manifests[id] = null;
+          pageLog('error', 'widget manifest load failed: ' + id + ' :: ' + ((err && err.message) || err));
+        });
       });
     });
     return chain;
@@ -443,6 +503,7 @@
     var url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/events';
     var ws;
     try { ws = new WebSocket(url); } catch (e) { setTimeout(connectEvents, 2000); return; }
+    ws.onopen = function () { pageLog('info', 'events connected'); };
     ws.onmessage = function (ev) {
       if (typeof ev.data !== 'string') return;
       var msg;
@@ -457,7 +518,7 @@
         applyBlocksAndSettings(msg.blocks || [], {}, S.currentTheme, true);
       }
     };
-    ws.onclose = function () { setTimeout(connectEvents, 2000); };
+    ws.onclose = function () { pageLog('info', 'events disconnected'); setTimeout(connectEvents, 2000); };
     ws.onerror = function () { try { ws.close(); } catch (e) {} };
   }
 
@@ -487,6 +548,9 @@
 
       applyConfig(cfg, {}).then(function () {
         if (!window.NNA_CONFIG.clocks) window.NNA_CONFIG.clocks = DEFAULT_CLOCKS;
+        var bootBlocks = (cfg.monitor && cfg.monitor.blocks) || [];
+        var bootWidgetIds = bootBlocks.map(function (b) { return b.widget; });
+        pageLog('info', 'boot: monitor=' + monitorId + ', blocks=' + bootBlocks.length + ', widgets=[' + bootWidgetIds.join(',') + ']');
         connectEvents();
       });
     }, function (err) {
