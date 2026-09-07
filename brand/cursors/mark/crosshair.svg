@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="16.00,16.00">
+  <line x1="6.00" y1="16.00" x2="13.00" y2="16.00" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="butt"/>
+  <line x1="19.00" y1="16.00" x2="26.00" y2="16.00" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="butt"/>
+  <line x1="16.00" y1="6.00" x2="16.00" y2="13.00" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="butt"/>
+  <line x1="16.00" y1="19.00" x2="16.00" y2="26.00" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="butt"/>
+  <circle cx="16.00" cy="16.00" r="3.00" fill="none" stroke="#0B0B0B" stroke-width="1.2"/>
+  <rect x="5.00" y="15.00" width="2.00" height="2.00" fill="#8C1A25"/>
+  <rect x="25.00" y="15.00" width="2.00" height="2.00" fill="#8C1A25"/>
+  <rect x="15.00" y="5.00" width="2.00" height="2.00" fill="#8C1A25"/>
+  <rect x="15.00" y="25.00" width="2.00" height="2.00" fill="#8C1A25"/>
+</svg>

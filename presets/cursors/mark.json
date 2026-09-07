@@ -1,0 +1,82 @@
+{
+ "id": "mark",
+ "name": {
+  "ru": "Знак",
+  "en": "Mark"
+ },
+ "description": "Бренд-стрелка по золотому треугольнику знака NNA1618, короткий перелом хвоста.",
+ "rasterizer": "pillow-shapes.json (no cairo/resvg/inkscape/magick found)",
+ "canvas": 32,
+ "sizes": [
+  32,
+  48,
+  64
+ ],
+ "files": [
+  {
+   "role": "arrow",
+   "file": "arrow.cur",
+   "registryRole": "Arrow"
+  },
+  {
+   "role": "hand",
+   "file": "hand.cur",
+   "registryRole": "Hand"
+  },
+  {
+   "role": "ibeam",
+   "file": "ibeam.cur",
+   "registryRole": "IBeam"
+  },
+  {
+   "role": "size_ns",
+   "file": "size_ns.cur",
+   "registryRole": "SizeNS"
+  },
+  {
+   "role": "size_we",
+   "file": "size_we.cur",
+   "registryRole": "SizeWE"
+  },
+  {
+   "role": "size_nwse",
+   "file": "size_nwse.cur",
+   "registryRole": "SizeNWSE"
+  },
+  {
+   "role": "size_nesw",
+   "file": "size_nesw.cur",
+   "registryRole": "SizeNESW"
+  },
+  {
+   "role": "move",
+   "file": "move.cur",
+   "registryRole": "SizeAll"
+  },
+  {
+   "role": "no",
+   "file": "no.cur",
+   "registryRole": "No"
+  },
+  {
+   "role": "help",
+   "file": "help.cur",
+   "registryRole": "Help"
+  },
+  {
+   "role": "crosshair",
+   "file": "crosshair.cur",
+   "registryRole": "Crosshair"
+  },
+  {
+   "role": "wait",
+   "file": "wait.ani",
+   "registryRole": "Wait"
+  },
+  {
+   "role": "busy",
+   "file": "busy.ani",
+   "registryRole": "AppStarting"
+  }
+ ]
+}
