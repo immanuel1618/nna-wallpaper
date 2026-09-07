@@ -11,18 +11,37 @@ public static class Updates
 
     public sealed record Result(bool ok, bool? installed, string current, string? available, string message, string? error = null);
 
-    private static UpdateManager Manager() => new(new GithubSource(RepoUrl, null, false));
+    /// <summary>Direct release download URL: no GitHub API calls, so no anonymous rate limit (shared VPN exits hit it easily).</summary>
+    public const string DirectFeedUrl = RepoUrl + "/releases/latest/download/";
+
+    private static UpdateManager DirectManager() => new(new SimpleWebSource(DirectFeedUrl));
+    private static UpdateManager ApiManager() => new(new GithubSource(RepoUrl, null, false));
+
+    /// <summary>Check through the direct feed first; fall back to the GitHub API source when the feed is unreachable.</summary>
+    private static async Task<(UpdateManager mgr, UpdateInfo? info)> CheckWithFallbackAsync(HostContext ctx)
+    {
+        var direct = DirectManager();
+        try
+        {
+            return (direct, await direct.CheckForUpdatesAsync().ConfigureAwait(false));
+        }
+        catch (Exception ex)
+        {
+            ctx.Log.Warn("update check via direct feed failed, trying GitHub API: " + ex.Message);
+            var api = ApiManager();
+            return (api, await api.CheckForUpdatesAsync().ConfigureAwait(false));
+        }
+    }
 
     public static async Task<Result> CheckAsync(HostContext ctx)
     {
         try
         {
-            var mgr = Manager();
-            if (!mgr.IsInstalled)
+            if (!DirectManager().IsInstalled)
             {
                 return new Result(true, false, HostInfo.Version, null, "not installed (dev or unpacked build): updates are managed by the installer");
             }
-            var info = await mgr.CheckForUpdatesAsync().ConfigureAwait(false);
+            var (mgr, info) = await CheckWithFallbackAsync(ctx).ConfigureAwait(false);
             var available = info?.TargetFullRelease?.Version?.ToString();
             ctx.Log.Info("update check: current " + mgr.CurrentVersion + ", available " + (available ?? "none"));
             return new Result(true, true, mgr.CurrentVersion?.ToString() ?? HostInfo.Version, available, available is null ? "no updates" : "update available");
@@ -39,9 +58,8 @@ public static class Updates
     {
         try
         {
-            var mgr = Manager();
-            if (!mgr.IsInstalled) return new Result(true, false, HostInfo.Version, null, "not installed: nothing to apply");
-            var info = await mgr.CheckForUpdatesAsync().ConfigureAwait(false);
+            if (!DirectManager().IsInstalled) return new Result(true, false, HostInfo.Version, null, "not installed: nothing to apply");
+            var (mgr, info) = await CheckWithFallbackAsync(ctx).ConfigureAwait(false);
             if (info is null) return new Result(true, true, mgr.CurrentVersion?.ToString() ?? HostInfo.Version, null, "no updates");
             var target = info.TargetFullRelease.Version.ToString();
             ctx.Log.Info("update: downloading " + target);

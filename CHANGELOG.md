@@ -4,6 +4,11 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-07
+
+### Changed
+- Updates are fetched from the direct release download URL first (no GitHub API rate limit); the API source is only a fallback.
+
 ## [0.1.3] - 2026-09-07
 
 ### Changed
