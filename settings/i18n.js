@@ -159,14 +159,98 @@ const DICT = {
   sideCenter: { ru: "По центру", en: "Center" },
   sideRight: { ru: "Справа", en: "Right" },
   module_brand: { ru: "Бренд", en: "Brand" },
+  module_nna: { ru: "NNA", en: "NNA" },
   module_date: { ru: "Дата", en: "Date" },
   module_clock: { ru: "Часы", en: "Clock" },
   module_weather: { ru: "Погода", en: "Weather" },
   module_stats: { ru: "Статистика", en: "Stats" },
   module_media: { ru: "Медиа", en: "Media" },
   module_planner: { ru: "Планировщик", en: "Planner" },
+  module_volume: { ru: "Громкость", en: "Volume" },
+  module_network: { ru: "Сеть", en: "Network" },
+  module_battery: { ru: "Батарея", en: "Battery" },
+  module_layout: { ru: "Раскладка", en: "Layout" },
+  module_control: { ru: "Управление", en: "Control" },
   module_spacer: { ru: "Разделитель", en: "Spacer" },
+
+  // Windows.Mode select (ζ, taskbar-tab.js; not yet a real field on TaskbarWindowsSettings —
+  // see docs/SETTINGS.md "Панель задач: режим Windows")
+  windowsModeLabel: { ru: "Режим панели Windows", en: "Windows taskbar mode" },
+  windowsModeHint: {
+    ru: "Панель не выезжает по наведению. Клавиша Win показывает её вместе с меню Пуск.",
+    en: "The taskbar does not slide out on hover. The Win key shows it together with the Start menu.",
+  },
+  windowsMode_normal: { ru: "Обычная", en: "Normal" },
+  windowsMode_autohide: { ru: "Автоскрытие", en: "Auto-hide" },
+  windowsMode_winonly: { ru: "Только по Win", en: "Win-only" },
+
+  // ── shell: sidebar, search, page titles (macOS-like shell, see docs/SETTINGS.md) ────────────
+  searchPlaceholder: { ru: "Поиск", en: "Search" },
+  nav_layout: { ru: "Раскладка", en: "Layout" },
+  nav_blocks: { ru: "Блоки", en: "Blocks" },
+  nav_appearance: { ru: "Внешний вид", en: "Appearance" },
+  nav_topbar: { ru: "Верхняя строка", en: "Top bar" },
+  nav_dock: { ru: "Док", en: "Dock" },
+  nav_taskbar: { ru: "Панель задач", en: "Taskbar" },
+  nav_cursor: { ru: "Курсор", en: "Cursor" },
+  nav_planner: { ru: "Планировщик", en: "Planner" },
+  nav_general: { ru: "Общие", en: "General" },
+  nav_about: { ru: "О программе", en: "About" },
+
+  // γ — appearance: new group titles (sliders moved onto NNAUI.slider/toggle)
+  performanceSection: { ru: "Производительность", en: "Performance" },
+
+  // δ — top bar (new standalone page, settings/pages/topbar.js)
+  topbarGeneralSection: { ru: "Общее", en: "General" },
+  topbarBehaviourSection: { ru: "Поведение", en: "Behavior" },
+
+  // ε — dock (new page, settings/pages/dock.js; app.dock is not a real AppSettings field in
+  // this branch yet — see the stage report in docs/SETTINGS.md)
+  dockGeneralSection: { ru: "Общее", en: "General" },
+  dockMagnifySection: { ru: "Увеличение", en: "Magnification" },
+  dockBehaviourSection: { ru: "Поведение", en: "Behavior" },
+  dockItemsSection: { ru: "Элементы", en: "Items" },
+  dockEnabled: { ru: "Док включён", en: "Dock enabled" },
+  dockSize: { ru: "Размер", en: "Size" },
+  dockMagnify: { ru: "Увеличение при наведении", en: "Magnify on hover" },
+  dockMagnifyMax: { ru: "Максимум увеличения", en: "Magnification max" },
+  dockShowRunning: { ru: "Показывать запущенные", en: "Show running apps" },
+  dockShowTrash: { ru: "Показывать корзину", en: "Show trash" },
+  dockFolders: { ru: "Папки", en: "Folders" },
+  dockPinned: { ru: "Закреплённые", en: "Pinned" },
+  dockNotPersistedYet: {
+    ru: "Пока не сохраняется на сервере — поле app.dock появится в отдельной ветке.",
+    en: "Not persisted by the host yet — app.dock ships in a separate branch.",
+  },
+
+  // η — cursor (new page, settings/pages/cursor.js)
+  cursorVariantsSection: { ru: "Вариант", en: "Variant" },
+  cursorSizeSection: { ru: "Применение", en: "Apply" },
+  cursorSize: { ru: "Размер", en: "Size" },
+  cursorApply: { ru: "Применить", en: "Apply" },
+  cursorReset: { ru: "Вернуть системный", en: "Restore system cursor" },
+  cursorActiveTag: { ru: "активен", en: "active" },
+  cursorBackupPresent: { ru: "Системная схема сохранена, можно вернуть", en: "System scheme is backed up and can be restored" },
+  cursorBackupAbsent: { ru: "Нет сохранённой системной схемы", en: "No system scheme backed up" },
+  cursorUnavailable: { ru: "Курсоры недоступны", en: "Cursors unavailable" },
+
+  // ι — general: microphone pick (new — GET/PUT /audio/capture-device)
+  generalSection: { ru: "Общее", en: "General" },
+  micSection: { ru: "Микрофон", en: "Microphone" },
+  micDevice: { ru: "Устройство записи", en: "Recording device" },
+  micDefault: { ru: "По умолчанию", en: "Default" },
+  micHint: { ru: "Используется голосовым блоком планировщика", en: "Used by the planner's voice block" },
+
+  // κ — about (new page, settings/pages/about.js)
+  links: { ru: "Ссылки", en: "Links" },
+  license: { ru: "Лицензия", en: "License" },
+  mitNote: { ru: "MIT — свободное использование с указанием авторства.", en: "MIT — free to use with attribution." },
+  changelogLink: { ru: "Журнал изменений", en: "Changelog" },
 };
+
+/** Both languages' "Saved" strings — used by settings/api.js's setStatus to color the status
+ * pill green without threading a separate flag through every onStatus(text, isError) call site. */
+export const SAVED_MARKERS = new Set(Object.values(DICT.statusSaved));
 
 export function makeT(lang) {
   const l = lang === "en" ? "en" : "ru";
