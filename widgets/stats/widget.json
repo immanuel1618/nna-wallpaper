@@ -7,5 +7,8 @@
   "defaultSize": { "cols": 1, "rows": 1 },
   "minSize": { "cols": 1, "rows": 2 },
   "needs": ["stats"],
+  "description": { "ru": "Загрузка процессора, памяти и сети в реальном времени.", "en": "Live CPU, memory and network load." },
+  "icon": "stats",
+  "groups": [],
   "settings": []
 }

@@ -7,8 +7,19 @@
   "defaultSize": { "cols": 1, "rows": 4 },
   "minSize": { "cols": 1, "rows": 1 },
   "needs": ["launch", "config"],
+  "description": { "ru": "Панель быстрого запуска приложений, папок и ссылок.", "en": "A quick-launch panel for apps, folders and links." },
+  "icon": "launch",
+  "groups": [
+    { "id": "appearance", "label": { "ru": "Внешний вид", "en": "Appearance" }, "keys": ["grayIcons"] },
+    { "id": "groups", "label": { "ru": "Группы", "en": "Groups" }, "keys": [] },
+    { "id": "behavior", "label": { "ru": "Поведение", "en": "Behavior" }, "keys": ["compact"] }
+  ],
   "settings": [
-    { "key": "grayIcons", "type": "bool", "label": "Иконки в монохроме", "default": true },
-    { "key": "compact", "type": "bool", "label": "Компактный вид", "default": false }
+    { "key": "grayIcons", "type": "bool", "default": true,
+      "label": { "ru": "Иконки в монохроме", "en": "Monochrome icons" },
+      "help": { "ru": "Показывать значки приложений оттенками серого вместо цвета.", "en": "Show app icons in shades of gray instead of color." } },
+    { "key": "compact", "type": "bool", "default": false,
+      "label": { "ru": "Компактный вид", "en": "Compact view" },
+      "help": { "ru": "Уменьшенные подписи и отступы, чтобы поместить больше пунктов.", "en": "Smaller labels and spacing to fit more items on screen." } }
   ]
 }

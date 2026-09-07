@@ -3,44 +3,25 @@
   "name": "NNA Planner",
   "version": "0.1.0",
   "author": "NNA1618",
-  "entry": {
-    "kind": "module",
-    "path": "widget.js",
-    "export": "planner"
-  },
-  "needs": [
-    "planner"
+  "entry": { "kind": "module", "path": "widget.js", "export": "planner" },
+  "needs": ["planner"],
+  "defaultSize": { "cols": 1, "rows": 1 },
+  "minSize": { "cols": 1, "rows": 1 },
+  "description": { "ru": "Задачи, встречи и брифинг из NNA Planner.", "en": "Tasks, meetings and the briefing from NNA Planner." },
+  "icon": "tasks",
+  "groups": [
+    { "id": "refresh", "label": { "ru": "Обновление", "en": "Refresh" }, "keys": ["refreshSec", "maxTasks"] },
+    { "id": "input", "label": { "ru": "Ввод", "en": "Input" }, "keys": ["voice"] }
   ],
-  "defaultSize": {
-    "cols": 1,
-    "rows": 1
-  },
-  "minSize": {
-    "cols": 1,
-    "rows": 1
-  },
   "settings": [
-    {
-      "key": "refreshSec",
-      "type": "number",
-      "label": "Обновление, сек",
-      "default": 60,
-      "min": 15,
-      "max": 600
-    },
-    {
-      "key": "voice",
-      "type": "bool",
-      "label": "Кнопка голосового ввода",
-      "default": true
-    },
-    {
-      "key": "maxTasks",
-      "type": "number",
-      "label": "Задач в списке",
-      "default": 6,
-      "min": 3,
-      "max": 12
-    }
+    { "key": "refreshSec", "type": "number", "default": 60, "min": 15, "max": 600,
+      "label": { "ru": "Обновление, сек", "en": "Refresh, sec" },
+      "help": { "ru": "Как часто планировщик запрашивает свежие данные.", "en": "How often the planner fetches fresh data." } },
+    { "key": "voice", "type": "bool", "default": true,
+      "label": { "ru": "Кнопка голосового ввода", "en": "Voice input button" },
+      "help": { "ru": "Показывать кнопку записи голоса для быстрой постановки задачи.", "en": "Show a voice-recording button for quickly adding a task." } },
+    { "key": "maxTasks", "type": "number", "default": 6, "min": 3, "max": 12,
+      "label": { "ru": "Задач в списке", "en": "Tasks in the list" },
+      "help": { "ru": "Сколько задач показывать одновременно.", "en": "How many tasks to show at once." } }
   ]
 }

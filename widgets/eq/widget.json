@@ -7,11 +7,27 @@
   "defaultSize": { "cols": 1, "rows": 4 },
   "minSize": { "cols": 1, "rows": 2 },
   "needs": ["audio"],
+  "description": { "ru": "Столбики эквалайзера, реагирующие на звук системы.", "en": "Equalizer bars that react to the system audio." },
+  "icon": "eq",
+  "groups": [
+    { "id": "appearance", "label": { "ru": "Внешний вид", "en": "Appearance" }, "keys": ["bars", "gain", "minHeight"] },
+    { "id": "response", "label": { "ru": "Отклик", "en": "Response" }, "keys": ["attack", "release"] }
+  ],
   "settings": [
-    { "key": "bars", "type": "number", "label": "Полосы", "default": 56, "min": 8, "max": 128 },
-    { "key": "attack", "type": "number", "label": "Атака", "default": 0.55, "min": 0, "max": 1 },
-    { "key": "release", "type": "number", "label": "Спад", "default": 0.075, "min": 0, "max": 1 },
-    { "key": "gain", "type": "number", "label": "Усиление", "default": 1.7, "min": 0.1, "max": 5 },
-    { "key": "minHeight", "type": "number", "label": "Минимальная высота", "default": 0.02, "min": 0, "max": 1 }
+    { "key": "bars", "type": "number", "default": 56, "min": 8, "max": 128,
+      "label": { "ru": "Полосы", "en": "Bars" },
+      "help": { "ru": "Сколько столбиков рисовать на всю ширину блока.", "en": "How many bars to draw across the block." } },
+    { "key": "attack", "type": "number", "default": 0.55, "min": 0, "max": 1,
+      "label": { "ru": "Атака", "en": "Attack" },
+      "help": { "ru": "Как быстро столбики поднимаются на громких звуках, от 0 до 1.", "en": "How fast the bars rise on loud sounds, 0 to 1." } },
+    { "key": "release", "type": "number", "default": 0.075, "min": 0, "max": 1,
+      "label": { "ru": "Спад", "en": "Release" },
+      "help": { "ru": "Как быстро столбики опускаются после звука, от 0 до 1.", "en": "How fast the bars fall after a sound, 0 to 1." } },
+    { "key": "gain", "type": "number", "default": 1.7, "min": 0.1, "max": 5,
+      "label": { "ru": "Усиление", "en": "Gain" },
+      "help": { "ru": "Общее усиление уровня перед отрисовкой.", "en": "Overall gain applied before drawing." } },
+    { "key": "minHeight", "type": "number", "default": 0.02, "min": 0, "max": 1,
+      "label": { "ru": "Минимальная высота", "en": "Minimum height" },
+      "help": { "ru": "Минимальная высота столбика в тишине, доля от блока.", "en": "Minimum bar height in silence, a fraction of the block." } }
   ]
 }

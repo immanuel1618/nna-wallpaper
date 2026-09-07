@@ -7,8 +7,17 @@
   "defaultSize": { "cols": 1, "rows": 4 },
   "minSize": { "cols": 1, "rows": 2 },
   "needs": ["events", "config"],
+  "description": { "ru": "Ближайшие события и ежедневные напоминания из списка.", "en": "Upcoming events and daily reminders from the list." },
+  "icon": "calendar",
+  "groups": [
+    { "id": "display", "label": { "ru": "Показ", "en": "Display" }, "keys": ["perPage", "refreshSec"] }
+  ],
   "settings": [
-    { "key": "perPage", "type": "number", "label": "Карточек на странице", "default": 3, "min": 1, "max": 10 },
-    { "key": "refreshSec", "type": "number", "label": "Обновление, сек", "default": 30, "min": 5, "max": 600 }
+    { "key": "perPage", "type": "number", "default": 3, "min": 1, "max": 10,
+      "label": { "ru": "Карточек на странице", "en": "Cards per page" },
+      "help": { "ru": "Сколько карточек событий показывать одновременно.", "en": "How many event cards to show at once." } },
+    { "key": "refreshSec", "type": "number", "default": 30, "min": 5, "max": 600,
+      "label": { "ru": "Обновление, сек", "en": "Refresh, sec" },
+      "help": { "ru": "Как часто проверять список событий на изменения.", "en": "How often to check the event list for changes." } }
   ]
 }

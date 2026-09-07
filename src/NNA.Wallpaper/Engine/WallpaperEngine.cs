@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
 using NNA.Wallpaper.Host;
+using NNA.Wallpaper.Host.Services;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -13,9 +14,11 @@ namespace NNA.Wallpaper.Engine;
 /// <summary>
 /// Owns the desktop layer, one WallpaperWindow per monitor, the fullscreen pause logic, the input
 /// bridge and the watchdog that re-attaches everything when explorer recreates the desktop.
-/// Implements IHostApp so the local API can report and control the engine.
+/// Implements IHostApp so the local API can report and control the engine, and
+/// <see cref="ICapturesPreview"/> so <c>GET /widgets/&lt;id&gt;/preview.png</c> (WidgetsService.cs)
+/// can ask for a live snapshot instead of always falling back to the static preview image.
 /// </summary>
-public sealed class WallpaperEngine : IHostApp, IDisposable
+public sealed class WallpaperEngine : IHostApp, ICapturesPreview, IDisposable
 {
     private readonly HostContext _ctx;
     private readonly Log _log;
@@ -237,6 +240,29 @@ public sealed class WallpaperEngine : IHostApp, IDisposable
             if (monitorId is null || string.Equals(w.Monitor.Id, monitorId, StringComparison.OrdinalIgnoreCase)) w.PostJson(json);
         }
     });
+
+    /// <summary>ICapturesPreview: PNG of the whole wallpaper window for one monitor, or null when
+    /// that monitor isn't running (unknown id, or the window's WebView2 controller isn't ready
+    /// yet). Must hop onto the WPF dispatcher — WallpaperWindow/WebView2 are UI-thread affine, but
+    /// this is called from a local-API request handler running on a thread-pool thread.</summary>
+    public Task<byte[]?> CapturePreviewAsync(string monitorId)
+    {
+        var tcs = new TaskCompletionSource<byte[]?>();
+        _dispatcher.BeginInvoke(async () =>
+        {
+            try
+            {
+                var w = _windows.FirstOrDefault(w => string.Equals(w.Monitor.Id, monitorId, StringComparison.OrdinalIgnoreCase));
+                tcs.TrySetResult(w is null ? null : await w.CapturePngAsync());
+            }
+            catch (Exception ex)
+            {
+                _log.Error("capture preview " + monitorId, ex);
+                tcs.TrySetResult(null);
+            }
+        });
+        return tcs.Task;
+    }
 
     public void Dispose()
     {

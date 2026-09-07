@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.IO;
 using System.Windows.Interop;
 using Microsoft.Web.WebView2.Core;
 using NNA.Wallpaper.Host;
@@ -228,6 +229,29 @@ public sealed class WallpaperWindow : IDisposable
     public void PostJson(string json)
     {
         try { _controller?.CoreWebView2.PostWebMessageAsJson(json); } catch (Exception ex) { _log.Error("post message", ex); }
+    }
+
+    /// <summary>
+    /// Captures the whole window as a PNG via <c>CoreWebView2.CapturePreviewAsync</c> (used by
+    /// <c>GET /widgets/&lt;id&gt;/preview.png</c> for a live block preview instead of the static
+    /// fallback — see Services/WidgetsService.cs, which crops this full-window image down to one
+    /// grid cell). Returns null when the controller isn't ready yet or the capture itself fails
+    /// (e.g. the page is paused/suspended); callers fall back to the static preview in that case.
+    /// </summary>
+    public async Task<byte[]?> CapturePngAsync()
+    {
+        if (_controller is null) return null;
+        try
+        {
+            using var stream = new MemoryStream();
+            await _controller.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+            return stream.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"capture preview {Monitor.Id}: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>Forwards one mouse event to WebView2 through SendMouseInput (composition hosting
