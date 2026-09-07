@@ -4,6 +4,13 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-07
+
+### Fixed
+- The text input window could crash the whole application when it was closed while already
+  closing (Deactivated fired during Close). Now closes once; unhandled UI exceptions are logged
+  instead of terminating the wallpaper.
+
 ## [0.1.1] - 2026-09-07
 
 ### Changed

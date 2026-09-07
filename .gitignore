@@ -28,3 +28,4 @@ secrets/
 # Local publish output (never commit build output)
 .pubbin/
 publish/
+Releases-*/

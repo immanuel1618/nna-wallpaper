@@ -23,6 +23,20 @@ public partial class App : Application
         base.OnStartup(e);
         Args = CliArgs.Parse(e.Args);
 
+        // A wallpaper must not die because one window misbehaved: log UI-thread exceptions and carry on.
+        DispatcherUnhandledException += (_, ex) =>
+        {
+            Log?.Error("unhandled UI exception", ex.Exception);
+            ex.Handled = true;
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
+            Log?.Error("unhandled exception" + (ex.IsTerminating ? " (terminating)" : ""), ex.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, ex) =>
+        {
+            Log?.Error("unobserved task exception", ex.Exception);
+            ex.SetObserved();
+        };
+
         // Single instance: a second launch forwards its flags to the running instance and exits
         // (see SingleInstance.cs). It never gets here, so nothing below runs twice.
         var mutex = SingleInstance.TryAcquire(Paths.Resolve(Args.DataDir).DataDir);

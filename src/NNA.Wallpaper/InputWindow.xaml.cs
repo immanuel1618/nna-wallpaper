@@ -37,7 +37,8 @@ public partial class InputWindow : Window
 
         Input.GotFocus += OnInputGotFocus;
         Input.PreviewKeyDown += OnPreviewKeyDown;
-        Deactivated += (_, _) => Close();
+        Deactivated += (_, _) => SafeClose();
+        Closing += (_, _) => _closing = true;
         ContentRendered += (_, _) => Reposition();
         Loaded += (_, _) => Input.Focus();
     }
@@ -53,16 +54,24 @@ public partial class InputWindow : Window
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter) { e.Handled = true; Submit(); }
-        else if (e.Key == Key.Escape) { e.Handled = true; Close(); }
+        else if (e.Key == Key.Escape) { e.Handled = true; SafeClose(); }
     }
 
     private void Submit()
     {
         if (_closing) return;
         var text = _placeholderShown ? "" : Input.Text.Trim();
-        _closing = true;
-        Close();
+        SafeClose();
         if (text.Length > 0) _onSubmit(text);
+    }
+
+    /// <summary>Close once: Deactivated fires again while the window is already closing, and WPF throws on a second Close().</summary>
+    private void SafeClose()
+    {
+        if (_closing) return;
+        _closing = true;
+        try { Close(); }
+        catch (InvalidOperationException ex) { _ctx.Log.Warn("input window close: " + ex.Message); }
     }
 
     /// <summary>
