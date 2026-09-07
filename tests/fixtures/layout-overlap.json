@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "monitors": [
+    {
+      "id": "main",
+      "name": "Main",
+      "enabled": true,
+      "grid": { "cols": 3, "rows": 8, "colWeights": [1, 1, 1], "gap": 24, "pad": 48 },
+      "blocks": [
+        { "widget": "eq", "col": 1, "colSpan": 2, "row": 1, "rowSpan": 4 },
+        { "widget": "focus", "col": 2, "colSpan": 1, "row": 2, "rowSpan": 4 },
+        { "widget": "weather", "col": 3, "colSpan": 1, "row": 1, "rowSpan": 4 }
+      ]
+    }
+  ]
+}
