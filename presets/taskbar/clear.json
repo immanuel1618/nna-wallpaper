@@ -1,0 +1,41 @@
+{
+  "id": "clear",
+  "name": { "ru": "Прозрачная", "en": "Clear" },
+  "taskbar": {
+    "enabled": true,
+    "preset": "clear",
+    "normal": { "mode": "clear", "color": "#0B0B0B", "opacity": 0.5 },
+    "maximized": { "mode": "clear", "color": "#0B0B0B", "opacity": 0.5 },
+    "fullscreen": { "mode": "clear", "color": "#0B0B0B", "opacity": 0.5 },
+    "windows": {
+      "centered": null,
+      "hideSearch": null,
+      "hideTaskView": null,
+      "hideWidgets": null,
+      "hideClock": null,
+      "small": null,
+      "transparency": null,
+      "oledTransparency": null,
+      "autoHide": null
+    },
+    "secondary": true
+  },
+  "topBar": {
+    "enabled": false,
+    "monitors": "all",
+    "height": 30,
+    "style": { "mode": "acrylic", "color": "#0B0B0B", "opacity": 0.6 },
+    "fontSize": 12,
+    "autoHide": false,
+    "reserveSpace": true,
+    "modules": [
+      { "id": "brand", "side": "left" },
+      { "id": "date", "side": "left" },
+      { "id": "clock", "side": "center" },
+      { "id": "planner", "side": "right" },
+      { "id": "media", "side": "right" },
+      { "id": "weather", "side": "right" },
+      { "id": "stats", "side": "right" }
+    ]
+  }
+}

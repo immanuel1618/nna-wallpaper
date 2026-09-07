@@ -1,0 +1,37 @@
+{
+  "id": "minimal",
+  "name": { "ru": "Минимализм", "en": "Minimal" },
+  "taskbar": {
+    "enabled": true,
+    "preset": "minimal",
+    "normal": { "mode": "normal", "color": "#0B0B0B", "opacity": 0.5 },
+    "maximized": { "mode": "opaque", "color": "#0B0B0B", "opacity": 1 },
+    "fullscreen": { "mode": "normal", "color": "#0B0B0B", "opacity": 0.5 },
+    "windows": {
+      "centered": null,
+      "hideSearch": true,
+      "hideTaskView": true,
+      "hideWidgets": true,
+      "hideClock": null,
+      "small": null,
+      "transparency": null,
+      "oledTransparency": null,
+      "autoHide": null
+    },
+    "secondary": true
+  },
+  "topBar": {
+    "enabled": true,
+    "monitors": "all",
+    "height": 30,
+    "style": { "mode": "acrylic", "color": "#0B0B0B", "opacity": 0.6 },
+    "fontSize": 12,
+    "autoHide": false,
+    "reserveSpace": true,
+    "modules": [
+      { "id": "date", "side": "left" },
+      { "id": "clock", "side": "center" },
+      { "id": "planner", "side": "right" }
+    ]
+  }
+}
