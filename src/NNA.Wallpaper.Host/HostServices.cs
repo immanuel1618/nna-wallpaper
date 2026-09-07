@@ -50,6 +50,7 @@ public sealed class HostServices : IDisposable
         Add(new Services.WidgetsService(_ctx));
         Add(new Services.MediaService(_ctx));
         Add(new Services.AudioService(_ctx));
+        Add(new Services.ConfigApiService(_ctx));
     }
 
     private void Add(object service)
