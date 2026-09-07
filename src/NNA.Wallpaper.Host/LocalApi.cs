@@ -161,13 +161,28 @@ public sealed class LocalApi : IDisposable
     {
         var req = new ApiRequest(http);
         var res = http.Response;
-        res.Headers["Access-Control-Allow-Origin"] = "*";
         res.Headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS";
         res.Headers["Access-Control-Allow-Headers"] = "Content-Type, X-Token";
         res.Headers["Server"] = "nna-wallpaper/" + HostInfo.Version;
 
         try
         {
+            // Only our own pages (served from this loopback origin) may talk to the API from a browser
+            // context. A foreign Origin (any web page open in a browser) is refused outright, so the
+            // API token handed to the wallpaper page through /config can never be read cross-origin.
+            var origin = http.Request.Headers["Origin"];
+            if (!string.IsNullOrEmpty(origin))
+            {
+                if (!IsOwnOrigin(origin))
+                {
+                    _ctx.Log.Warn("refused foreign origin " + origin + " on " + req.Method + " " + req.Path);
+                    await req.Json(new { error = "forbidden origin" }, 403).ConfigureAwait(false);
+                    return;
+                }
+                res.Headers["Access-Control-Allow-Origin"] = origin;
+                res.Headers["Vary"] = "Origin";
+            }
+
             if (req.Method == "OPTIONS")
             {
                 res.StatusCode = 204;
@@ -207,6 +222,10 @@ public sealed class LocalApi : IDisposable
             try { await req.Json(new { error = ex.Message }, 500).ConfigureAwait(false); } catch { }
         }
     }
+
+    private bool IsOwnOrigin(string origin) =>
+        string.Equals(origin, "http://127.0.0.1:" + _ctx.Port, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(origin, "http://localhost:" + _ctx.Port, StringComparison.OrdinalIgnoreCase);
 
     private bool Authorized(ApiRequest req)
     {

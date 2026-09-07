@@ -297,8 +297,14 @@
 
       chain.then(function () {
         if (!window.NNA_CONFIG.clocks) window.NNA_CONFIG.clocks = DEFAULT_CLOCKS;
+        /* Any mounted widget (module or page) whose manifest needs audio opens the spectrum socket. */
         var anyAudio = false;
-        for (var wid2 in needsAudio) if (needsAudio.hasOwnProperty(wid2) && needsAudio[wid2]) anyAudio = true;
+        for (var wid2 in manifests) {
+          if (!manifests.hasOwnProperty(wid2)) continue;
+          var mneeds = (manifests[wid2] && manifests[wid2].needs) || [];
+          if (mneeds.indexOf('audio') !== -1) anyAudio = true;
+        }
+        for (var wid3 in needsAudio) if (needsAudio.hasOwnProperty(wid3) && needsAudio[wid3]) anyAudio = true;
         if (anyAudio) connectAudio();
       });
     }, function (err) {

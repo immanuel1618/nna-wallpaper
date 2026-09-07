@@ -130,6 +130,7 @@ public sealed class AudioService : IHostService, IDisposable
     private void AddClient(WebSocket socket)
     {
         lock (_clientsLock) _clients.Add(socket);
+        _ctx.Log.Info("audio client connected");
     }
 
     private void RemoveClient(WebSocket socket)
