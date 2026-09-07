@@ -61,7 +61,10 @@
   /* С v3-токенов (ui/tokens.css) цвета и шрифты — одна фиксированная брендовая тема, не настройка;
      theme.palette/theme.fonts из app.json больше не применяются страницей (остаются в конфиге как
      задел на будущее/для редактора настроек, см. AppSettings.cs ThemeSettings). Живые из /config —
-     только геометрия и затемнение. */
+     геометрия, затемнение, масштаб шрифта и акцент (см. wallpaper/nna-brand.css: --font-scale
+     умножает var(--fs-*) у .nna-big/.nna-label/.nna-body-text, --accent красит точку состояния
+     и подчёркивание активного пункта у .nna-label b — оба по умолчанию не меняют вид). */
+  var ACCENT_MAP = { none: 'transparent', signal: 'var(--signal)', chrome: 'var(--chrome-flat)' };
   function setThemeVars(theme) {
     var root = document.documentElement.style;
     if (theme.radius != null) root.setProperty('--radius', theme.radius + 'px');
@@ -69,6 +72,14 @@
     if (theme.pad != null) root.setProperty('--pad', theme.pad + 'px');
     if (theme.blur != null) root.setProperty('--blur', theme.blur + 'px');
     if (theme.dim != null) root.setProperty('--dim', String(theme.dim));
+    if (theme.fontScale != null) {
+      var scale = Number(theme.fontScale);
+      if (!isFinite(scale) || scale <= 0) scale = 100;
+      root.setProperty('--font-scale', String(scale / 100));
+    }
+    if (theme.accent != null) {
+      root.setProperty('--accent', ACCENT_MAP.hasOwnProperty(theme.accent) ? ACCENT_MAP[theme.accent] : ACCENT_MAP.none);
+    }
   }
 
   function loadScript(src) {

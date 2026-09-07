@@ -78,7 +78,7 @@
     var timer = null;
     function render(w) {
       el.textContent = '';
-      if (!w || w.ok === false) { el.appendChild(text('—')); return; }
+      if (!w || w.ok === false) { el.appendChild(text('нет данных')); return; }
       el.appendChild(text(Math.round(w.temp) + '°'));
       el.appendChild(dot());
       el.appendChild(text(String(w.name || '').toUpperCase()));
@@ -97,7 +97,7 @@
     var timer = null;
     function render(s) {
       el.textContent = '';
-      if (!s) { el.appendChild(text('—')); return; }
+      if (!s) { el.appendChild(text('нет данных')); return; }
       var cpu = s.cpu || {}, mem = s.mem || {}, gpu = s.gpu || {};
       el.appendChild(text('CPU ' + Math.round(cpu.percent || 0) + '%'));
       el.appendChild(dot());
@@ -429,7 +429,7 @@
     // small red Signal-red dot plus mm:ss, animated with a plain CSS custom property-free pulse via
     // opacity so it needs no external keyframes rule either.
     var dot = document.createElement('span');
-    dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#b3261e;flex:0 0 auto;';
+    dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--signal);flex:0 0 auto;';
     var pulseOn = true;
     var pulseTimer = setInterval(function () { pulseOn = !pulseOn; dot.style.opacity = pulseOn ? '1' : '.35'; }, 500);
     var timeEl = document.createElement('span');

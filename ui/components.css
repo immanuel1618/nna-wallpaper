@@ -45,8 +45,9 @@
 .ui-btn.ghost { background: transparent; border-color: var(--slate); color: var(--steel); }
 .ui-btn.ghost:hover { background: rgba(128, 128, 128, .08); color: var(--ash); }
 
-.ui-btn.danger { border-color: var(--signal); color: var(--signal); }
-.ui-btn.danger:hover { background: rgba(140, 26, 37, .12); }
+/* Signal не набирается текстом — только левая засечка 2px; текст остаётся White. */
+.ui-btn.danger { border-color: var(--slate); border-left: 2px solid var(--signal); color: var(--white); padding-left: calc(var(--sp-21) - 1px); }
+.ui-btn.danger:hover { background: rgba(128, 128, 128, .16); border-color: var(--steel); }
 
 .ui-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;

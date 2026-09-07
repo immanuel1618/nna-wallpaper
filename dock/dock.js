@@ -75,17 +75,20 @@
     if (openMenu) { openMenu.close(); openMenu = null; }
   }
 
-  function iconImg(src, alt) {
+  function iconImg(src, alt, svgInner) {
     var box = document.createElement('div');
     box.className = 'dk-icon-img';
-    if (src) {
+    if (svgInner) {
+      /* монохромный SVG-силуэт (реальная иконка не извлечена — так и ?mock=1) — не монограмма */
+      box.appendChild(DK.svg(svgInner, '0 0 24 24'));
+    } else if (src) {
       var img = document.createElement('img');
       img.src = src;
       img.alt = alt || '';
       img.draggable = false;
       box.appendChild(img);
     } else {
-      /* no icon (extraction failed, or ?mock=1 placeholders): a monogram, not a blank square */
+      /* ни иконки, ни силуэта: монограмма, а не пустой квадрат */
       var mono = document.createElement('div');
       mono.className = 'dk-icon-placeholder';
       var letter = (alt || '?').replace(/^\s+/, '');
@@ -119,7 +122,7 @@
       img.className = 'dk-icon-img';
       img.appendChild(trashSvg(!!item.empty));
     } else {
-      img = iconImg(item.icon, item.title);
+      img = iconImg(item.icon, item.title, item.svgIcon);
     }
     el.appendChild(img);
 
@@ -335,15 +338,40 @@
     } catch (e) { /* без /events страница просто не обновляется само по себе */ }
   }
 
-  /* ---- заглушки для скриншот-теста (?mock=1) ------------------------------ */
+  /* ---- заглушки для скриншот-теста (?mock=1) ------------------------------
+     Честный превью дока: 8 приложений как монохромные SVG-силуэты (не монограммы — те
+     означают "иконку не удалось извлечь", это другое сообщение), разделитель, две папки,
+     корзина — та же форма набора, что реальный /dock/items (app.. + separator + folder×2 +
+     trash), см. tests/dock-probe.ps1. Силуэты нарочно обобщённые (браузер/чат/почта/
+     календарь/музыка/камера/заметки/терминал), а не логотипы конкретных программ. */
+  var MOCK_APP_ICONS = [
+    { title: 'Browser', svg: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<path d="M4 12h16M12 4c2.6 2.4 2.6 13.2 0 16M12 4c-2.6 2.4-2.6 13.2 0 16" fill="none" stroke="currentColor" stroke-width="1.3"/>' },
+    { title: 'Chat', svg: '<path d="M5 6h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H10l-4 3v-3H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z" ' +
+      'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
+    { title: 'Mail', svg: '<rect x="4" y="6" width="16" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<path d="M5 7l7 6 7-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>' },
+    { title: 'Calendar', svg: '<rect x="4" y="5" width="16" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<path d="M4 10h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
+    { title: 'Music', svg: '<circle cx="7" cy="18" r="2.3" fill="currentColor"/><circle cx="17" cy="16" r="2.3" fill="currentColor"/>' +
+      '<path d="M9.3 18V6.5L19.3 4.5V14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
+    { title: 'Camera', svg: '<rect x="3.5" y="7" width="17" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<path d="M8.5 7l1.4-2.2h4.2L15.5 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
+      '<circle cx="12" cy="13" r="3.3" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
+    { title: 'Notes', svg: '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
+      '<path d="M9 12h7M9 16h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
+    { title: 'Terminal', svg: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+      '<path d="M7 9l3 3-3 3M12.5 15h4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' }
+  ];
   function mockItems() {
     var out = [];
-    for (var i = 0; i < 8; i++) {
+    MOCK_APP_ICONS.forEach(function (app, i) {
       out.push({
         kind: 'app',
         id: 'mock-' + i,
-        title: text('Приложение ', 'App ') + (i + 1),
+        title: app.title,
         icon: null,
+        svgIcon: app.svg,
         running: i % 3 === 0,
         foreground: i === 0,
         windows: i % 3 === 0 ? [{ hwnd: 1000 + i, title: 'Window', minimized: false }] : [],
@@ -351,7 +379,13 @@
         launchId: 'mock-' + i,
         path: null
       });
-    }
+    });
+    var folderSvg = '<path d="M4 7a1 1 0 0 1 1-1h4l2 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z" ' +
+      'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>';
+    out.push({ kind: 'separator' });
+    out.push({ kind: 'folder', id: 'mock-folder-downloads', title: text('Загрузки', 'Downloads'), svgIcon: folderSvg, path: null });
+    out.push({ kind: 'folder', id: 'mock-folder-desktop', title: text('Рабочий стол', 'Desktop'), svgIcon: folderSvg, path: null });
+    out.push({ kind: 'trash', id: 'mock-trash', title: text('Корзина', 'Trash'), empty: true });
     return out;
   }
 

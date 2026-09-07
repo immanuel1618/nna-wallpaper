@@ -369,7 +369,7 @@
       if (!items.length) { agenda.appendChild(el('div', { class: 'pp-empty' }, t().noEvents)); reportSize(); return; }
       items.forEach(function (it) {
         agenda.appendChild(el('div', { class: 'pp-agenda-item' },
-          el('span', { class: 'pp-agenda-time' }, it.time || '—'),
+          el('span', { class: 'pp-agenda-time' }, it.time || '·'),
           el('span', { class: 'pp-agenda-text' }, it.text)));
       });
       reportSize();
@@ -424,8 +424,14 @@
 
     function item(text, onClick, opts) {
       opts = opts || {};
+      /* danger (Перезагрузка/Выключение): текст Ash, слева точка Signal — Signal не набирается
+         текстом (см. docs/DESIGN-SYSTEM.md). Точка+текст в одной обёртке, чтобы justify-content:
+         space-between у .ui-menu-item не растянуло зазор между ними, а не только до .hint. */
+      var labelNode = opts.danger
+        ? el('span', { class: 'pp-menu-label' }, el('span', { class: 'pp-menu-dot' }), el('span', { text: text }))
+        : el('span', { text: text });
       var row = el('div', { class: 'ui-menu-item' + (opts.danger ? ' is-danger' : ''), role: 'menuitem' },
-        el('span', { text: text }), opts.hint ? el('span', { class: 'hint', text: opts.hint }) : null);
+        labelNode, opts.hint ? el('span', { class: 'hint', text: opts.hint }) : null);
       row.addEventListener('click', function () { onClick(); });
       menu.appendChild(row);
       return row;

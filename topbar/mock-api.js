@@ -24,11 +24,11 @@
   var state = {
     audio: {
       volume: 42, muted: false,
-      device: { id: 'spk-1', name: 'Realtek — Динамики' },
+      device: { id: 'spk-1', name: 'Realtek · Динамики' },
     },
     outputs: [
-      { id: 'spk-1', name: 'Realtek — Динамики', default: true },
-      { id: 'spk-2', name: 'NNA Monitor — HDMI', default: false },
+      { id: 'spk-1', name: 'Realtek · Динамики', default: true },
+      { id: 'spk-2', name: 'NNA Monitor · HDMI', default: false },
       { id: 'hp-1', name: 'Наушники (Bluetooth)', default: false },
     ],
     sessions: [
@@ -173,7 +173,7 @@
     { m: 'GET', p: '/taskbar/status', h: function () { return json(state.taskbarStatus); } },
     { m: 'POST', p: '/taskbar/preset', h: function (req) {
       var b = readBody(req.init);
-      state.taskbarStatus = { note: 'Пресет: ' + (b.id || '—') };
+      state.taskbarStatus = { note: 'Пресет: ' + (b.id || 'нет данных') };
       return json({ ok: true });
     } },
     { m: 'POST', p: '/app/settings', h: function () { return json({ ok: true }); } },

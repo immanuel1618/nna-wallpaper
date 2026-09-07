@@ -99,7 +99,7 @@ html, body {
   color: var(--white);
   font-family: var(--font-mono);
   font-size: 13px;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--track-label);
   white-space: nowrap;
   padding: 3px 8px;
   border-radius: 8px;
