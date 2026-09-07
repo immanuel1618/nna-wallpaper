@@ -100,6 +100,7 @@ public sealed class TopBarManager : IDisposable
     private void TogglePopup(TopBarWindow bar, string module, double anchorXCss, double anchorWCss)
     {
         var monitorId = bar.Monitor.Id;
+        _ctx.Log.Info("popup: toggle " + module + " on " + monitorId);
         if (_popups.TryGetValue(monitorId, out var existing))
         {
             var sameModule = string.Equals(existing.Module, module, StringComparison.Ordinal);

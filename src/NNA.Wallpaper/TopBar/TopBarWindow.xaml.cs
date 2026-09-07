@@ -19,6 +19,13 @@ namespace NNA.Wallpaper.TopBar;
 /// One always-on-top strip at the top edge of a monitor (mac-like menu bar) hosting topbar/index.html.
 /// Registers itself as an AppBar so maximized windows start below it, gets the same surface style
 /// (acrylic/blur/clear/opaque) as the taskbar, and never takes keyboard focus.
+///
+/// Hosting: WebView2 is attached through <see cref="CompositionHost"/> straight onto this window's own
+/// HWND instead of the WPF WebView2 control — see <see cref="CompositionInput"/> for why (the WPF
+/// control's internal child HWND is what stole foreground activation on click, not WM_MOUSEACTIVATE).
+/// Mouse messages arrive at this window's own WndProc (nothing else is left to receive them) and are
+/// forwarded to WebView2 by <see cref="CompositionInput"/>; keyboard is not forwarded, the bar needs
+/// none.
 /// </summary>
 public partial class TopBarWindow : Window
 {
@@ -33,6 +40,9 @@ public partial class TopBarWindow : Window
     private bool _registered;
     private bool _closing;
     private bool _hiddenByRule;
+    private CompositionHost? _compHost;
+    private CoreWebView2CompositionController? _comp;
+    private CompositionInput? _input;
 
     public MonitorInfo Monitor { get; private set; }
     public int HeightPx => Math.Clamp(_cfg.Height, 20, 64);
@@ -53,7 +63,7 @@ public partial class TopBarWindow : Window
         Background = new SolidColorBrush(Color.FromRgb(r, g, b));
         SourceInitialized += OnSourceInitialized;
         Loaded += async (_, _) => await InitBrowserAsync();
-        Closing += (_, _) => { _closing = true; Unregister(); };
+        Closing += (_, _) => { _closing = true; Unregister(); DisposeComposition(); };
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -79,6 +89,12 @@ public partial class TopBarWindow : Window
         {
             PInvoke.SetWindowPos(_hwnd, new HWND(-1), Monitor.Left, Monitor.Top, Monitor.Width, HeightPx,
                 SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
+        }
+        if (_comp is not null)
+        {
+            _comp.RasterizationScale = scale;
+            _comp.Bounds = new System.Drawing.Rectangle(0, 0, Monitor.Width, HeightPx);
+            _comp.NotifyParentWindowPositionChanged();
         }
     }
 
@@ -138,6 +154,12 @@ public partial class TopBarWindow : Window
             // ABN_POSCHANGED = 1: another app bar or the taskbar moved; re-assert our strip.
             if ((int)wParam == 1) SetPos();
             handled = true;
+            return 0;
+        }
+        if (_input is not null && _input.Handle(msg, wParam, lParam, out var result))
+        {
+            handled = true;
+            return result;
         }
         return 0;
     }
@@ -151,17 +173,43 @@ public partial class TopBarWindow : Window
             var userDataDir = _ctx.Paths.WebView2UserDataDir + "-topbar";
             Directory.CreateDirectory(userDataDir);
             var env = await CoreWebView2Environment.CreateAsync(null, userDataDir).ConfigureAwait(true);
-            await Browser.EnsureCoreWebView2Async(env).ConfigureAwait(true);
-            Browser.DefaultBackgroundColor = System.Drawing.Color.Transparent;
-            var s = Browser.CoreWebView2.Settings;
+            if (_closing) return;
+
+            var host = CompositionHost.Create(_hwnd);
+            CoreWebView2CompositionController comp;
+            try
+            {
+                comp = await env.CreateCoreWebView2CompositionControllerAsync((nint)_hwnd).ConfigureAwait(true);
+            }
+            catch
+            {
+                host.Dispose();
+                throw;
+            }
+            if (_closing) { comp.Close(); host.Dispose(); return; }
+
+            comp.RootVisualTarget = host.RootVisual;
+            host.Commit(); // required right after RootVisualTarget or nothing renders (see CompositionHost.Commit)
+            _compHost = host;
+            _comp = comp;
+
+            comp.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+            var scale = Monitor.Scale <= 0 ? 1.0 : Monitor.Scale;
+            comp.RasterizationScale = scale;
+            comp.Bounds = new System.Drawing.Rectangle(0, 0, Monitor.Width, HeightPx);
+
+            var s = comp.CoreWebView2.Settings;
             s.AreDefaultContextMenusEnabled = false;
             s.AreDevToolsEnabled = App.Args.DevTools;
             s.IsStatusBarEnabled = false;
             s.IsZoomControlEnabled = false;
             s.AreBrowserAcceleratorKeysEnabled = false;
-            Browser.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
-            Browser.CoreWebView2.WebMessageReceived += OnWebMessage;
-            Browser.CoreWebView2.Navigate(_ctx.BaseUrl + "/topbar/?monitor=" + Uri.EscapeDataString(Monitor.Id));
+            comp.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
+            comp.CoreWebView2.WebMessageReceived += OnWebMessage;
+
+            _input = new CompositionInput(_hwnd, comp);
+
+            comp.CoreWebView2.Navigate(_ctx.BaseUrl + "/topbar/?monitor=" + Uri.EscapeDataString(Monitor.Id));
         }
         catch (Exception ex)
         {
@@ -169,18 +217,33 @@ public partial class TopBarWindow : Window
         }
     }
 
+    private void DisposeComposition()
+    {
+        _input = null;
+        try { _comp?.Close(); } catch { }
+        _comp = null;
+        try { _compHost?.Dispose(); } catch { }
+        _compHost = null;
+    }
+
     public void Reload()
     {
-        try { Browser.CoreWebView2?.Reload(); } catch { }
+        try { _comp?.CoreWebView2?.Reload(); } catch { }
     }
+
+    /// <summary>Debug/automation hook (tests/TopBarPreview): runs script in the page and returns its
+    /// JSON-serialized result, or "null" if the page is not ready yet.</summary>
+    public Task<string> ExecuteScriptAsync(string script) =>
+        _comp?.CoreWebView2?.ExecuteScriptAsync(script) ?? Task.FromResult("null");
 
     /// <summary>Only handles {type:'popup', ...} — everything else the page sends the host is
     /// handled elsewhere (currently nothing else posts from the topbar page to the host).</summary>
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        _ctx.Log.Info("top bar: web message " + e.WebMessageAsJson);
         JsonNode? d;
         try { d = JsonNode.Parse(e.WebMessageAsJson); }
-        catch { return; }
+        catch (Exception ex) { _ctx.Log.Warn("top bar: web message parse failed: " + ex.Message); return; }
         if (d?["type"]?.GetValue<string>() != "popup") return;
         var module = d["module"]?.GetValue<string>();
         if (string.IsNullOrEmpty(module)) return;
@@ -191,7 +254,7 @@ public partial class TopBarWindow : Window
 
     public void PostJson(string json)
     {
-        try { Browser.CoreWebView2?.PostWebMessageAsJson(json); } catch { }
+        try { _comp?.CoreWebView2?.PostWebMessageAsJson(json); } catch { }
     }
 
     /// <summary>Hide under fullscreen apps (and for auto-hide when the pointer is away from the top edge).</summary>
