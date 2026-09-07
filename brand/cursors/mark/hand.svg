@@ -1,10 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="16.00,4.00">
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="10.00,3.00">
   <g>
-    <rect x="9.35" y="14.45" width="13.30" height="11.40" rx="3.04" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
-    <rect x="13.62" y="4.00" width="4.75" height="12.35" rx="2.18" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
-    <line x1="9.54" y1="18.73" x2="4.22" y2="23.76" stroke="#FFFFFF" stroke-width="3.23" stroke-linecap="round"/>
-    <line x1="19.04" y1="8.75" x2="19.04" y2="14.45" stroke="#FFFFFF" stroke-width="2.47" stroke-linecap="round"/>
-    <line x1="21.13" y1="9.04" x2="21.13" y2="14.45" stroke="#FFFFFF" stroke-width="2.47" stroke-linecap="round"/>
-    <line x1="22.84" y1="9.89" x2="22.84" y2="14.64" stroke="#FFFFFF" stroke-width="2.18" stroke-linecap="round"/>
+    <rect x="7.00" y="3.00" width="6.00" height="16.00" rx="3.00" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
+    <rect x="14.00" y="11.00" width="5.00" height="9.00" rx="2.50" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
+    <rect x="20.00" y="12.00" width="5.00" height="8.00" rx="2.50" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
+    <rect x="26.00" y="13.00" width="5.00" height="7.00" rx="2.50" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
+    <line x1="8.00" y1="17.00" x2="3.00" y2="22.00" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/>
+    <polygon points="6.00,17.00 28.00,17.00 25.00,23.00 7.00,23.00" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
+    <rect x="7.00" y="23.00" width="18.00" height="6.00" rx="3.00" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="1.0"/>
   </g>
+  <line x1="13.50" y1="11.00" x2="13.50" y2="15.50" stroke="#0B0B0B" stroke-width="1.0"/>
+  <line x1="19.50" y1="12.00" x2="19.50" y2="16.00" stroke="#0B0B0B" stroke-width="1.0"/>
+  <line x1="25.50" y1="13.00" x2="25.50" y2="16.50" stroke="#0B0B0B" stroke-width="1.0"/>
+  <rect x="15.00" y="25.50" width="2.00" height="2.00" fill="#8C1A25"/>
 </svg>

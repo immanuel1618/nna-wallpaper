@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="16.00,4.00">
-  <rect x="9.35" y="14.45" width="13.30" height="11.40" rx="3.04" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
-  <rect x="13.62" y="4.00" width="4.75" height="12.35" rx="2.18" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
-  <line x1="9.54" y1="18.73" x2="4.22" y2="23.76" stroke="#FFFFFF" stroke-width="2.0" stroke-linecap="round"/>
-  <circle cx="16.00" cy="4.00" r="1.60" fill="#8C1A25" stroke="none" stroke-width="1.0"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 32 32" data-hotspot="10.00,3.00">
+  <rect x="7.00" y="3.00" width="6.00" height="16.00" rx="3.00" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+  <rect x="14.00" y="11.00" width="5.00" height="9.00" rx="2.50" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+  <rect x="20.00" y="12.00" width="5.00" height="8.00" rx="2.50" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+  <rect x="26.00" y="13.00" width="5.00" height="7.00" rx="2.50" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+  <line x1="8.00" y1="17.00" x2="3.00" y2="22.00" stroke="#FFFFFF" stroke-width="2.0" stroke-linecap="round"/>
+  <polygon points="6.00,17.00 28.00,17.00 25.00,23.00 7.00,23.00" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+  <rect x="7.00" y="23.00" width="18.00" height="6.00" rx="3.00" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+  <circle cx="10.00" cy="3.50" r="1.60" fill="#8C1A25" stroke="none" stroke-width="1.0"/>
 </svg>
