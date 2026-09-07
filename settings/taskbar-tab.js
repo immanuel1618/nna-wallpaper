@@ -72,7 +72,7 @@ function slugify(name) {
 // with; this page's own dictionary translates known codes, so the page never has to print the
 // raw string (judge, round 2: "сырую строку не показывать").
 const NOTE_CODE_TEXT = {
-  "not-started": { ru: "Модуль панели задач не запущен (headless)", en: "Taskbar module not started (headless)" },
+  "not-started": { ru: "Модуль панели задач не запущен", en: "Taskbar module not started" },
 };
 
 /**

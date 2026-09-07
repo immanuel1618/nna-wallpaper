@@ -430,7 +430,9 @@
         var changedWidgets = DIFF.diffWidgets(S.widgetSettingsById, nextSettingsById);
         var addedIds = {};
         diff.added.forEach(function (a) { addedIds[a.block.widget] = true; });
-        changedWidgets.forEach(function (id2) {
+        var toRefresh = S.langChanged ? idsInOrder : changedWidgets;
+        S.langChanged = false;
+        toRefresh.forEach(function (id2) {
           if (addedIds[id2]) return; // уже смонтирован с актуальными settings выше
           refreshWidgetInstances(id2, nextSettingsById[id2] || {}, theme);
         });
@@ -450,7 +452,10 @@
     var widgetsCfg = cfg.widgets || {};
     var tb = cfg.topbar || cfg.topBar || {};
 
+    var prevLang = window.NNA_CONFIG.language;
     window.NNA_CONFIG.language = cfg.language || window.NNA_CONFIG.language || 'ru';
+    // A language switch must re-render widget bodies (their strings come from N.t at mount), not only titles.
+    S.langChanged = !!prevLang && prevLang !== window.NNA_CONFIG.language;
     window.NNA_CONFIG.dim = theme.dim;
     setThemeVars(theme);
     updateGridGeometry(grid, tb, monitor);

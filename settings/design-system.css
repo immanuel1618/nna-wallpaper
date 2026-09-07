@@ -178,7 +178,8 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* ── taskbar (ζ): per-state (normal/maximized/fullscreen) surface style cards ────────────────── */
 .taskbar-states { display: flex; gap: var(--sp-13); flex-wrap: wrap; }
-.taskbar-state-card { flex: 1 1 200px; min-width: 200px; }
+.taskbar-state-card { flex: 1 1 260px; min-width: 260px; }
+.taskbar-state-card .ui-segmented { flex-wrap: wrap; }
 
 /* ── top bar / dock module editor: drag-and-drop across three zones ─────────────────────────── */
 .dnd-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }

@@ -87,7 +87,7 @@ body.pp-nna .pp-panel { width: calc(var(--sp-233) + var(--sp-21)); } /* 254 */
 /* Ширина ползунка фиксирована (144px), а не сжимается вместе с именем сессии — иначе на узкой
    панели он мог утащить всю свободную ширину и обрезать подпись раньше, чем она реально кончится
    (судья, раунд 2). */
-.pp-session-top .ui-slider { flex: none; width: 144px; }
+.pp-session-top .ui-slider { flex: none; width: 111px; }
 .pp-peak { height: 2px; border-radius: 5px; background: var(--slate); overflow: hidden; }
 .pp-peak > i { display: block; height: 100%; background: var(--ash); width: 0%; }
 .pp-empty { font-family: var(--font-mono); font-size: var(--fs-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--steel); padding: var(--sp-5) var(--sp-8); }

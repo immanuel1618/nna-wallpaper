@@ -125,7 +125,9 @@
         line.text.textContent = N.fmtGB(d.total - d.used) + ' GB ' + N.t('free', 'FREE');
         line.bar.classList.toggle('is-hot', d.percent > 90);
       });
-      disksV.textContent = (s.disks || []).length + ' ' + N.t('vol', 'VOL');
+      var dn = (s.disks || []).length, dm = dn % 10, dh = dn % 100;
+      var dk = (dm === 1 && dh !== 11) ? 'vol_1' : (dm >= 2 && dm <= 4 && (dh < 12 || dh > 14)) ? 'vol_2' : 'vol_5';
+      disksV.textContent = dn + ' ' + N.t(dk, N.t('vol', 'VOL'));
       // NET
       netDownV.textContent = N.fmtBytes(s.net.down_bps, true);
       netUpV.textContent = N.fmtBytes(s.net.up_bps, true);

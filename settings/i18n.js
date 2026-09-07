@@ -49,7 +49,7 @@ const DICT = {
 
   // γ — appearance (one fixed brand theme now — no palette editor or preset picker, see
   // ThemeSettings in AppSettings.cs; this tab only edits geometry/perf knobs)
-  themeGeometry: { ru: "Геометрия и производительность", en: "Geometry & performance" },
+  themeGeometry: { ru: "Геометрия", en: "Geometry" },
   radius: { ru: "Скругление", en: "Radius" },
   blur: { ru: "Размытие", en: "Blur" },
   dim: { ru: "Затемнение", en: "Dim" },

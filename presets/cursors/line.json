@@ -4,7 +4,7 @@
   "ru": "Линия",
   "en": "Line"
  },
- "description": "Тонкая линия 2px + точка Signal в вершине, минималистичный набор.",
+ "description": "Тонкая линия 2px + бордовая точка в вершине, минималистичный набор.",
  "rasterizer": "pillow-shapes.json (no cairo/resvg/inkscape/magick found)",
  "canvas": 32,
  "sizes": [

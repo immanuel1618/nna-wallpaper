@@ -35,7 +35,7 @@ export async function render(container, ctx) {
   });
   window.NNAUI.select(langMount, {
     value: ctx.lang,
-    options: [{ value: "ru", label: "RU" }, { value: "en", label: "EN" }],
+    options: [{ value: "ru", label: "Русский" }, { value: "en", label: "English" }],
     onChange: (v) => ctx.setLang(v),
   });
   portInput.addEventListener("change", async (e) => {
