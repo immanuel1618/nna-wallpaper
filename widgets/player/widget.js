@@ -127,10 +127,16 @@
       }
     }
 
+    var readyReported = false, failReported = false;
     function poll() {
       N.get('/media').then(function (s) {
+        failReported = false;
         state = s; lastPoll = Date.now(); render();
-      }, function () { /* офлайн покажет каркас */ });
+        if (!readyReported) { readyReported = true; if (ctx && ctx.ready) ctx.ready(); }
+      }, function (err) {
+        /* офлайн покажет каркас */
+        if (!failReported) { failReported = true; if (ctx && ctx.fail) ctx.fail(err); }
+      });
     }
     function tickClock() {
       var d = new Date();

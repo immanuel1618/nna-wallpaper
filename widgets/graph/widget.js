@@ -35,13 +35,19 @@
       else draw();
     }
 
+    var readyReported = false, failReported = false;
     function load() {
       if (loading) return;
       loading = true;
       b.setLabel({ text: L.graph || 'GRAPH', strong: TITLE[src] });
       corner.textContent = 'LOADING';
-      N.get('/graph?src=' + src).then(function (g) { loading = false; build(g); },
-        function () { loading = false; corner.textContent = 'NO DATA'; });
+      N.get('/graph?src=' + src).then(function (g) {
+        loading = false; failReported = false; build(g);
+        if (!readyReported) { readyReported = true; if (ctx && ctx.ready) ctx.ready(); }
+      }, function (err) {
+        loading = false; corner.textContent = 'NO DATA';
+        if (!failReported) { failReported = true; if (ctx && ctx.fail) ctx.fail(err); }
+      });
     }
 
     function tune() {

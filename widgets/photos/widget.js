@@ -97,24 +97,35 @@ window.NNA.widgets = window.NNA.widgets || {};
       nextTimer = ctx.setTimeout(function () { next(); scheduleNext(); }, INTERVAL_MS);
     }
 
+    var readyReported = false, failReported = false;
+    function reportReady() {
+      if (readyReported) return;
+      readyReported = true;
+      if (ctx && ctx.ready) ctx.ready();
+    }
     function refresh() {
       if (scanning || destroyed) return;
       scanning = true;
       ctx.helper.get('/pins?d=photos').then(function (j) {
         scanning = false;
         if (destroyed) return;
+        failReported = false;
         var list = (j && j.urls) || [];
         list = list.filter(isImageName);
         if (order === 'sequential') list = list.slice().sort(natural);
         urls = list;
+        // an empty pins list is still a valid answer from the host (e.g. no folder configured
+        // yet) — the widget is up and showing its real state, so this still counts as "ready".
+        reportReady();
         if (!urls.length) { showEmpty(true); return; }
         showEmpty(false);
         if (!currentUrl || urls.indexOf(currentUrl) === -1) show(pickNext());
-      }, function () {
+      }, function (err) {
         scanning = false;
         if (destroyed) return;
         urls = [];
         showEmpty(true);
+        if (!failReported) { failReported = true; if (ctx.fail) ctx.fail(err); }
       });
     }
 

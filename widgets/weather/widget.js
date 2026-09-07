@@ -55,9 +55,24 @@
         c.d.textContent = wd === local ? '' : wd;
       });
     }
-    function poll() { N.get('/weather').then(renderWeather, function () {}); }
+    var readyReported = false, failReported = false;
+    function reportReady() {
+      if (readyReported) return;
+      readyReported = true;
+      if (ctx && ctx.ready) ctx.ready();
+    }
+    function poll() {
+      N.get('/weather').then(function (w) {
+        failReported = false;
+        renderWeather(w);
+        reportReady();
+      }, function (err) {
+        if (!failReported) { failReported = true; if (ctx && ctx.fail) ctx.fail(err); }
+      });
+    }
 
-    poll(); tickClocks();
+    // часы не зависят от сети — если погода недоступна, готовность всё равно наступает по ним
+    poll(); tickClocks(); reportReady();
     ctx.setInterval(tickClocks, 1000);
     ctx.setInterval(poll, ((C.weather && C.weather.refreshMin) || 10) * 60 * 1000);
     return b;

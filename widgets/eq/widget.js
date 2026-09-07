@@ -27,9 +27,19 @@
       canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
       c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
+    var readyReported = false;
+    function reportReady() {
+      if (readyReported) return;
+      readyReported = true;
+      if (ctx && ctx.ready) ctx.ready();
+    }
     ctx.on(window, 'weAudio', function (e) {
       raw = e.detail; lastAudio = Date.now();
+      reportReady();
     });
+    // тишина — нормальное состояние (ничего не играет): не ждём аудио вечно, 2с достаточно, чтобы
+    // отличить "виджет подвис" от "просто тихо".
+    ctx.setTimeout(reportReady, 2000);
 
     // 128 значений WE -> BARS полос: низкие частоты слева, стерео усредняем
     function bands() {

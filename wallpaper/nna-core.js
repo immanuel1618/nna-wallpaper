@@ -6,11 +6,30 @@
   var online = null;
   var toastEl = null, toastTimer = null;
 
-  function get(path) {
-    return fetch(cfgHelper.url + path, { cache: 'no-store' }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+  /* GET с повтором: сетевая ошибка или 5xx/0 — до 3 повторов с паузами 500/1000/2000мс. Не
+     применяется к POST (действия должны выполняться максимум один раз без нашего вмешательства). */
+  var GET_RETRY_DELAYS = [500, 1000, 2000];
+  function getOnce(path) {
+    return fetch(cfgHelper.url + path, { cache: 'no-store' });
+  }
+  function getWithRetry(path, attempt) {
+    return getOnce(path).then(function (r) {
+      if (!r.ok) {
+        if (r.status >= 500 && attempt < GET_RETRY_DELAYS.length) return retryGet(path, attempt);
+        throw new Error('HTTP ' + r.status);
+      }
       return r.json();
+    }, function (err) {
+      if (attempt < GET_RETRY_DELAYS.length) return retryGet(path, attempt);
+      throw err;
     });
+  }
+  function retryGet(path, attempt) {
+    return new Promise(function (resolve) { setTimeout(resolve, GET_RETRY_DELAYS[attempt]); })
+      .then(function () { return getWithRetry(path, attempt + 1); });
+  }
+  function get(path) {
+    return getWithRetry(path, 0);
   }
   function post(path, body) {
     var sep = path.indexOf('?') >= 0 ? '&' : '?';
@@ -103,6 +122,41 @@
     else fn();
   }
 
+  /* ---- наблюдаемость: POST /log/page, без ожидания ответа и без падения при недоступном хосте.
+     level: 'info' | 'warn' | 'error'. monitor берётся из ?monitor= в URL страницы (layout.js
+     работает в том же документе, отдельно передавать его не нужно). Хост режет msg до 2КБ и
+     не более 20 сообщений/с — здесь только клиентская часть, троттлинг не дублируем. */
+  function qparamMonitor() {
+    var m = /[?&]monitor=([^&]*)/.exec(location.search);
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : 'main';
+  }
+  function log(level, msg, data) {
+    try {
+      var body = {
+        level: (level === 'warn' || level === 'error') ? level : 'info',
+        monitor: qparamMonitor(),
+        msg: String(msg == null ? '' : msg).slice(0, 500)
+      };
+      if (data !== undefined) body.data = data;
+      fetch(cfgHelper.url + '/log/page?t=' + encodeURIComponent(cfgHelper.token), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        keepalive: true
+      })["catch"](function () { /* logging must never surface an error of its own */ });
+    } catch (e) { /* noop */ }
+  }
+  window.onerror = function (message, source, lineno, colno, error) {
+    var stack = error && error.stack ? String(error.stack).slice(0, 300) : '';
+    log('error', 'window.onerror: ' + message + ' @' + (source || '?') + ':' + lineno + ':' + colno + (stack ? ' ' + stack : ''));
+  };
+  window.addEventListener('unhandledrejection', function (e) {
+    var reason = e && e.reason;
+    var msg = (reason && reason.message) ? reason.message : String(reason);
+    var stack = (reason && reason.stack) ? String(reason.stack).slice(0, 300) : '';
+    log('error', 'unhandledrejection: ' + msg + (stack ? ' ' + stack : ''));
+  });
+
   /* ---- жизненный цикл виджета -------------------------------------------
      Один объект на монтирование (модульный виджет или ячейка page-виджета). Виджет использует
      ctx.setInterval/setTimeout/raf/on вместо голых глобальных вызовов; layout.js вызывает
@@ -182,7 +236,7 @@
     get: get, post: post, el: el, pad2: pad2, fmtTime: fmtTime, fmtBytes: fmtBytes, fmtGB: fmtGB,
     fmtDate: fmtDate, fmtClock: fmtClock, block: block, toast: toast, svg: svg, ready: ready,
     watchHealth: watchHealth, isOnline: function () { return online !== false; }, config: C,
-    createLifecycle: createLifecycle,
+    createLifecycle: createLifecycle, log: log,
     icons: {
       play: 'M8 5v14l11-7z',
       pause: 'M6 5h4v14H6zm8 0h4v14h-4z',
