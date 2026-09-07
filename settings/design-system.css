@@ -1,46 +1,8 @@
-/* NNA Wallpaper — settings window design system.
-   Tokens follow the NNA Planner dark palette (see nna-planner/web/src/app/design-system.css). */
+/* NNA Wallpaper — settings window design system. Токены v3: см. ui/tokens.css (все переменные
+   ниже — алиасы на палитру v3, определённые там; здесь только структура и раскладка окна). */
 
-@font-face { font-family: "Kharkiv Tone"; src: url("fonts/kar.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "DM Mono"; src: url("fonts/DMMono-Medium.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
-
-:root {
-  --bg: #0B0B0B;
-  --surface: #000000;
-  --raised: #111111;
-  --raised-2: #161616;
-
-  --fg: #FFFFFF;
-  --body: #C8C8C8;
-  --muted: #808080;
-  --faint: #5C5C5C;
-  --ghost: #2E2E2E;
-
-  --line: #242424;
-  --line-strong: #434343;
-
-  --chip: rgba(139, 139, 139, .12);
-  --chip-hi: rgba(139, 139, 139, .24);
-  --glow: rgba(255, 255, 255, .14);
-
-  --ok: #7DB38A;
-  --warn: #C9A26B;
-  --bad: #C77B7B;
-  --info: #8FA3B8;
-
-  --display: "Kharkiv Tone", -apple-system, "Segoe UI", sans-serif;
-  --greek: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
-  --text: -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-
-  --r-block: 24px;
-  --r-card: 14px;
-  --r-pill: 111px;
-  --r-media: 10px;
-
-  --gap: 14px;
-  --pad: 18px;
-}
+@import url('/ui/tokens.css');
+@import url('/ui/components.css');
 
 * { box-sizing: border-box; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -84,7 +46,7 @@ input, select, textarea { font: inherit; color: inherit; }
   font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px;
   padding: 5px 10px; border-radius: var(--r-pill); color: var(--muted);
 }
-.topbar .lang button.on { background: var(--fg); color: #000; }
+.topbar .lang button.on { background: var(--fg); color: var(--base); }
 
 .tabs { flex: 0 0 auto; display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .tab {
@@ -148,11 +110,11 @@ input, select, textarea { font: inherit; color: inherit; }
   border-radius: var(--r-pill); padding: 9px 16px; transition: background .18s, color .18s;
 }
 .btn:hover { background: var(--chip-hi); color: var(--fg); }
-.btn.primary { background: var(--fg); color: #000; border-color: var(--fg); }
-.btn.primary:hover { background: #e8e8e8; }
+.btn.primary { background: var(--fg); color: var(--base); border-color: var(--fg); }
+.btn.primary:hover { background: var(--ash); }
 .btn.ghost { background: none; border-color: var(--line); }
 .btn.danger { border-color: var(--bad); color: var(--bad); }
-.btn.danger:hover { background: rgba(199, 123, 123, .12); }
+.btn.danger:hover { background: rgba(140, 26, 37, .12); }
 .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
 .btn.sm { padding: 6px 11px; font-size: 10px; }
 
@@ -192,7 +154,7 @@ input, select, textarea { font: inherit; color: inherit; }
   cursor: grab; user-select: none;
 }
 .grid-block:hover, .grid-block.sel { border-color: var(--fg); background: var(--chip-hi); }
-.grid-block.bad { border-color: var(--bad); background: rgba(199, 123, 123, .18); }
+.grid-block.bad { border-color: var(--bad); background: rgba(140, 26, 37, .18); }
 .grid-block .name { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg); }
 .grid-block .del { color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 1; }
 .grid-block .del:hover { color: var(--bad); }

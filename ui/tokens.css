@@ -1,0 +1,206 @@
+/* NNA1618 design tokens v3. Источник истины: H:\brand\tokens-v3.css (из BRAND CODE v3, 2026).
+   Этот блок — копия без изменений. Ниже — алиасы для старых имён (wallpaper/topbar/settings)
+   и утилитарные классы ролей текста. Цвета только из этого файла; см. ui/tests/palette.test.mjs. */
+:root {
+  /* 04 / ЦВЕТ. Монохром несёт всю работу. */
+  --base:    #0B0B0B; /* основа экрана */
+  --surface: #161616; /* панели, карточки, поля ввода */
+  --slate:   #434343; /* линии, рамки, выключенные состояния; текстом не бывает */
+  --steel:   #808080; /* метки, подписи, служебные строки */
+  --ash:     #C8C8C8; /* основной текст на тёмном */
+  --white:   #FFFFFF; /* заголовки, ударные строки, активное состояние */
+  /* Акценты: точечно, никогда вместе, не больше 8 % площади. */
+  --blood:   #5E1119; /* плашка, заливка поля; текст лежит на нём, а не набирается им */
+  --signal:  #8C1A25; /* вертикальная засечка, подчёркивание активного, точка состояния; не мельче 21 px */
+  --chrome-flat: #B8BDC2; /* плоская подмена хрома: иконки, элементы мельче 42 px */
+  --chrome-gradient: linear-gradient(100deg, #6E7276 0%, #D9DEE2 22%, #8E9498 41%, #F2F5F7 58%, #9AA0A6 74%, #6E7276 100%); /* только >= 42 px, только на Base */
+
+  /* 05 / ШРИФТ. Две гарнитуры, курсив нигде, цифры tabular. */
+  --font-text: "Roboto Flex", Roboto, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  /* роли: wdth · wght · кегль · регистр · трекинг */
+  --role-display:  148 300; /* 86–178, верхний, -0.015em */
+  --role-heading:  145 350; /* 53–68, верхний, -0.01em */
+  --role-subhead:  130 400; /* 26–33, верхний, 0 */
+  --role-body:     100 400; /* 16–20, обычный, 0 */
+  --track-display: -0.015em;
+  --track-heading: -0.01em;
+  --track-label:    0.14em; /* JetBrains Mono Regular 10–13, верхний */
+  --track-number:   0.06em; /* JetBrains Mono Medium 13–16, tabular-nums */
+  --track-greek:    0.22em; /* JetBrains Mono Regular 10–13, строчной, цвет Steel */
+  --track-signature: 0.14em; /* подпись кластера: моно, верхний, Steel */
+
+  /* 03 / ЧИСЛО. Кегль: база 16, шаг sqrt(Phi) = 1.272. */
+  --fs-10: 10px; --fs-13: 13px; --fs-16: 16px; --fs-20: 20px; --fs-26: 26px; --fs-33: 33px;
+  --fs-42: 42px; --fs-53: 53px; --fs-68: 68px; --fs-86: 86px; --fs-110: 110px; --fs-140: 140px; --fs-178: 178px;
+  /* Интерлиньяж по диапазону кегля */
+  --lh-small: 1.618; /* 10–16 */
+  --lh-mid:   1.382; /* 20–33 */
+  --lh-large: 1.236; /* 42–68 */
+  --lh-display: 1;   /* 86+ */
+  --measure-max: 62ch;
+
+  /* Отступы: ряд Фибоначчи, только целые пиксели. */
+  --sp-3: 3px; --sp-5: 5px; --sp-8: 8px; --sp-13: 13px; --sp-21: 21px; --sp-34: 34px;
+  --sp-55: 55px; --sp-89: 89px; --sp-144: 144px; --sp-233: 233px;
+
+  /* Сетка: 13 колонок = 8 + 5. */
+  --grid-cols: 13; --grid-main: 8; --grid-side: 5;
+  --gutter-desktop: 21px; --margin-desktop: 55px;
+  --gutter-tablet: 21px;  --margin-tablet: 34px;
+  --gutter-mobile: 13px;  --margin-mobile: 21px;
+
+  /* Пропорции */
+  --phi: 1.618;
+  --ratio-golden: 1.618;
+  --ratio-step: 1.272;
+  --split-main: 61.8%; --split-side: 38.2%;
+
+  /* Знак: минимум 21 px, поле вокруг = высота / Phi */
+  --mark-min: 21px;
+  --mark-sizes: 21 34 55 89;
+}
+
+/* ── алиасы: старые имена, которыми пользуются wallpaper/*.css и topbar/bar.css ──
+   --surface и --font-mono не переопределяются: имена уже есть в блоке v3 выше,
+   повторное присвоение через var() создало бы циклическую ссылку. */
+:root {
+  --bg-page:    var(--base);
+  --bg-surface: var(--surface);
+  --fg:         var(--white);
+  --fg-body:    var(--ash);
+  --fg-muted:   var(--steel);
+  --fg-ghost:   #1D1D1D; /* служебный тон темнее Surface, не текст — оставлено как есть */
+  --border:        var(--slate);
+  --border-swatch: #676767; /* граница образцов палитры в настройках — оставлено как есть */
+  --btn:       rgba(139, 139, 139, 0.12);
+  --btn-hover: rgba(139, 139, 139, 0.24);
+  --glass:     rgba(139, 139, 139, 0.03);
+  --font-display: var(--font-text);
+  --radius: 21px;
+  --gap:    21px;
+  --pad:    34px;
+
+  /* ── алиасы для settings/design-system.css ── */
+  --bg:        var(--base);
+  --raised:    var(--surface);
+  --raised-2:  color-mix(in srgb, var(--surface) 60%, var(--slate) 40%);
+  --body:      var(--ash);
+  --muted:     var(--steel);
+  --faint:     var(--steel);
+  --ghost:     var(--slate);
+  --line:        rgba(67, 67, 67, 0.5);  /* Slate 0.5 */
+  --line-strong: var(--slate);
+  --chip:    rgba(128, 128, 128, .12); /* Steel */
+  --chip-hi: rgba(128, 128, 128, .24);
+  --glow:    rgba(255, 255, 255, .14); /* White */
+  --display: var(--font-text);
+  --greek:   var(--font-mono); /* буквы кластеров (α β γ δ ε) — моно, не отдельная гарнитура */
+  --mono:    var(--font-mono);
+  --text:    var(--font-text);
+  --r-block: 21px;
+  --r-card:  13px;
+  --r-pill:  89px;
+  --r-media: 8px;
+
+  /* служебные состояния: монохром, кроме --bad (Signal) */
+  --ok:   var(--ash);
+  --warn: var(--steel);
+  --bad:  var(--signal);
+  --info: var(--ash);
+}
+
+/* ── шрифты v3 ─────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Roboto Flex";
+  src: url("fonts/RobotoFlex-Variable.ttf") format("truetype-variations"),
+       url("fonts/RobotoFlex-Variable.ttf") format("truetype");
+  font-weight: 100 1000;
+  font-stretch: 25% 151%;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── роли текста: утилитарные классы ─────────────────────────────────────
+   Курсив нигде, цифры tabular, цвета только из палитры выше. */
+.t-display {
+  font-family: var(--font-text);
+  font-variation-settings: "wdth" 148, "wght" 300;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  letter-spacing: var(--track-display);
+  font-size: var(--fs-86);
+  line-height: var(--lh-display);
+  color: var(--white);
+}
+.t-heading {
+  font-family: var(--font-text);
+  font-variation-settings: "wdth" 145, "wght" 350;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  letter-spacing: var(--track-heading);
+  font-size: var(--fs-53);
+  line-height: var(--lh-large);
+  color: var(--white);
+}
+.t-subhead {
+  font-family: var(--font-text);
+  font-variation-settings: "wdth" 130, "wght" 400;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  font-size: var(--fs-26);
+  line-height: var(--lh-mid);
+  color: var(--ash);
+}
+.t-body {
+  font-family: var(--font-text);
+  font-variation-settings: "wdth" 100, "wght" 400;
+  letter-spacing: 0;
+  font-size: var(--fs-16);
+  line-height: var(--lh-small);
+  color: var(--ash);
+}
+.t-label {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  font-size: var(--fs-10);
+  color: var(--steel);
+}
+.t-label.is-lg { font-size: var(--fs-13); }
+.t-number {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-number);
+  color: var(--ash);
+}
+.t-greek {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  text-transform: lowercase;
+  letter-spacing: var(--track-greek);
+  color: var(--steel);
+}
+.t-signature {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: var(--track-signature);
+  color: var(--steel);
+}

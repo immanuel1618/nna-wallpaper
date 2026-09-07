@@ -149,7 +149,7 @@
           ctx.beginPath(); ctx.arc(d.x, d.y, Math.max(1.2, d.r - 2.2), 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1;
         }
       }
-      ctx.font = '500 10px "DM Mono", monospace'; ctx.textBaseline = 'middle';
+      ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textBaseline = 'middle';
       for (i = 0; i < nodes.length; i++) {
         var nd = nodes[i];
         if (!nd.showLabel || nd.id === hid) continue;

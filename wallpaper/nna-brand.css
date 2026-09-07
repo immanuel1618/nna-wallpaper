@@ -1,63 +1,25 @@
-/* NNA1618 — общий стиль блоков для обоих обоев. Токены из H:\brand\tokens.css */
-@font-face {
-  font-family: 'Kharkiv Tone';
-  src: url('fonts/kar.ttf') format('truetype');
-  font-weight: 400; font-style: normal; font-display: swap;
-}
-@font-face {
-  font-family: 'DM Mono';
-  src: url('fonts/DMMono-Medium.ttf') format('truetype');
-  font-weight: 400 500; font-style: normal; font-display: swap;
-}
-
-:root {
-  --bg-page: #050505;
-  --bg-surface: #000000;
-  --fg: #FFFFFF;
-  --fg-body: #C8C8C8;
-  --fg-muted: #808080;
-  --fg-ghost: #1D1D1D;
-  --border: #434343;
-  --border-swatch: #676767;
-  --btn: rgba(139, 139, 139, 0.12);
-  --btn-hover: rgba(139, 139, 139, 0.24);
-  --glass: rgba(139, 139, 139, 0.03);
-  --font-display: 'Kharkiv Tone', 'Segoe UI', sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, Consolas, monospace;
-  --radius: 32px;
-  --gap: 24px;
-  --pad: 48px;
-}
+/* NNA1618 — общий стиль блоков для обоих обоев. Токены v3: H:\brand\tokens-v3.css, см. ui/tokens.css. */
+@import url('/ui/tokens.css');
 
 /* ---- блок ---------------------------------------------------------------- */
 .nna-block {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius);
-  background: var(--glass);
-  border: 1px solid rgba(67, 67, 67, 0.5);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.03);
+  background: rgba(22, 22, 22, .72); /* Surface */
+  border: 1px solid rgba(67, 67, 67, 0.5); /* Slate 0.5 */
+  backdrop-filter: blur(21px);
+  -webkit-backdrop-filter: blur(21px);
   font-family: var(--font-mono);
   color: var(--fg-body);
   user-select: none;
-}
-.nna-block::before {            /* лёгкое зерно, чтобы стекло не было плоским */
-  content: '';
-  position: absolute; inset: 0;
-  pointer-events: none;
-  opacity: 0.025;
-  background-image: radial-gradient(rgba(255,255,255,0.9) 0.6px, transparent 0.7px);
-  background-size: 3px 3px;
-  z-index: 1;
 }
 .nna-body { position: absolute; inset: 0; z-index: 2; }
 
 .nna-label {
   position: absolute; top: 24px; left: 30px;
-  font: 500 11px/1 var(--font-mono);
-  letter-spacing: 0.24em; text-transform: uppercase;
+  font: 400 13px/1 var(--font-mono);
+  letter-spacing: var(--track-label); text-transform: uppercase;
   color: var(--fg-muted);
   z-index: 6; pointer-events: none;
   white-space: nowrap;
@@ -67,13 +29,13 @@
 .nna-label.is-clickable:hover b { text-decoration: underline; text-underline-offset: 3px; }
 .nna-corner {
   position: absolute; top: 24px; right: 30px;
-  font: 500 11px/1 var(--font-mono);
-  letter-spacing: 0.2em; text-transform: uppercase;
+  font: 400 13px/1 var(--font-mono);
+  letter-spacing: var(--track-label); text-transform: uppercase;
   color: var(--fg-muted); z-index: 6;
 }
 
 /* ---- типографика --------------------------------------------------------- */
-.nna-big { font-family: var(--font-display); color: var(--fg); line-height: 0.95; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.nna-big { font-family: var(--font-display); font-variation-settings: "wdth" 148, "wght" 300; color: var(--fg); line-height: 0.95; letter-spacing: var(--track-display); font-variant-numeric: tabular-nums; }
 .nna-mono { font-family: var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; }
 .nna-muted { color: var(--fg-muted); }
 .nna-body-text { color: var(--fg-body); }

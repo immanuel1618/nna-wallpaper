@@ -17,3 +17,12 @@ implemented from Microsoft documentation and our own code.
 | xunit / xunit.runner.visualstudio / Microsoft.NET.Test.Sdk | 2.9.3 / 3.1.5 / 17.14.1 | Apache-2.0 / MIT | Tests |
 
 Runtime (not bundled): Microsoft Edge WebView2 Runtime (Evergreen), .NET 8 (self-contained in releases).
+
+## Fonts
+
+| Font | Version | License | Used for |
+|---|---|---|---|
+| Roboto Flex | 3.200 | SIL Open Font License 1.1 | Display/heading/subhead/body text roles (`ui/tokens.css`); variable font, `wdth`/`wght` axes |
+| JetBrains Mono | 2.304 | SIL Open Font License 1.1 | Label/number/greek/signature text roles (`ui/tokens.css`); Regular 400 and Medium 500 |
+
+License texts ship next to the font files: `ui/fonts/OFL-RobotoFlex.txt`, `ui/fonts/OFL-JetBrainsMono.txt`.

@@ -32,6 +32,7 @@
 
   <!-- Web assets (wallpaper page, built-in widgets, settings window) travel with the exe. -->
   <ItemGroup>
+    <Content Include="..\..\ui\**\*" Link="ui\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\wallpaper\**\*" Link="wallpaper\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\widgets\**\*" Link="widgets\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\settings\**\*" Link="settings\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

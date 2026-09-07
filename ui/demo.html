@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>NNA UI — demo</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="components.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: var(--base); color: var(--ash); font-family: var(--font-text); }
+  .demo-page { max-width: 960px; margin: 0 auto; padding: var(--sp-55) var(--sp-34) var(--sp-144); }
+  .demo-sec { margin-bottom: var(--sp-55); }
+  .demo-sec h2 { margin: 0 0 var(--sp-21); }
+  .demo-row { display: flex; flex-wrap: wrap; gap: var(--sp-21); align-items: flex-start; }
+  .demo-row.is-center { align-items: center; }
+  .demo-swatches { display: flex; flex-wrap: wrap; gap: var(--sp-13); }
+  .demo-swatch { width: 89px; }
+  .demo-swatch i { display: block; height: 55px; border-radius: var(--sp-8); border: 1px solid rgba(67,67,67,.5); }
+  .demo-swatch span { display: block; margin-top: var(--sp-5); }
+  .demo-widget { width: 260px; }
+  .demo-target { display: inline-block; width: 21px; height: 21px; border-radius: 50%; background: var(--signal); vertical-align: middle; margin-right: var(--sp-8); }
+</style>
+</head>
+<body>
+<div class="demo-page">
+
+  <section class="demo-sec">
+    <div class="t-label">NNA1618 · design system v3</div>
+    <div class="t-display" style="font-size: var(--fs-110); margin-top: var(--sp-13);">NNA UI</div>
+    <div class="t-subhead" style="margin-top: var(--sp-8);">Библиотека компонентов</div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Роли текста</h2>
+    <div class="demo-row" style="flex-direction: column; align-items: stretch; gap: var(--sp-13);">
+      <div class="t-display">Display 86 / 300</div>
+      <div class="t-heading">Heading 53 / 350</div>
+      <div class="t-subhead">Subhead 26 / 400</div>
+      <div class="t-body">Body 16 / 400 — обычный текст без курсива, цифры tabular 0123456789.</div>
+      <div><span class="t-label">Label 10 · трекинг 0.14em</span></div>
+      <div><span class="t-number">Number 042.7</span></div>
+      <div><span class="t-greek">greek · α β γ δ ε</span></div>
+      <div><span class="t-signature">signature · nna1618</span></div>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Палитра</h2>
+    <div class="demo-swatches">
+      <div class="demo-swatch"><i style="background:var(--base)"></i><span class="t-label">Base</span></div>
+      <div class="demo-swatch"><i style="background:var(--surface)"></i><span class="t-label">Surface</span></div>
+      <div class="demo-swatch"><i style="background:var(--slate)"></i><span class="t-label">Slate</span></div>
+      <div class="demo-swatch"><i style="background:var(--steel)"></i><span class="t-label">Steel</span></div>
+      <div class="demo-swatch"><i style="background:var(--ash)"></i><span class="t-label">Ash</span></div>
+      <div class="demo-swatch"><i style="background:var(--white)"></i><span class="t-label">White</span></div>
+      <div class="demo-swatch"><i style="background:var(--blood)"></i><span class="t-label">Blood</span></div>
+      <div class="demo-swatch"><i style="background:var(--signal)"></i><span class="t-label">Signal</span></div>
+      <div class="demo-swatch"><i style="background:var(--chrome-gradient)"></i><span class="t-label">Chrome</span></div>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Кнопки</h2>
+    <div class="demo-row is-center">
+      <button class="ui-btn">Ghost</button>
+      <button class="ui-btn primary">Primary</button>
+      <button class="ui-btn ghost">Outline</button>
+      <button class="ui-btn danger">Danger</button>
+      <button class="ui-btn" disabled>Disabled</button>
+      <span class="ui-icon-btn" id="demo-icon-btn" tabindex="0"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"></circle></svg></span>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Поле, карточка</h2>
+    <div class="demo-row">
+      <div class="ui-card demo-widget">
+        <div class="ui-field">
+          <label>Имя обоев</label>
+          <input type="text" placeholder="Главный монитор" />
+          <div class="hint">Отображается в списке пресетов</div>
+        </div>
+      </div>
+      <div class="ui-card demo-widget">
+        <div class="t-body">Card</div>
+        <div class="t-label" style="margin-top: var(--sp-8);">Surface, граница Slate 0.5</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Select</h2>
+    <div class="demo-row">
+      <div id="demo-select" class="demo-widget"></div>
+      <div id="demo-select-search" class="demo-widget"></div>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Toggle, segmented</h2>
+    <div class="demo-row is-center">
+      <div id="demo-toggle"></div>
+      <div id="demo-segmented"></div>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Slider</h2>
+    <div class="demo-widget" style="width: 320px;">
+      <div id="demo-slider"></div>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Popover, menu, tooltip, dialog</h2>
+    <div class="demo-row is-center">
+      <button class="ui-btn" id="demo-popover-btn">Popover</button>
+      <button class="ui-btn" id="demo-menu-btn">Menu</button>
+      <button class="ui-btn" id="demo-tooltip-btn">Наведи</button>
+      <button class="ui-btn primary" id="demo-dialog-btn">Dialog</button>
+    </div>
+  </section>
+
+  <section class="demo-sec">
+    <h2 class="t-heading">Скролл</h2>
+    <div class="ui-card ui-scroll" style="height: 120px; overflow: auto;">
+      <div class="t-body" style="height: 400px;">Длинный список — наведи, чтобы увидеть тонкий скроллбар.<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10</div>
+    </div>
+  </section>
+
+</div>
+
+<script src="logic.js"></script>
+<script src="components.js"></script>
+<script>
+  NNAUI.select(document.getElementById("demo-select"), {
+    value: "blur",
+    options: [
+      { value: "clear", label: "Clear", hint: "без размытия" },
+      { value: "blur", label: "Blur", hint: "стандартное" },
+      { value: "acrylic", label: "Acrylic", hint: "акрил" },
+      { value: "opaque", label: "Opaque", hint: "непрозрачное" },
+    ],
+    onChange: function (v) { console.log("select", v); },
+  });
+
+  NNAUI.select(document.getElementById("demo-select-search"), {
+    value: "eq",
+    searchable: true,
+    options: [
+      { value: "eq", label: "Эквалайзер" },
+      { value: "focus", label: "Фокус" },
+      { value: "weather", label: "Погода" },
+      { value: "events", label: "События" },
+      { value: "graph", label: "Граф" },
+      { value: "player", label: "Плеер" },
+      { value: "stats", label: "Система" },
+      { value: "launch", label: "Запуск" },
+      { value: "photos", label: "Фото" },
+    ],
+  });
+
+  NNAUI.toggle(document.getElementById("demo-toggle"), { checked: true, label: "Автозапуск" });
+
+  NNAUI.segmented(document.getElementById("demo-segmented"), {
+    value: "blur",
+    items: [
+      { value: "normal", label: "Normal" },
+      { value: "blur", label: "Blur" },
+      { value: "acrylic", label: "Acrylic" },
+    ],
+    onChange: function (v) { console.log("segmented", v); },
+  });
+
+  NNAUI.slider(document.getElementById("demo-slider"), {
+    min: 0, max: 100, step: 1, value: 34,
+    format: function (v) { return v + "%"; },
+  });
+
+  NNAUI.tooltip(document.getElementById("demo-tooltip-btn"), "Подсказка через 400мс");
+
+  document.getElementById("demo-popover-btn").addEventListener("click", function (e) {
+    var content = document.createElement("div");
+    content.className = "t-body";
+    content.style.maxWidth = "220px";
+    content.textContent = "Поповер: слой поверх, позиция от якоря.";
+    NNAUI.popover(e.currentTarget, { content: content, placement: "bottom" });
+  });
+
+  document.getElementById("demo-menu-btn").addEventListener("click", function (e) {
+    NNAUI.menu(e.currentTarget, {
+      items: [
+        { label: "Открыть", hint: "Enter" },
+        { label: "Переименовать" },
+        { separator: true },
+        { label: "Удалить", disabled: true },
+      ],
+    });
+  });
+
+  document.getElementById("demo-dialog-btn").addEventListener("click", function () {
+    NNAUI.dialog({
+      title: "Сбросить раскладку",
+      body: "Все блоки вернутся к положению по умолчанию для этого монитора.",
+      actions: [
+        { label: "Отмена" },
+        { label: "Сбросить", primary: true },
+      ],
+    });
+  });
+</script>
+</body>
+</html>
