@@ -1,6 +1,7 @@
 import { makeT, detectLang } from "./i18n.js";
 import { mountLayoutTab } from "./layout-editor.js";
 import { renderWidgetForm, renderLaunchForm, renderEventsForm } from "./forms.js";
+import { mountTaskbarTab } from "./taskbar-tab.js";
 
 const params = new URLSearchParams(location.search);
 const TOKEN = params.get("token") || "";
@@ -21,6 +22,7 @@ const TABS = [
   { key: "gamma", g: "\u03b3", labelKey: "tab_appearance" },
   { key: "delta", g: "\u03b4", labelKey: "tab_planner" },
   { key: "epsilon", g: "\u03b5", labelKey: "tab_general" },
+  { key: "zeta", g: "\u03b6", labelKey: "tab_taskbar" },
 ];
 
 function el(tag, attrs, ...children) {
@@ -136,7 +138,8 @@ function mapTabName(tab) {
     case "layout": return { tab: "alpha" };
     case "theme": return { tab: "gamma" };
     case "planner": return { tab: "delta" };
-    case "alpha": case "beta": case "gamma": case "delta": case "epsilon": return { tab };
+    case "taskbar": return { tab: "zeta" };
+    case "alpha": case "beta": case "gamma": case "delta": case "epsilon": case "zeta": return { tab };
     default: return { tab: "alpha" };
   }
 }
@@ -151,6 +154,7 @@ function renderActivePanel() {
     case "gamma": return renderGamma(panel);
     case "delta": return renderDelta(panel);
     case "epsilon": return renderEpsilon(panel);
+    case "zeta": return renderZeta(panel);
   }
 }
 
@@ -430,6 +434,20 @@ async function renderEpsilon(panel) {
     el("a", { href: "https://github.com/nna1618/nna-wallpaper/blob/main/THIRD-PARTY.md", target: "_blank", class: "tag", text: state.t("licenses") })));
 
   panel.append(body);
+}
+
+// ── ζ — taskbar ───────────────────────────────────────────────────
+
+function renderZeta(panel) {
+  mountTaskbarTab(panel, {
+    t: state.t,
+    lang: state.lang,
+    put,
+    api,
+    taskbar: state.config.app.taskbar,
+    topBar: state.config.app.topBar,
+    onStatus: setStatus,
+  });
 }
 
 // ── boot ────────────────────────────────────────────────────────

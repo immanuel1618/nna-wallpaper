@@ -1,0 +1,41 @@
+{
+  "id": "night",
+  "name": { "ru": "Ночная", "en": "Night" },
+  "taskbar": {
+    "enabled": true,
+    "preset": "night",
+    "normal": { "mode": "opaque", "color": "#000000", "opacity": 1 },
+    "maximized": { "mode": "opaque", "color": "#000000", "opacity": 1 },
+    "fullscreen": { "mode": "opaque", "color": "#000000", "opacity": 1 },
+    "windows": {
+      "centered": null,
+      "hideSearch": null,
+      "hideTaskView": null,
+      "hideWidgets": null,
+      "hideClock": false,
+      "small": null,
+      "transparency": null,
+      "oledTransparency": null,
+      "autoHide": null
+    },
+    "secondary": true
+  },
+  "topBar": {
+    "enabled": true,
+    "monitors": "all",
+    "height": 30,
+    "style": { "mode": "opaque", "color": "#000000", "opacity": 1 },
+    "fontSize": 12,
+    "autoHide": false,
+    "reserveSpace": true,
+    "modules": [
+      { "id": "brand", "side": "left" },
+      { "id": "date", "side": "left" },
+      { "id": "clock", "side": "center" },
+      { "id": "planner", "side": "right" },
+      { "id": "media", "side": "right" },
+      { "id": "weather", "side": "right" },
+      { "id": "stats", "side": "right" }
+    ]
+  }
+}

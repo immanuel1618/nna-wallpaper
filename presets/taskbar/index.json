@@ -1,0 +1,7 @@
+[
+  { "id": "windows", "name": { "ru": "Windows по умолчанию", "en": "Windows default" }, "file": "windows.json" },
+  { "id": "mac", "name": { "ru": "Как на Mac", "en": "Mac-like" }, "file": "mac.json" },
+  { "id": "clear", "name": { "ru": "Прозрачная", "en": "Clear" }, "file": "clear.json" },
+  { "id": "night", "name": { "ru": "Ночная", "en": "Night" }, "file": "night.json" },
+  { "id": "minimal", "name": { "ru": "Минимализм", "en": "Minimal" }, "file": "minimal.json" }
+]
