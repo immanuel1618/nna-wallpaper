@@ -36,7 +36,10 @@ python build/cursors-check.py
    throwaway 4x4 render, since `import cairosvg` can succeed while the DLL is still missing).
 2. an external CLI rasterizer found on `PATH`: `resvg`, `rsvg-convert`, `inkscape`, `magick`.
 3. fallback: read `brand/cursors/shapes.json` and draw the same vector primitives directly with
-   `PIL.ImageDraw` (polygons, lines, circles, a JetBrains Mono glyph for the `help` "?"). This is
+   `PIL.ImageDraw` (polygons, lines, circles, rects/roundrects, capsules, a JetBrains Mono glyph
+   for the `help` "?", and `group` — several fill-only sub-shapes composited with one traced
+   outline around their union, e.g. the `hand` role's palm + finger + knuckles + thumb, so
+   overlapping parts don't each draw their own outline and leave interior seam lines). This is
    the path that actually runs today — this machine has `pip install cairosvg` but no system
    `cairo-2.dll`, and none of `resvg` / `rsvg-convert` / `inkscape` / `magick` are on `PATH`.
 

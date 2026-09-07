@@ -30,7 +30,7 @@ import struct
 import subprocess
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CURSORS_SRC = os.path.join(REPO, "brand", "cursors")
@@ -135,12 +135,17 @@ def get_font(size_px):
     return _FONT_CACHE[size_px]
 
 
-def draw_shapes(draw: ImageDraw.ImageDraw, shapes, palette, scale):
+def draw_shapes(draw: ImageDraw.ImageDraw, shapes, palette, scale, fill_only=False):
+    """fill_only=True is used inside a 'group' (see render_group): draw fills only, every
+    per-shape outline is skipped because the group traces ONE outline around the whole union
+    afterwards (avoids interior seam lines where sub-shapes overlap)."""
     for s in shapes:
         t = s["type"]
         if t == "polygon":
             pts = [(x * scale, y * scale) for x, y in s["points"]]
             if s.get("outline_only"):
+                if fill_only:
+                    continue
                 color = hex_to_rgba(resolve_color(palette, s.get("stroke", "white")))
                 w = max(1, int(round(s.get("width", 2) * scale)))
                 draw.line(pts + [pts[0]], fill=color, width=w, joint="curve")
@@ -149,7 +154,7 @@ def draw_shapes(draw: ImageDraw.ImageDraw, shapes, palette, scale):
             outline_key = s.get("outline")
             fill = hex_to_rgba(resolve_color(palette, fill_key)) if fill_key else None
             draw.polygon(pts, fill=fill)
-            if outline_key:
+            if outline_key and not fill_only:
                 ocol = hex_to_rgba(resolve_color(palette, outline_key))
                 ow = max(1, int(round(s.get("width", 1) * scale)))
                 draw.line(pts + [pts[0]], fill=ocol, width=ow, joint="curve")
@@ -168,23 +173,85 @@ def draw_shapes(draw: ImageDraw.ImageDraw, shapes, palette, scale):
             fill_key = s.get("fill")
             outline_key = s.get("outline")
             fill = hex_to_rgba(resolve_color(palette, fill_key)) if fill_key else None
-            outline = hex_to_rgba(resolve_color(palette, outline_key)) if outline_key else None
+            outline = hex_to_rgba(resolve_color(palette, outline_key)) if (outline_key and not fill_only) else None
             ow = max(1, int(round(s.get("width", 1) * scale))) if outline else 1
             draw.ellipse(bbox, fill=fill, outline=outline, width=ow)
         elif t == "text":
             color = hex_to_rgba(resolve_color(palette, s.get("fill")))
             font = get_font(s.get("size", 10) * scale)
             draw.text((s["x"] * scale, s["y"] * scale), s["text"], font=font, fill=color, anchor="mm")
+        elif t == "rect":
+            x0, y0 = s["x"] * scale, s["y"] * scale
+            x1, y1 = (s["x"] + s["w"]) * scale, (s["y"] + s["h"]) * scale
+            fill = hex_to_rgba(resolve_color(palette, s.get("fill"))) if s.get("fill") else None
+            draw.rectangle([x0, y0, x1, y1], fill=fill)
+        elif t == "roundrect":
+            x0, y0, x1, y1, r = s["x0"] * scale, s["y0"] * scale, s["x1"] * scale, s["y1"] * scale, s["r"] * scale
+            fill = hex_to_rgba(resolve_color(palette, s.get("fill"))) if s.get("fill") else None
+            draw.rounded_rectangle([x0, y0, x1, y1], radius=r, fill=fill)
+            if s.get("outline") and not fill_only:
+                ocol = hex_to_rgba(resolve_color(palette, s["outline"]))
+                ow = max(1, int(round(s.get("width", 1) * scale)))
+                draw.rounded_rectangle([x0, y0, x1, y1], radius=r, outline=ocol, width=ow)
+        elif t == "capsule":
+            x1, y1, x2, y2 = s["x1"] * scale, s["y1"] * scale, s["x2"] * scale, s["y2"] * scale
+            wid = max(1, int(round(s["width"] * scale)))
+            fill = hex_to_rgba(resolve_color(palette, s.get("fill"))) if s.get("fill") else None
+            draw.line([(x1, y1), (x2, y2)], fill=fill, width=wid)
+            r = wid / 2.0
+            draw.ellipse([x1 - r, y1 - r, x1 + r, y1 + r], fill=fill)
+            draw.ellipse([x2 - r, y2 - r, x2 + r, y2 + r], fill=fill)
+        elif t == "group":
+            # handled by render_icon (needs its own layer for the union-outline trick)
+            continue
         else:
             raise ValueError(f"unknown shape type {t}")
+
+
+def render_group(sub_shapes, palette, scale, canvas_px, outline_key, outline_width):
+    """Draws sub_shapes fill-only onto a transparent layer, then traces ONE outline around the
+    union of their alpha (dilate-and-composite), so a silhouette built from several overlapping
+    primitives (e.g. the hand: palm + finger + knuckles + thumb) gets a single clean contour
+    instead of one outline per sub-shape (which would show interior seam lines)."""
+    fill_layer = Image.new("RGBA", (canvas_px, canvas_px), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(fill_layer)
+    draw_shapes(draw, sub_shapes, palette, scale, fill_only=True)
+
+    alpha = fill_layer.split()[3]
+    w_px = max(1, int(round(outline_width * scale)))
+    k = 2 * w_px + 1
+    dilated = alpha.filter(ImageFilter.MaxFilter(k))
+
+    ocolor = hex_to_rgba(resolve_color(palette, outline_key))
+    outline_layer = Image.new("RGBA", (canvas_px, canvas_px), (0, 0, 0, 0))
+    outline_solid = Image.new("RGBA", (canvas_px, canvas_px), ocolor)
+    outline_layer.paste(outline_solid, (0, 0), dilated)
+
+    return Image.alpha_composite(outline_layer, fill_layer)
 
 
 def render_icon(shapes, palette, size, canvas=32, supersample=SUPERSAMPLE):
     big = size * supersample
     img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
     scale = big / canvas
-    draw_shapes(draw, shapes, palette, scale)
+    pending = []
+
+    def flush():
+        nonlocal img
+        if pending:
+            draw = ImageDraw.Draw(img)
+            draw_shapes(draw, pending, palette, scale)
+            pending.clear()
+
+    for s in shapes:
+        if s.get("type") == "group":
+            flush()
+            layer = render_group(s["shapes"], palette, scale, big,
+                                   s.get("outline", "base"), s.get("outlineWidth", 1.0))
+            img = Image.alpha_composite(img, layer)
+        else:
+            pending.append(s)
+    flush()
     return img.resize((size, size), Image.LANCZOS)
 
 
@@ -409,6 +476,29 @@ def build_preview(manifest, out_path):
             lw = bbox[2] - bbox[0]
             draw.text((cx0 + c * cell_w + (cell_w - lw) // 2, py + icon_size + 6),
                       label, font=label_font, fill=steel)
+
+    # third row: real 32px renders (no upscaling) for the roles most likely to reveal a
+    # blurry/broken silhouette at native cursor size
+    row32_roles = ["arrow", "hand", "size_we", "move"]
+    row32_top = grid_top + 4 * cell_h + 22
+    small_font = get_font(11)
+    for ci, variant in enumerate(VARIANTS):
+        cx0 = ci * col_w
+        draw.text((cx0 + 24, row32_top), "32 PX NATIVE", font=small_font, fill=steel)
+        roles_data = manifest["variants"][variant]["roles"]
+        x = cx0 + 24
+        y = row32_top + 20
+        for role in row32_roles:
+            data = roles_data[role]
+            shapes = data["frames"][0] if "frames" in data else data["shapes"]
+            icon32 = render_icon(shapes, palette, 32)
+            # small dark card behind it so a 32px silhouette is easy to find on the page
+            draw.rectangle([x - 6, y - 6, x + 38, y + 38], outline=(0x2A, 0x2A, 0x2A), width=1)
+            canvas.paste(icon32, (x, y), icon32)
+            bbox = draw.textbbox((0, 0), role, font=small_font)
+            lw = bbox[2] - bbox[0]
+            draw.text((x + (32 - lw) // 2, y + 40), role, font=small_font, fill=steel)
+            x += 92
 
     # bottom light-background check strip
     strip_top = H - strip_h
