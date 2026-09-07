@@ -186,7 +186,7 @@ public partial class App : Application
             return req.Json(new { ok = engine is not null });
         });
 
-        api.Map("POST", "/app/check-updates", req => req.Json(new { ok = true, updates = "not-implemented" }));
+        api.Map("POST", "/app/check-updates", async req => await req.Json(await Updates.CheckAsync(Host!).ConfigureAwait(false)).ConfigureAwait(false));
 
         api.Map("POST", "/app/login", req =>
         {
