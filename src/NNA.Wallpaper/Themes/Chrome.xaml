@@ -1,0 +1,242 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+                    xmlns:themes="clr-namespace:NNA.Wallpaper.Themes">
+
+    <!-- ==================== brand palette ==================== -->
+    <Color x:Key="ColorBase">#0B0B0B</Color>
+    <Color x:Key="ColorSurface">#161616</Color>
+    <Color x:Key="ColorSlate">#434343</Color>
+    <Color x:Key="ColorSteel">#808080</Color>
+    <Color x:Key="ColorAsh">#C8C8C8</Color>
+    <Color x:Key="ColorWhite">#FFFFFF</Color>
+    <Color x:Key="ColorSignal">#8C1A25</Color>
+
+    <SolidColorBrush x:Key="BrushBase" Color="{StaticResource ColorBase}" />
+    <SolidColorBrush x:Key="BrushSurface" Color="{StaticResource ColorSurface}" />
+    <SolidColorBrush x:Key="BrushSlate" Color="{StaticResource ColorSlate}" />
+    <SolidColorBrush x:Key="BrushSteel" Color="{StaticResource ColorSteel}" />
+    <SolidColorBrush x:Key="BrushAsh" Color="{StaticResource ColorAsh}" />
+    <SolidColorBrush x:Key="BrushWhite" Color="{StaticResource ColorWhite}" />
+    <SolidColorBrush x:Key="BrushSignal" Color="{StaticResource ColorSignal}" />
+
+    <!-- ==================== brand type ==================== -->
+    <!-- pack://siteoforigin resolves against the exe's own base directory, where ui/fonts/* is
+         copied as Content (see NNA.Wallpaper.csproj); "Segoe UI" is the fallback if that file is
+         ever missing from the output folder. -->
+    <FontFamily x:Key="RobotoFlexFont">pack://siteoforigin:,,,/ui/fonts/RobotoFlex-Variable.ttf#Roboto Flex, Segoe UI</FontFamily>
+    <FontFamily x:Key="JetBrainsMonoFont">pack://siteoforigin:,,,/ui/fonts/JetBrainsMono-Regular.ttf#JetBrains Mono, Segoe UI</FontFamily>
+
+    <themes:TrackingConverter x:Key="TrackingConverter" />
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+    <!-- ==================== window chrome ==================== -->
+    <!-- Applied from code (Themes/BrandChrome.cs), not from a Style Setter here: BrandChrome needs
+         its own WM_NCHITTEST hook registered on the HwndSource before WindowChrome's, so it can
+         still claim the maximize button's pixels for HTMAXBUTTON (Snap Layouts) even though
+         WindowChrome marks WM_NCHITTEST handled for anything under IsHitTestVisibleInChrome. -->
+    <shell:WindowChrome x:Key="BrandWindowChrome"
+                         CaptionHeight="34"
+                         ResizeBorderThickness="6"
+                         GlassFrameThickness="0"
+                         CornerRadius="0"
+                         UseAeroCaptionButtons="False" />
+
+    <!-- ==================== title bar button ==================== -->
+    <Style x:Key="BrandTitleButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushSurface}" />
+                        </Trigger>
+                        <!-- kept in sync with mouse-over by the maximize button's WM_NCMOUSEMOVE/LEAVE
+                             feed once its pixels are reported as HTMAXBUTTON (see Chrome.NcHover). -->
+                        <Trigger Property="themes:Chrome.NcHover" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushSurface}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Tag" Value="Close">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushSignal}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ==================== BrandWindow ==================== -->
+    <Style x:Key="BrandWindow" TargetType="Window">
+        <Setter Property="Background" Value="{StaticResource BrushBase}" />
+        <Setter Property="Foreground" Value="{StaticResource BrushAsh}" />
+        <Setter Property="FontFamily" Value="{StaticResource RobotoFlexFont}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Window">
+                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="34" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- title bar -->
+                            <Grid Grid.Row="0" Background="{StaticResource BrushBase}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Image Grid.Column="0" Source="/Assets/mark-white-64.png" Height="21"
+                                       Margin="13,0,13,0" VerticalAlignment="Center"
+                                       RenderOptions.BitmapScalingMode="HighQuality" />
+
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                           FontFamily="{StaticResource JetBrainsMonoFont}" FontSize="13"
+                                           Foreground="{StaticResource BrushSteel}"
+                                           Text="{TemplateBinding Title, Converter={StaticResource TrackingConverter}}" />
+
+                                <!-- status strip: version + health dot, SettingsWindow only -->
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
+                                            Margin="0,0,21,0"
+                                            Visibility="{TemplateBinding themes:Chrome.ShowStatus, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="{TemplateBinding themes:Chrome.Version}"
+                                               FontFamily="{StaticResource JetBrainsMonoFont}" FontSize="10"
+                                               Foreground="{StaticResource BrushSteel}" VerticalAlignment="Center" />
+                                    <Ellipse Width="5" Height="5" Margin="8,0,0,0" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource BrushWhite}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Path=(themes:Chrome.HealthOk), RelativeSource={RelativeSource TemplatedParent}}" Value="False">
+                                                        <Setter Property="Fill" Value="{StaticResource BrushSignal}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                </StackPanel>
+
+                                <!-- minimize -->
+                                <Button x:Name="PART_Minimize" Grid.Column="4" AutomationProperties.AutomationId="BtnMinimize"
+                                        Style="{StaticResource BrandTitleButtonStyle}">
+                                    <Path Width="10" Height="10" Stretch="Uniform" Data="M0,5 L10,5" StrokeThickness="1">
+                                        <Path.Style>
+                                            <Style TargetType="Path">
+                                                <Setter Property="Stroke" Value="{StaticResource BrushSteel}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                                        <Setter Property="Stroke" Value="{StaticResource BrushWhite}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                </Button>
+
+                                <!-- maximize / restore -->
+                                <Button x:Name="PART_Maximize" Grid.Column="5" AutomationProperties.AutomationId="BtnMaximize"
+                                        Style="{StaticResource BrandTitleButtonStyle}">
+                                    <Grid Width="10" Height="10">
+                                        <Path x:Name="PART_MaximizeGlyph" Data="M0.5,0.5 L9.5,0.5 L9.5,9.5 L0.5,9.5 Z" StrokeThickness="1">
+                                            <Path.Style>
+                                                <Style TargetType="Path">
+                                                    <Setter Property="Stroke" Value="{StaticResource BrushSteel}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                                            <Setter Property="Stroke" Value="{StaticResource BrushWhite}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                        <Path x:Name="PART_RestoreGlyph" Visibility="Collapsed"
+                                              Data="M2.5,0.5 L9.5,0.5 L9.5,7.5 M0.5,2.5 L7.5,2.5 L7.5,9.5 L0.5,9.5 Z" StrokeThickness="1">
+                                            <Path.Style>
+                                                <Style TargetType="Path">
+                                                    <Setter Property="Stroke" Value="{StaticResource BrushSteel}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                                            <Setter Property="Stroke" Value="{StaticResource BrushWhite}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                    </Grid>
+                                </Button>
+
+                                <!-- close -->
+                                <Button x:Name="PART_Close" Grid.Column="6" Tag="Close" AutomationProperties.AutomationId="BtnClose"
+                                        Style="{StaticResource BrandTitleButtonStyle}">
+                                    <Path Width="10" Height="10" Stretch="Uniform" Data="M0,0 L10,10 M10,0 L0,10" StrokeThickness="1">
+                                        <Path.Style>
+                                            <Style TargetType="Path">
+                                                <Setter Property="Stroke" Value="{StaticResource BrushSteel}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                                        <Setter Property="Stroke" Value="{StaticResource BrushWhite}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                </Button>
+                            </Grid>
+
+                            <!-- content -->
+                            <ContentPresenter Grid.Row="1" />
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <!-- classic WindowChrome maximize fix: without this, maximized content spills
+                             a few px past every screen edge because Windows still reserves its own
+                             invisible resize border even though we draw none. -->
+                        <Trigger Property="WindowState" Value="Maximized">
+                            <Setter Property="Padding" Value="{x:Static SystemParameters.WindowResizeBorderThickness}" />
+                        </Trigger>
+                        <Trigger Property="ResizeMode" Value="NoResize">
+                            <Setter TargetName="PART_Minimize" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="PART_Maximize" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="ResizeMode" Value="CanMinimize">
+                            <Setter TargetName="PART_Maximize" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

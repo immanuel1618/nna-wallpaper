@@ -1,6 +1,8 @@
 using System.Windows;
+using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 using NNA.Wallpaper.Host;
+using NNA.Wallpaper.Themes;
 
 namespace NNA.Wallpaper;
 
@@ -20,8 +22,26 @@ public partial class PlannerLoginWindow : Window
     {
         _ctx = ctx;
         InitializeComponent();
+        BrandChrome.Attach(this);
         Closed += (_, _) => { if (ReferenceEquals(_current, this)) _current = null; };
         Loaded += async (_, _) => await InitBrowserAsync();
+
+        // Esc cancels the login, Alt+F4 closes it like any other window; the WPF WebView2 control
+        // re-raises unhandled browser accelerator keys as ordinary KeyDown on itself, which bubbles
+        // up here, so both work even while the WebView2 content (the Telegram widget) has focus.
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                Close();
+            }
+            else if (e.Key == Key.System && e.SystemKey == Key.F4 && Keyboard.Modifiers == ModifierKeys.Alt)
+            {
+                e.Handled = true;
+                Close();
+            }
+        };
     }
 
     public static void Open(HostContext ctx)

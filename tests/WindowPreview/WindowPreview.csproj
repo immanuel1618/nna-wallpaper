@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Stage 3A dev helper, deliberately NOT added to NNA.Wallpaper.sln: opens the real SettingsWindow
+       against an already-running instance (default: the owner's on port 1618, read-only — it only
+       displays /settings/, never posts/saves anything) so the custom title bar chrome can be seen and
+       screenshotted without a full "dotnet run" of the whole app. See tests/WindowPreview/Program.cs. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>NNA.Wallpaper.WindowPreview</RootNamespace>
+    <AssemblyName>WindowPreview</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NNA.Wallpaper\NNA.Wallpaper.csproj" />
+  </ItemGroup>
+
+</Project>

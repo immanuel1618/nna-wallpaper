@@ -30,6 +30,12 @@
     <ProjectReference Include="..\NNA.Wallpaper.Host\NNA.Wallpaper.Host.csproj" />
   </ItemGroup>
 
+  <!-- Brand mark used by the custom window title bar (Themes/Chrome.xaml). -->
+  <ItemGroup>
+    <Resource Include="Assets\mark-white-32.png" />
+    <Resource Include="Assets\mark-white-64.png" />
+  </ItemGroup>
+
   <!-- Web assets (wallpaper page, built-in widgets, settings window) travel with the exe. -->
   <ItemGroup>
     <Content Include="..\..\ui\**\*" Link="ui\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
