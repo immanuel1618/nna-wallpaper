@@ -52,3 +52,24 @@ Process32Next
 
 // Brand cursor scheme install/reset (CursorService).
 SystemParametersInfo
+// System info / power / brightness / network (SystemInfoService, Brightness).
+GetSystemPowerStatus
+GetKeyboardLayout
+LockWorkStation
+SetSuspendState
+EnumDisplayMonitors
+MONITORINFOEXW
+GetNumberOfPhysicalMonitorsFromHMONITOR
+GetPhysicalMonitorsFromHMONITOR
+GetMonitorBrightness
+SetMonitorBrightness
+DestroyPhysicalMonitors
+PHYSICAL_MONITOR
+WlanOpenHandle
+WlanCloseHandle
+WlanEnumInterfaces
+WlanQueryInterface
+WlanFreeMemory
+WLAN_INTF_OPCODE
+WLAN_CONNECTION_ATTRIBUTES
+WLAN_INTERFACE_INFO_LIST

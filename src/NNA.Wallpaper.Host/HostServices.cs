@@ -52,7 +52,8 @@ public sealed class HostServices : IDisposable
         Add(new Services.LaunchService(_ctx));
         Add(new Services.GraphService(_ctx));
         Add(new Services.WeatherService(_ctx));
-        Add(new Services.EventsService(_ctx));
+        var events = new Services.EventsService(_ctx);
+        Add(events);
         Add(new Services.PinsService(_ctx));
         Add(new Services.OpenService(_ctx));
         Add(new Services.WidgetsService(_ctx));
@@ -62,6 +63,8 @@ public sealed class HostServices : IDisposable
         Add(new Planner.PlannerService(_ctx));
         Add(new Services.WindowsService(_ctx));
         Add(new Services.CursorService(_ctx));
+        Add(new Services.AudioControlService(_ctx, events));
+        Add(new Services.SystemInfoService(_ctx, events));
     }
 
     private void Add(object service)

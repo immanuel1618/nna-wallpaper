@@ -176,6 +176,14 @@ public sealed class EventsService : IHostService, IDisposable
         await req.Json(new { ok = true }).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Broadcasts an application event from another service (e.g. AudioControlService,
+    /// SystemInfoService) to every connected /events client. Fire-and-forget: callers are
+    /// expected to throttle their own fast-changing sources (a volume slider drag, a meter poll)
+    /// before calling this — this method does not debounce.
+    /// </summary>
+    public void Broadcast(object payload) => _ = BroadcastAsync(payload);
+
     private Task HandleStats(ApiRequest req)
     {
         int clients;
