@@ -23,9 +23,16 @@ public static class SingleInstance
     /// life of the process, release and dispose on exit) when this is the first instance, or null
     /// when another instance already holds it.
     /// </summary>
-    public static Mutex? TryAcquire()
+    /// <summary>Mutex name is scoped to the data directory so a portable or test instance with its own --data can run next to the installed one.</summary>
+    public static string MutexNameFor(string dataDir)
     {
-        var mutex = new Mutex(initiallyOwned: true, name: MutexName, out var createdNew);
+        var bytes = System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(dataDir.Trim().TrimEnd('\\', '/').ToLowerInvariant()));
+        return MutexName + "." + Convert.ToHexString(bytes)[..16];
+    }
+
+    public static Mutex? TryAcquire(string dataDir)
+    {
+        var mutex = new Mutex(initiallyOwned: true, name: MutexNameFor(dataDir), out var createdNew);
         if (createdNew) return mutex;
         mutex.Dispose();
         return null;

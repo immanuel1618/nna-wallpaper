@@ -25,7 +25,7 @@ public partial class App : Application
 
         // Single instance: a second launch forwards its flags to the running instance and exits
         // (see SingleInstance.cs). It never gets here, so nothing below runs twice.
-        var mutex = SingleInstance.TryAcquire();
+        var mutex = SingleInstance.TryAcquire(Paths.Resolve(Args.DataDir).DataDir);
         if (mutex is null)
         {
             Shutdown(SingleInstance.ForwardAndExit(Args));
