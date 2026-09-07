@@ -19,7 +19,7 @@
 // a block that appears more than once on the layout asks for confirmation first.
 
 import { renderLaunchForm, renderEventsForm } from "../forms.js";
-import { el, groupCard, settingRow } from "../dom.js";
+import { el, groupCard, settingRow, widgetLabel, paletteSwatchField } from "../dom.js";
 import { iconEl } from "../icons.js";
 import { makeScheduler } from "../api.js";
 import { findFreeSlot } from "../layout-model.js";
@@ -42,6 +42,8 @@ const S = {
     noMonitor: "В раскладке нет ни одного монитора",
     noFreeSlotShort: "На раскладке нет места для этого блока",
     noSettings: "У этого блока нет настроек",
+    layoutHint: "Настраивается на странице Раскладка",
+    goToLayout: "Перейти к раскладке",
   },
   en: {
     onDesktopCount: "on desktop: {0}",
@@ -57,6 +59,8 @@ const S = {
     noMonitor: "The layout has no monitor",
     noFreeSlotShort: "No room for this block in the layout",
     noSettings: "This block has no settings",
+    layoutHint: "Configurable on the Layout page",
+    goToLayout: "Go to layout",
   },
 };
 
@@ -195,7 +199,7 @@ function renderGrid(container, ctx, tt, widgets) {
 }
 
 function widgetCard(container, ctx, tt, w) {
-  const name = w.name || w.id;
+  const name = widgetLabel(w, ctx.lang);
   const desc = loc(w.description, ctx.lang);
   const count = countOnDesktop(ctx, w.id);
 
@@ -239,9 +243,9 @@ function renderBlockPage(container, ctx, tt, widget) {
 
   const back = () => { ctx.setSelection(null); ctx.selection = null; render(container, ctx); };
   const crumb = el("div", { class: "blk-crumb" },
-    el("button", { class: "blk-back", type: "button", onclick: back }, "← " + ctx.t("tab_widgets")),
+    el("button", { class: "blk-back", type: "button", onclick: back }, iconEl("arrow-left", "util"), ctx.t("tab_widgets")),
     el("span", { class: "sep", text: "/" }),
-    el("span", { text: widget.name || widget.id }));
+    el("span", { text: widgetLabel(widget, ctx.lang) }));
 
   const count = countOnDesktop(ctx, widget.id);
   const hero = el("div", { class: "blk-hero" },
@@ -249,7 +253,7 @@ function renderBlockPage(container, ctx, tt, widget) {
     el("div", { class: "blk-hero-meta" },
       el("div", { class: "blk-count", text: desktopCountLabel(tt, count) }),
       el("button", {
-        class: "btn sm", type: "button", text: tt("showOnDesktop"),
+        class: "ui-btn sm", type: "button", text: tt("showOnDesktop"),
         onclick: () => { location.hash = "#layout?select=" + encodeURIComponent(widget.id); },
       })));
 
@@ -286,7 +290,14 @@ function renderBlockPage(container, ctx, tt, widget) {
 function drawSettingsGroups(content, ctx, tt, widget) {
   const schema = widget.settings || [];
   if (!schema.length) {
-    content.append(el("div", { class: "empty" }, el("div", { class: "txt", text: tt("noSettings") })));
+    const desc = loc(widget.description, ctx.lang);
+    content.append(el("div", { class: "empty" },
+      desc ? el("div", { class: "txt", text: desc }) : null,
+      el("div", { class: "txt", text: tt("layoutHint") }),
+      el("button", {
+        class: "ui-btn sm", type: "button", text: tt("goToLayout"),
+        onclick: () => { location.hash = "#layout?select=" + encodeURIComponent(widget.id); },
+      })));
     return;
   }
 
@@ -307,7 +318,7 @@ function drawSettingsGroups(content, ctx, tt, widget) {
 
   const groupsDef = widget.groups && widget.groups.length
     ? widget.groups
-    : [{ id: "settings", label: widget.name || widget.id, keys: schema.map((f) => f.key) }];
+    : [{ id: "settings", label: widgetLabel(widget, ctx.lang), keys: schema.map((f) => f.key) }];
 
   for (const g of groupsDef) {
     const keys = g.keys || [];
@@ -375,13 +386,7 @@ function fieldControl(field, data, ctx, scheduleSave) {
       break;
     }
     case "color": {
-      const isHex = (v) => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
-      const hex = el("input", { type: "text", value: data[field.key] || "#000000" });
-      const picker = el("input", { type: "color", value: isHex(data[field.key]) ? data[field.key] : "#000000" });
-      const sync = (v) => { data[field.key] = v; hex.value = v; picker.value = isHex(v) ? v : "#000000"; scheduleSave(); };
-      picker.addEventListener("input", (e) => sync(e.target.value));
-      hex.addEventListener("change", (e) => sync(e.target.value));
-      mount.append(picker, hex);
+      paletteSwatchField(mount, ctx.t, data[field.key] || "#0B0B0B", (v) => { data[field.key] = v; scheduleSave(); });
       break;
     }
     case "text": {
@@ -417,14 +422,14 @@ function listFieldBlock(field, data, ctx, scheduleSave) {
         input.addEventListener("input", (e) => { row[c] = type === "number" ? Number(e.target.value) : e.target.value; scheduleSave(); });
         return el("td", null, input);
       });
-      const removeBtn = el("button", { class: "btn sm", type: "button", text: ctx.t("formRemove") });
+      const removeBtn = el("button", { class: "ui-btn sm", type: "button", text: ctx.t("formRemove") });
       removeBtn.addEventListener("click", () => { rows.splice(idx, 1); redraw(); scheduleSave(); });
       table.append(el("tr", null, ...cells, el("td", null, removeBtn)));
     });
   };
   redraw();
 
-  const addBtn = el("button", { class: "btn sm", type: "button", text: ctx.t("formAdd") });
+  const addBtn = el("button", { class: "ui-btn sm", type: "button", text: ctx.t("formAdd") });
   addBtn.addEventListener("click", () => {
     const blank = {};
     for (const c of columns) blank[c] = itemSchema[c] === "number" ? 0 : "";
@@ -445,7 +450,7 @@ function drawItemsTab(content, ctx, widgetId) {
     : renderEventsForm(formBox, ctx.config.events || {}, ctx.t);
 
   const saveBtn = el("button", {
-    class: "btn primary", type: "button", text: ctx.t("save"),
+    class: "ui-btn primary", type: "button", text: ctx.t("save"),
     onclick: async () => {
       ctx.onStatus(ctx.t("statusSaving"), false);
       try {

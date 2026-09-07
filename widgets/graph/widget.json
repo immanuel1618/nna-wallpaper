@@ -1,6 +1,7 @@
 {
   "id": "graph",
   "name": "Graph",
+  "title": { "ru": "Граф", "en": "Graph" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "graph" },

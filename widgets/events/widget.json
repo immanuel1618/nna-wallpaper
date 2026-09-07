@@ -1,6 +1,7 @@
 {
   "id": "events",
   "name": "Events",
+  "title": { "ru": "События", "en": "Events" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "events" },

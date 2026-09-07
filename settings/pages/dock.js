@@ -1,11 +1,9 @@
-// settings/pages/dock.js — "Dock" page (ε): a macOS-style dock, per the schema the owner
-// specified for the parallel branch's DockSettings (app.json's "dock" key — not yet a real
-// property on AppSettings.cs in this worktree; see the report in docs/SETTINGS.md "Dock"). The
-// page always renders with sane defaults and PUTs `{app:{dock:{...}}}` on every change; until the
-// C# side lands, the host silently accepts and drops that key (unknown members are ignored by
-// System.Text.Json here, not rejected — see Json.cs), so nothing errors, it just doesn't persist.
+// settings/pages/dock.js — "Dock" page (ε): a macOS-style dock, driven by app.json's "dock"
+// object (DockSettings in AppSettings.cs). The page always renders with sane defaults, PUTs
+// `{app:{dock:{...}}}` on every change and reads the saved value straight back from
+// ctx.config.app.dock afterwards, same round trip every other page in this shell uses.
 
-import { el, groupCard, settingRow } from "../dom.js";
+import { el, groupCard, settingRow, paletteSwatchField } from "../dom.js";
 import { makeScheduler } from "../api.js";
 
 function defaultDock() {
@@ -37,11 +35,11 @@ function pathListRow(t, titleKey, list, redraw) {
     list.forEach((path, idx) => {
       const input = el("input", { type: "text", value: path, placeholder: "C:\\path" });
       input.addEventListener("input", (e) => { list[idx] = e.target.value; redraw(); });
-      const removeBtn = el("button", { class: "btn sm danger", type: "button", text: t("remove") });
+      const removeBtn = el("button", { class: "ui-btn sm danger", type: "button", text: t("remove") });
       removeBtn.addEventListener("click", () => { list.splice(idx, 1); draw(); redraw(); });
       box.append(el("div", { class: "field-row" }, input, removeBtn));
     });
-    const addBtn = el("button", { class: "btn sm", type: "button", text: t("formAdd") });
+    const addBtn = el("button", { class: "ui-btn sm", type: "button", text: t("formAdd") });
     addBtn.addEventListener("click", () => { list.push(""); draw(); redraw(); });
     box.append(addBtn);
   };
@@ -112,21 +110,15 @@ export function render(container, ctx) {
     pathListRow(t, "dockPinned", dock.pinned, scheduleSave));
 
   const modeMount = el("div");
+  const colorMount = el("div");
   const opacityMount = el("div");
-  const hex = el("input", { type: "text", value: dock.style.color });
-  const picker = el("input", { type: "color", value: normalizeHex(dock.style.color) });
-  const syncColor = (v) => { dock.style.color = v; hex.value = v; picker.value = normalizeHex(v); scheduleSave(); };
-  picker.addEventListener("input", (e) => syncColor(e.target.value));
-  hex.addEventListener("change", (e) => syncColor(e.target.value));
   const style = groupCard("style", t("surfaceStyleLabel"),
     settingRow(t("surfaceMode"), null, modeMount),
-    settingRow(t("surfaceColor"), null, el("div", { class: "field" }, el("div", { class: "field-row" }, picker, hex))),
+    settingRow(t("surfaceColor"), null, colorMount),
     settingRow(t("surfaceOpacity"), null, opacityMount));
   window.NNAUI.segmented(modeMount, { value: dock.style.mode, items: MODES.map((m) => ({ value: m, label: t("mode_" + m) })), onChange: (v) => { dock.style.mode = v; scheduleSave(); } });
+  paletteSwatchField(colorMount, t, normalizeHex(dock.style.color), (v) => { dock.style.color = v; scheduleSave(); });
   window.NNAUI.slider(opacityMount, { min: 0, max: 1, step: 0.05, value: dock.style.opacity, format: (v) => v.toFixed(2), onInput: (v) => { dock.style.opacity = v; scheduleSave(); } });
 
-  if (!saved) {
-    page.append(el("div", { class: "hint", text: t("dockNotPersistedYet") }));
-  }
   page.append(general, magnify, behaviour, items, style);
 }

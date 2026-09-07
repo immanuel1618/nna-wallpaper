@@ -1,6 +1,7 @@
 {
   "id": "weather",
   "name": "Weather + clocks",
+  "title": { "ru": "Погода и часы", "en": "Weather + clocks" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "weather" },

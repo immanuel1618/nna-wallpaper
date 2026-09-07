@@ -1,6 +1,7 @@
 {
   "id": "player",
   "name": "Player",
+  "title": { "ru": "Плеер", "en": "Player" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": {

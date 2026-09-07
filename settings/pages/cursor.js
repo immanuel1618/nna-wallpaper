@@ -58,8 +58,8 @@ export async function render(container, ctx) {
   drawCards();
 
   const sizeMount = el("div");
-  const applyBtn = el("button", { class: "btn primary", type: "button", text: t("cursorApply") });
-  const resetBtn = el("button", { class: "btn", type: "button", text: t("cursorReset"), disabled: !status.backup });
+  const applyBtn = el("button", { class: "ui-btn primary", type: "button", text: t("cursorApply") });
+  const resetBtn = el("button", { class: "ui-btn", type: "button", text: t("cursorReset"), disabled: !status.backup });
   const backupNote = el("div", { class: "hint", text: status.backup ? t("cursorBackupPresent") : t("cursorBackupAbsent") });
 
   const controls = groupCard("apply", t("cursorSizeSection"),

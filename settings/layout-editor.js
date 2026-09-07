@@ -69,6 +69,7 @@ function throttle(fn, wait) {
  */
 export function mountLayoutTab(container, ctx) {
   const tt = ctx.t;
+  const lang = ctx.lang === "en" ? "en" : "ru";
   container.innerHTML = "";
 
   const widgets = ctx.widgets || [];
@@ -134,6 +135,7 @@ export function mountLayoutTab(container, ctx) {
     const check = validate(flat);
     return {
       tt,
+      lang,
       monitors: liveMonitors.map((m) => ({ ...m, enabled: byId.get(m.id)?.enabled !== false })),
       selectedId,
       layout: flat,
@@ -336,7 +338,7 @@ export function mountLayoutTab(container, ctx) {
     }
   }
 
-  function gridField(labelKey, key, min) {
+  function gridField(labelKey, helpKey, key, min) {
     const layout = byId.get(selectedId);
     const input = el("input", { type: "number", min: min ?? 1, value: layout.grid[key] });
     const commitValue = (commitHistory) => {
@@ -353,7 +355,7 @@ export function mountLayoutTab(container, ctx) {
     };
     input.addEventListener("input", () => commitValue(false));
     input.addEventListener("change", () => commitValue(true));
-    return el("div", { class: "field" }, el("label", { text: tt(labelKey) }), input);
+    return settingRow(tt(labelKey), helpKey ? tt(helpKey) : null, el("div", { class: "field lay-grid-field" }, input));
   }
 
   function renderGridGroup() {
@@ -375,12 +377,11 @@ export function mountLayoutTab(container, ctx) {
       renderAll();
     });
     gridGroup.append(groupCard("grid", tt("gridSection"),
-      el("div", { class: "lay-grid-fields" },
-        gridField("gridCols", "cols"),
-        gridField("gridRows", "rows"),
-        gridField("gridGap", "gap", 0),
-        gridField("gridPad", "pad", 0),
-        el("div", { class: "field", style: "flex:1 1 160px" }, el("label", { text: tt("gridWeights") }), weights))));
+      gridField("gridCols", null, "cols"),
+      gridField("gridRows", null, "rows"),
+      gridField("gridGap", "gridGapHelp", "gap", 0),
+      gridField("gridPad", "gridPadHelp", "pad", 0),
+      settingRow(tt("gridWeights"), tt("gridWeightsHelp"), el("div", { class: "field" }, weights))));
   }
 
   function renderActions() {
@@ -389,22 +390,22 @@ export function mountLayoutTab(container, ctx) {
     const h = historyById.get(selectedId);
     const isDirty = dirty.has(selectedId);
     const applyBtn = el("button", {
-      class: "btn primary", type: "button", text: tt("applyBtn"),
+      class: "ui-btn primary", type: "button", text: tt("applyBtn"),
       disabled: !allValid || applying, onclick: applyAll,
     });
     const cancelBtn = el("button", {
-      class: "btn ghost", type: "button", text: tt("cancelBtn"),
+      class: "ui-btn ghost", type: "button", text: tt("cancelBtn"),
       disabled: !isDirty, onclick: cancelMonitor,
     });
     const undoBtn = el("button", {
-      class: "btn ghost sm", type: "button", text: tt("undoLastBtn"),
+      class: "ui-btn ghost sm", type: "button", text: tt("undoLastBtn"),
       disabled: !h || !h.canUndo(), onclick: doUndo,
     });
     const redoBtn = el("button", {
-      class: "btn ghost sm", type: "button", text: tt("redoBtn"),
+      class: "ui-btn ghost sm", type: "button", text: tt("redoBtn"),
       disabled: !h || !h.canRedo(), onclick: doRedo,
     });
-    const resetBtn = el("button", { class: "btn ghost sm", type: "button", text: tt("resetDefault"), onclick: resetToDefaultConfirm });
+    const resetBtn = el("button", { class: "ui-btn ghost sm", type: "button", text: tt("resetDefault"), onclick: resetToDefaultConfirm });
     if (!allValid) actionsRow.append(el("div", { class: "lay-conflict-note", text: tt("overlapBlocked") }));
     actionsRow.append(applyBtn, cancelBtn, undoBtn, redoBtn, el("span", { class: "sp" }), resetBtn);
   }

@@ -1,6 +1,7 @@
 {
   "id": "planner",
   "name": "NNA Planner",
+  "title": { "ru": "Планировщик", "en": "NNA Planner" },
   "version": "0.1.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "planner" },

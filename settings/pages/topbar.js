@@ -5,7 +5,7 @@
 // NNAUI-driven controls, matching the owner's macOS-System-Settings brief. taskbar.js (the
 // Windows-taskbar page) still owns Preset/Windows sections; this page owns app.json's topBar only.
 
-import { el, groupCard, settingRow } from "../dom.js";
+import { el, groupCard, settingRow, paletteSwatchField } from "../dom.js";
 import { iconEl } from "../icons.js";
 import { makeScheduler } from "../api.js";
 
@@ -83,17 +83,15 @@ export function render(container, ctx) {
 
   // ── style ─────────────────────────────────────────────────────────────
   const modeMount = el("div");
+  const colorMount = el("div");
   const opacityMount = el("div");
-  const hex = el("input", { type: "text", value: topBar.style.color });
-  const picker = el("input", { type: "color", value: normalizeHex(topBar.style.color) });
-  const syncColor = (v) => { topBar.style.color = v; hex.value = v; picker.value = normalizeHex(v); scheduleSave(); };
-  picker.addEventListener("input", (e) => syncColor(e.target.value));
-  hex.addEventListener("change", (e) => syncColor(e.target.value));
 
   const style = groupCard("style", t("surfaceStyleLabel"),
     settingRow(t("surfaceMode"), null, modeMount),
-    settingRow(t("surfaceColor"), null, el("div", { class: "field" }, el("div", { class: "field-row" }, picker, hex))),
+    settingRow(t("surfaceColor"), null, colorMount),
     settingRow(t("surfaceOpacity"), null, opacityMount));
+
+  paletteSwatchField(colorMount, t, normalizeHex(topBar.style.color), (v) => { topBar.style.color = v; scheduleSave(); });
 
   window.NNAUI.segmented(modeMount, { value: topBar.style.mode, items: MODES.map((m) => ({ value: m, label: t("mode_" + m) })), onChange: (v) => { topBar.style.mode = v; scheduleSave(); } });
   window.NNAUI.slider(opacityMount, { min: 0, max: 1, step: 0.05, value: topBar.style.opacity, format: (v) => v.toFixed(2), onInput: (v) => { topBar.style.opacity = v; scheduleSave(); } });
@@ -145,7 +143,7 @@ export function render(container, ctx) {
   function addRow(side) {
     const select = el("select", { class: "dnd-add-select" });
     for (const id of MODULE_IDS) select.append(el("option", { value: id, text: t("module_" + id) || id }));
-    const addBtn = el("button", { class: "btn sm", type: "button", text: "+" });
+    const addBtn = el("button", { class: "ui-btn sm", type: "button", text: "+" });
     addBtn.addEventListener("click", () => {
       topBar.modules.push({ id: select.value, side, _key: "m" + (keySeq++) });
       redrawModules();

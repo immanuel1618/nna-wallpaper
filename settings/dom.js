@@ -43,3 +43,73 @@ export function settingRow(titleText, helpText, control) {
     el("div", { class: "main" }, el("div", { class: "t", text: titleText }), helpText ? el("div", { class: "s", text: helpText }) : null),
     el("div", { class: "row-control" }, control));
 }
+
+/** A `groupCard` whose body starts collapsed, toggled by a chevron button next to the title (see
+ * taskbar-tab.js's "Advanced" JSON import/export section). Returns the card element; nothing else
+ * needs to reach into it, the toggle is entirely self-contained. */
+export function collapsibleCard(id, titleText, ...children) {
+  const body = el("div", { class: "stack", hidden: true });
+  body.append(...children);
+  const chevron = el("span", { class: "nav-icon" });
+  chevron.innerHTML = ICON_CHEVRON_DOWN;
+  const toggleBtn = el("button", {
+    class: "ui-icon-btn", type: "button", "aria-expanded": "false",
+    onclick: () => {
+      const open = body.hidden; // about to open
+      body.hidden = !open;
+      toggleBtn.setAttribute("aria-expanded", String(open));
+      chevron.style.transform = open ? "rotate(180deg)" : "";
+    },
+  }, chevron);
+  const head = el("div", { class: "group-title group-title-row" }, el("span", { text: titleText }), toggleBtn);
+  return el("div", { class: "group", "data-group": id }, head, body);
+}
+// Inlined rather than imported from icons.js to avoid a circular import (icons.js has no
+// dependency on dom.js today, but keeping this module import-free of icons.js keeps it that way).
+const ICON_CHEVRON_DOWN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6 L8 10 L12 6"/></svg>';
+
+/** Resolves a widget's display name for the current language: prefers manifest `title:{ru,en}`
+ * (docs/SETTINGS.md "Русские названия блоков"), falls back to the old single-language `name`,
+ * then the widget id. Shared by blocks.js (cards + block page), layout-canvas.js (palette + grid
+ * block labels) so every place a block's name shows up agrees. */
+export function widgetLabel(widget, lang) {
+  if (!widget) return "";
+  const title = widget.title;
+  if (title && typeof title === "object") {
+    const resolved = title[lang] || title.ru || title.en;
+    if (resolved) return resolved;
+  }
+  return widget.name || widget.id || "";
+}
+
+// Base/Surface/Slate/Steel — the four neutral palette tones a surface color picker may choose
+// from (docs/DESIGN-SYSTEM.md "Палитра"); Signal/Blood/Chrome are accents, not surface fills, so
+// they are deliberately not offered here.
+const PALETTE_SWATCHES = [
+  { value: "#0B0B0B", labelKey: "swatchBase" },
+  { value: "#161616", labelKey: "swatchSurface" },
+  { value: "#434343", labelKey: "swatchSlate" },
+  { value: "#808080", labelKey: "swatchSteel" },
+];
+
+/**
+ * Mounts a `NNAUI.segmented` restricted to the four neutral palette tones, each item prefixed
+ * with a small color swatch — replaces a native `<input type="color">` + hex field (owner
+ * decision: no color pickers, pick from the palette instead). The stored value is still a plain
+ * hex string, unchanged by callers. Returns the same handle `NNAUI.segmented` returns.
+ */
+export function paletteSwatchField(mount, t, value, onChange) {
+  const items = PALETTE_SWATCHES.map((p) => ({ value: p.value, label: t(p.labelKey) }));
+  const ctl = window.NNAUI.segmented(mount, { value, items, onChange });
+  const buttons = mount.querySelectorAll(".ui-segmented-item");
+  PALETTE_SWATCHES.forEach((p, i) => {
+    const btn = buttons[i];
+    if (!btn) return;
+    const swatch = el("span", {
+      "aria-hidden": "true",
+      style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;background:${p.value};border:1px solid var(--slate)`,
+    });
+    btn.prepend(swatch);
+  });
+  return ctl;
+}

@@ -8,8 +8,8 @@ import { makeScheduler } from "../api.js";
 
 export function keywords(lang) {
   return lang === "en"
-    ? ["dim", "radius", "gap", "padding", "blur", "fps", "fullscreen", "pause"]
-    : ["затемнение", "скругление", "отступ", "поля", "размытие", "fps", "полноэкранный", "пауза"];
+    ? ["dim", "radius", "gap", "padding", "blur", "fps", "fullscreen", "pause", "font size", "accent", "signal", "chrome"]
+    : ["затемнение", "скругление", "отступ", "поля", "размытие", "fps", "полноэкранный", "пауза", "размер шрифта", "акцент", "signal", "chrome"];
 }
 
 export function render(container, ctx) {
@@ -52,5 +52,29 @@ export function render(container, ctx) {
 
   window.NNAUI.toggle(pauseMount, { checked: !!pauseOnFullscreen, onChange: (on) => { pauseOnFullscreen = on; scheduleSave(); } });
 
-  container.append(el("div", { class: "page-wide" }, geometry, performance));
+  // Owner decision D6: one theme, a few dials — font scale and accent join dim/radius/etc. as
+  // knobs on the fixed brand theme rather than a palette editor. The wallpaper page (edited by
+  // another agent this round) reads app.theme.fontScale/accent straight off this same object.
+  const fontScaleMount = el("div");
+  const accentMount = el("div");
+  const knobs = groupCard("themeKnobs", t("themeKnobsSection"),
+    settingRow(t("fontScale"), null, fontScaleMount),
+    settingRow(t("accent"), null, accentMount));
+
+  window.NNAUI.segmented(fontScaleMount, {
+    value: Number(theme.fontScale) || 100,
+    items: [{ value: 90, label: "90%" }, { value: 100, label: "100%" }, { value: 110, label: "110%" }],
+    onChange: (v) => { theme.fontScale = v; scheduleSave(); },
+  });
+  window.NNAUI.segmented(accentMount, {
+    value: theme.accent || "none",
+    items: [
+      { value: "none", label: t("accent_none") },
+      { value: "signal", label: t("accent_signal") },
+      { value: "chrome", label: t("accent_chrome") },
+    ],
+    onChange: (v) => { theme.accent = v; scheduleSave(); },
+  });
+
+  container.append(el("div", { class: "page-wide" }, geometry, knobs, performance));
 }

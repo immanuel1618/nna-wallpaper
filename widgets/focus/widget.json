@@ -1,6 +1,7 @@
 {
   "id": "focus",
   "name": "Focus timer",
+  "title": { "ru": "Фокус", "en": "Focus timer" },
   "version": "2.0.0",
   "author": "NNA1618",
   "entry": { "kind": "module", "path": "widget.js", "export": "focus" },

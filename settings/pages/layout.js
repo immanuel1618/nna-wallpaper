@@ -15,11 +15,14 @@ const S = {
     cancelBtn: "Отменить",
     undoLastBtn: "Отмена последнего",
     redoBtn: "Повторить",
-    overlapBlocked: "Блоки пересекаются или выходят за сетку — применить нельзя",
+    overlapBlocked: "Блоки пересекаются или выходят за сетку: применить нельзя",
     resetConfirmTitle: "Сброс к умолчанию",
     resetConfirmBody: "Вернуть раскладку этого монитора к встроенной по умолчанию. Несохранённые изменения будут потеряны.",
     resetConfirmOk: "Сбросить",
     resetConfirmCancel: "Отмена",
+    gridGapHelp: "Отступ между блоками, px",
+    gridPadHelp: "Поля от края, px",
+    gridWeightsHelp: "Веса колонок через запятую, например 2, 1, 2",
   },
   en: {
     monitorsTitle: "Monitors",
@@ -29,11 +32,14 @@ const S = {
     cancelBtn: "Cancel",
     undoLastBtn: "Undo last",
     redoBtn: "Redo",
-    overlapBlocked: "Blocks overlap or exceed the grid — cannot apply",
+    overlapBlocked: "Blocks overlap or exceed the grid: cannot apply",
     resetConfirmTitle: "Reset to default",
     resetConfirmBody: "Reset this monitor's layout to the built-in default. Unsaved changes will be lost.",
     resetConfirmOk: "Reset",
     resetConfirmCancel: "Cancel",
+    gridGapHelp: "Gap between blocks, px",
+    gridPadHelp: "Padding from the edge, px",
+    gridWeightsHelp: "Column weights, comma separated, e.g. 2, 1, 2",
   },
 };
 
@@ -85,6 +91,7 @@ export async function render(container, ctx) {
 
   mountLayoutTab(container, {
     t: tt,
+    lang: ctx.lang,
     put: ctx.put,
     api: ctx.api,
     fetchDefaults: ctx.fetchDefaults,

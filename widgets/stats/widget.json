@@ -1,6 +1,7 @@
 {
   "id": "stats",
   "name": "System",
+  "title": { "ru": "Система", "en": "System" },
   "version": "1.0.0",
   "author": "NNA1618",
   "entry": {
