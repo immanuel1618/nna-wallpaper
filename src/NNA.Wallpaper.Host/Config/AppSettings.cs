@@ -25,6 +25,67 @@ public sealed class AppSettings
     public GraphLimits GraphLimits { get; set; } = new();
     public WeatherSettings Weather { get; set; } = new();
     public PlannerSettings Planner { get; set; } = new();
+    public TaskbarSettings Taskbar { get; set; } = new();
+    public TopBarSettings TopBar { get; set; } = new();
+}
+
+/// <summary>One visual style: mode normal|clear|blur|acrylic|opaque, tint colour and opacity 0..1.</summary>
+public sealed class SurfaceStyle
+{
+    public string Mode { get; set; } = "normal";
+    public string Color { get; set; } = "#0B0B0B";
+    public double Opacity { get; set; } = 0.5;
+}
+
+/// <summary>Windows taskbar toggles; null = leave the Windows setting untouched.</summary>
+public sealed class TaskbarWindowsSettings
+{
+    public bool? Centered { get; set; }
+    public bool? HideSearch { get; set; }
+    public bool? HideTaskView { get; set; }
+    public bool? HideWidgets { get; set; }
+    public bool? HideClock { get; set; }
+    public bool? Small { get; set; }
+    public bool? Transparency { get; set; }
+    public bool? OledTransparency { get; set; }
+    public bool? AutoHide { get; set; }
+}
+
+/// <summary>Taskbar styling (Windows taskbar): per-state styles plus Windows toggles.</summary>
+public sealed class TaskbarSettings
+{
+    public bool Enabled { get; set; } = false;
+    public string Preset { get; set; } = "windows";
+    public SurfaceStyle Normal { get; set; } = new();
+    public SurfaceStyle Maximized { get; set; } = new() { Mode = "opaque", Opacity = 1 };
+    public SurfaceStyle Fullscreen { get; set; } = new();
+    public TaskbarWindowsSettings Windows { get; set; } = new();
+    public bool Secondary { get; set; } = true;
+}
+
+public sealed class TopBarModule
+{
+    public string Id { get; set; } = "";
+    public string Side { get; set; } = "right";
+}
+
+/// <summary>Our own always-on-top bar at the top edge (mac-like menu bar).</summary>
+public sealed class TopBarSettings
+{
+    public bool Enabled { get; set; } = false;
+    public string Monitors { get; set; } = "all";
+    public int Height { get; set; } = 30;
+    public SurfaceStyle Style { get; set; } = new() { Mode = "acrylic", Opacity = 0.6 };
+    public int FontSize { get; set; } = 12;
+    public bool AutoHide { get; set; } = false;
+    public bool ReserveSpace { get; set; } = true;
+    public List<TopBarModule> Modules { get; set; } = new()
+    {
+        new() { Id = "brand", Side = "left" }, new() { Id = "date", Side = "left" },
+        new() { Id = "clock", Side = "center" },
+        new() { Id = "planner", Side = "right" }, new() { Id = "media", Side = "right" },
+        new() { Id = "weather", Side = "right" }, new() { Id = "stats", Side = "right" },
+    };
 }
 
 public sealed class UpdateSettings

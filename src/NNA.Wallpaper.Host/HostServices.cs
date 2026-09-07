@@ -33,6 +33,8 @@ public sealed class HostServices : IDisposable
         // Static web roots shipped with the app; user widgets folder is searched after built-ins.
         Api.MapStatic("/wallpaper/", ctx.Paths.WebRoot("wallpaper"));
         Api.MapStatic("/settings/", ctx.Paths.WebRoot("settings"));
+        Api.MapStatic("/topbar/", ctx.Paths.WebRoot("topbar"));
+        Api.MapStatic("/presets/", ctx.Paths.WebRoot("presets"));
         Api.MapStatic("/widgets/", ctx.Paths.BuiltInWidgetsDir, ctx.Paths.UserWidgetsDir);
 
         // Feature services (each in its own file). Order matters only for /health contributors.
@@ -133,6 +135,8 @@ public sealed class HostServices : IDisposable
             ["monitor"] = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(layout, Json.Config)),
             ["widgets"] = widgets,
             ["planner"] = new JsonObject { ["show"] = new JsonArray(app.Planner.Show.Select(s => (JsonNode)s).ToArray()) },
+            ["taskbar"] = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(app.Taskbar, Json.Config)),
+            ["topbar"] = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(app.TopBar, Json.Config)),
         };
         return req.Text(obj.ToJsonString(Json.Api), "application/json; charset=utf-8");
     }
