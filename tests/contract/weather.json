@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "name": "",
+  "ts": 0,
+  "temp": 0,
+  "feels": 0,
+  "humidity": 0,
+  "wind_ms": 0,
+  "code": 0,
+  "text": "",
+  "is_day": 1,
+  "days": [
+    { "date": "", "code": 0, "text": "", "max": 0, "min": 0 }
+  ]
+}

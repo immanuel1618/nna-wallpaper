@@ -1,0 +1,31 @@
+{
+  "ts": 0,
+  "cpu": {
+    "percent": 0,
+    "per_core": [0],
+    "freq_mhz": 0,
+    "cores": 0
+  },
+  "mem": {
+    "used": 0,
+    "total": 0,
+    "percent": 0
+  },
+  "disks": [
+    { "mount": "", "used": 0, "total": 0, "percent": 0 }
+  ],
+  "net": {
+    "up_bps": 0,
+    "down_bps": 0
+  },
+  "uptime_s": 0,
+  "gpu": {
+    "ok": true,
+    "name": "",
+    "util": 0,
+    "temp": 0,
+    "mem_used_mb": 0,
+    "mem_total_mb": 0,
+    "power_w": 0
+  }
+}

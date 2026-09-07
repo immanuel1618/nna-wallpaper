@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "version": "",
+  "port": 0,
+  "token": "",
+  "language": "",
+  "fpsCap": 0,
+  "theme": {
+    "preset": "",
+    "palette": {},
+    "fonts": {},
+    "radius": 0,
+    "gap": 0,
+    "pad": 0,
+    "blur": 0,
+    "dim": 0
+  },
+  "monitor": {
+    "id": "",
+    "name": "",
+    "enabled": true,
+    "grid": { "cols": 0, "rows": 0, "gap": 0, "pad": 0 },
+    "blocks": [
+      { "widget": "", "col": 0, "colSpan": 0, "row": 0, "rowSpan": 0 }
+    ]
+  },
+  "widgets": {},
+  "planner": { "show": [] }
+}
