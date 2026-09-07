@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="Вход в NNA Planner" Width="520" Height="640" MinWidth="420" MinHeight="480"
+        Style="{StaticResource BrandWindow}" ResizeMode="NoResize"
+        Title="NNA PLANNER" Width="520" Height="640" MinWidth="420" MinHeight="480"
         Background="#0B0B0B" WindowStartupLocation="CenterScreen">
     <Grid x:Name="Root">
         <wv2:WebView2 x:Name="Browser" />

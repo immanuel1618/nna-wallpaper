@@ -1,9 +1,12 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using NNA.Wallpaper.Host;
+using NNA.Wallpaper.Themes;
 
 namespace NNA.Wallpaper;
 
@@ -17,14 +20,39 @@ public partial class SettingsWindow : Window
     private static SettingsWindow? _current;
     private readonly HostContext _ctx;
     private string? _pendingTab;
+    private readonly HttpClient _health = new() { Timeout = TimeSpan.FromSeconds(3) };
+    private DispatcherTimer? _healthTimer;
 
     public SettingsWindow(HostContext ctx, string? tab)
     {
         _ctx = ctx;
         InitializeComponent();
-        Title = ctx.Config.App.Language == "ru" ? "NNA Wallpaper — Настройки" : "NNA Wallpaper — Settings";
-        Closed += (_, _) => { if (ReferenceEquals(_current, this)) _current = null; };
+        // Title stays the fixed brand caption ("NNA WALLPAPER", set in XAML) drawn by BrandWindow's
+        // own title bar and used for the taskbar/Alt+Tab entry alike — the per-language distinction
+        // ("Настройки" vs "Settings") lives inside the settings page itself, not the window chrome.
+        Chrome.SetVersion(this, "v" + HostInfo.Version);
+
+        BrandChrome.Attach(this);
+        WindowSettingsStore.Restore(this, ctx, "settings");
+        WindowSettingsStore.SaveOnClose(this, ctx, "settings");
+
+        Closed += (_, _) => { if (ReferenceEquals(_current, this)) _current = null; StopHealthPolling(); };
         Loaded += async (_, _) => await InitAsync(tab).ConfigureAwait(true);
+        StartHealthPolling();
+
+        // The WPF WebView2 control re-raises unhandled browser accelerator keys (Alt+F4 included) as
+        // ordinary WPF KeyDown on itself, which bubbles up here — so Alt+F4 closes the window even
+        // while the WebView2 content has keyboard focus, not just when the title bar/chrome does.
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.System
+                && e.SystemKey == System.Windows.Input.Key.F4
+                && System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Alt)
+            {
+                e.Handled = true;
+                Close();
+            }
+        };
     }
 
     public static void Open(HostContext ctx, string? tab)
@@ -83,5 +111,36 @@ public partial class SettingsWindow : Window
         {
             _ctx.Log.Error("settings window init failed", ex);
         }
+    }
+
+    /// <summary>Polls the host's own /health every 5s to drive the status dot in the title bar.</summary>
+    private void StartHealthPolling()
+    {
+        _healthTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(5) };
+        _healthTimer.Tick += async (_, _) => await PollHealthAsync().ConfigureAwait(true);
+        _healthTimer.Start();
+        _ = PollHealthAsync();
+    }
+
+    private void StopHealthPolling()
+    {
+        _healthTimer?.Stop();
+        _healthTimer = null;
+        _health.Dispose();
+    }
+
+    private async System.Threading.Tasks.Task PollHealthAsync()
+    {
+        var ok = false;
+        try
+        {
+            using var resp = await _health.GetAsync(_ctx.BaseUrl + "/health").ConfigureAwait(true);
+            ok = resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            ok = false;
+        }
+        Chrome.SetHealthOk(this, ok);
     }
 }
