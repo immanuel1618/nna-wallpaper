@@ -44,6 +44,7 @@ public sealed class PlannerService : Services.IHostService, IDisposable
         api.Map("GET", "/planner/callback", Callback);
         api.Map("POST", "/planner/input", Input);
         api.Map("POST", "/planner/test-delete", TestDelete);
+        api.Map("POST", "/planner/undo", Undo);
     }
 
     // ---- background refresh --------------------------------------------------------------------------
@@ -366,6 +367,7 @@ public sealed class PlannerService : Services.IHostService, IDisposable
             var ok = (bool?)result.Body?["ok"] ?? false;
             var msg = new JsonObject { ["type"] = "planner", ["event"] = "captured", ["ok"] = ok };
             if (result.Body?["entries"] is JsonNode entries) msg["entries"] = entries.DeepClone();
+            if (result.Body?["batch_id"] is JsonNode batchId) msg["batch_id"] = batchId.DeepClone();
             if (!ok) msg["error"] = (string?)result.Body?["message"] ?? (string?)result.Body?["reason"] ?? "error";
             _ctx.App.PostToPages(msg.ToJsonString(Json.Api), monitorId);
         }
@@ -422,6 +424,38 @@ public sealed class PlannerService : Services.IHostService, IDisposable
 
         InvalidateCache();
         await req.Json(new { ok = true }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// POST /planner/undo?batch=&lt;batch_id&gt; — production undo for the block's "ОТМЕНИТЬ" button
+    /// (shown for a few seconds right after a capture). Same self-scoped rpc/undo_batch as
+    /// <see cref="TestDelete"/>'s batch branch (RLS + my_profile_id() mean it can only ever touch the
+    /// caller's own entries), kept as a separate route so the test-only one-entry-by-title-prefix path
+    /// stays test-only.
+    /// </summary>
+    private async Task Undo(ApiRequest req)
+    {
+        var session = _session;
+        if (session is null) { await req.Error(401, "not logged in").ConfigureAwait(false); return; }
+        var batchId = req.Query("batch");
+        if (string.IsNullOrEmpty(batchId)) { await req.Error(400, "batch required").ConfigureAwait(false); return; }
+
+        bool ok;
+        try
+        {
+            ok = await _client.UndoBatchAsync(session, batchId).ConfigureAwait(false);
+        }
+        catch (PlannerAuthException) { await req.Error(401, "sign in again").ConfigureAwait(false); return; }
+        catch (Exception ex)
+        {
+            _ctx.Log.Error("planner undo", ex);
+            await req.Error(502, "planner unavailable").ConfigureAwait(false);
+            return;
+        }
+
+        InvalidateCache();
+        NotifyChanged();
+        await req.Json(new { ok = ok }).ConfigureAwait(false);
     }
 
     // ---- helpers --------------------------------------------------------------------------------------

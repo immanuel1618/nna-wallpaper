@@ -29,9 +29,10 @@
       btn.classList.add(ok ? 'is-flash' : 'is-busy');
       ctx.setTimeout(function () { btn.classList.remove('is-flash', 'is-busy'); }, ok ? 700 : 1200);
     }
-    function run(kind, id, btn, label) {
+    function run(kind, id, btn, label, newInstance) {
       btn.classList.add('is-busy');
-      N.post('/launch/' + kind + '?id=' + encodeURIComponent(id)).then(function (r) {
+      var body = newInstance ? { newInstance: true } : undefined;
+      N.post('/launch/' + kind + '?id=' + encodeURIComponent(id), body).then(function (r) {
         btn.classList.remove('is-busy');
         var ok = !!(r && r.ok);
         flash(btn, ok);
@@ -72,13 +73,14 @@
         if (!compact) btn.appendChild(N.el('span', 'la-item-t', label));
         if (it.badge) btn.appendChild(N.el('i', 'la-badge', it.badge));
       }
-      btn.addEventListener('click', function () { run('item', id, btn, label); });
+      // Shift+click launches a new instance instead of activating an already-running one.
+      btn.addEventListener('click', function (e) { run('item', id, btn, label, !!(e && e.shiftKey)); });
       return btn;
     }
     function groupBtn(g, cls) {
       var btn = N.el('button', 'nna-btn ' + cls, g.label || g.id);
       btn.type = 'button';
-      btn.addEventListener('click', function () { run('group', g.id, btn, g.label || g.id); });
+      btn.addEventListener('click', function (e) { run('group', g.id, btn, g.label || g.id, !!(e && e.shiftKey)); });
       return btn;
     }
 

@@ -76,6 +76,7 @@ row-level-security policy, or plan/quota logic.
 | `/planner/login` | GET | open the login window |
 | `/planner/logout` | POST | clear the local session |
 | `/planner/callback` | GET | receives the redirect from the login page after a successful Telegram sign-in (no API token required — this is the one unauthenticated write path, and it only accepts the widget's signed fields, which the edge function verifies) |
+| `/planner/undo` | POST | undo a whole capture batch (`?batch=<batch_id>`), used by the block's "cancel" button right after a capture |
 | `/planner/test-delete` | POST | test-only: delete a captured test entry |
 
 "Today" and "overdue" are computed by the host using the user's own profile timezone, not UTC. A
@@ -156,7 +157,8 @@ SHA-256 от токена бота (не HMAC), затем HMAC-SHA256 по ст
 `POST /planner/habit`, `POST /planner/capture`, `POST /planner/input` (открывает окно ввода
 InputWindow в заданной точке экрана), `GET /planner/login`, `POST /planner/logout`,
 `GET /planner/callback` (принимает редирект от Telegram, без токена — проверку делает edge-функция
-по подписи), `POST /planner/test-delete` (только для тестов). «Сегодня» и «просрочено» хост
+по подписи), `POST /planner/undo` (отменяет всю пачку записей одного захвата, `?batch=<batch_id>`,
+для кнопки «ОТМЕНИТЬ» в блоке), `POST /planner/test-delete` (только для тестов). «Сегодня» и «просрочено» хост
 считает по часовому поясу профиля пользователя, не по UTC; фоновый таймер обновляет токен доступа
 заранее.
 

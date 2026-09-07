@@ -66,9 +66,25 @@
       '.nna-planner .pl-cat{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--fg-body);letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono)}' +
       '.nna-planner .pl-add{display:flex;gap:12px;align-items:center;flex:none}' +
       '.nna-planner .pl-add-btn{flex:1;justify-content:flex-start;text-align:left;padding:14px 22px;font-size:11px}' +
-      '.nna-planner .pl-mic{width:44px;height:44px;flex:none}' +
+      '.nna-planner .pl-mic-wrap{position:relative;width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center}' +
+      '.nna-planner .pl-mic-ring{position:absolute;inset:0;border-radius:50%;background:var(--fg);opacity:0;transform:scale(1);pointer-events:none;transition:opacity 0.15s}' +
+      '.nna-planner .pl-mic-wrap.is-rec .pl-mic-ring{opacity:0.2}' +
+      '.nna-planner .pl-mic{width:44px;height:44px;flex:none;position:relative;z-index:1}' +
       '.nna-planner .pl-mic svg{width:18px;height:18px;fill:currentColor}' +
       '.nna-planner .pl-mic.is-rec{background:var(--fg);color:var(--bg-surface);border-color:var(--fg)}' +
+      '.nna-planner .pl-voice-timer{font-size:10px;color:var(--fg-muted);letter-spacing:0.12em;font-family:var(--font-mono);font-variant-numeric:tabular-nums;flex:none;opacity:0;transition:opacity 0.15s}' +
+      '.nna-planner .pl-voice-timer.is-show{opacity:1}' +
+      // .is-hidden (shared utility, display:none!important) takes the note/result panel fully out
+      // of .nna-planner's gapped flex flow while empty — a short block (e.g. the vertical layout's
+      // TASKS slot, ~93px for five stacked sections) would otherwise lose flex height to their
+      // gap alone even at zero content height, since flex `gap` applies between rendered items
+      // regardless of how small they are.
+      '.nna-planner .pl-voice-note{font-size:9px;color:var(--fg-muted);letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);margin-top:8px}' +
+      '.nna-planner .pl-voice-result{display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:14px 18px;border-radius:16px;background:var(--btn);border:1px solid rgba(67,67,67,0.5);opacity:0;transition:opacity 0.2s}' +
+      '.nna-planner .pl-voice-result.is-show{opacity:1}' +
+      '.nna-planner .pl-voice-result-text{font-size:12px;color:var(--fg-body);line-height:1.5}' +
+      '.nna-planner .pl-voice-result-row{display:flex;align-items:center;justify-content:flex-end}' +
+      '.nna-planner .pl-voice-undo{padding:9px 16px;font-size:10px}' +
       '.nna-planner .pl-login{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}' +
       '.nna-planner .pl-login .pl-brand{font-size:92px;font-size:16cqh}' +
       '.nna-planner .pl-login .pl-hint{font-size:12px;color:var(--fg-muted);letter-spacing:0.4em;font-family:var(--font-mono);text-transform:uppercase}' +
@@ -111,8 +127,18 @@
 
     var loggedIn = null; // tri-state: null = unknown yet
     var profile = null;
-    var recorder = null, recTimer = null;
     var lastData = null;
+
+    // ---- voice capture state --------------------------------------------------------------------
+    var recorder = null, recStream = null, recSend = false, recTimer = null, recTickId = null;
+    var recStartAt = 0;
+    var audioCtx = null, analyser = null, levelData = null, levelActive = false;
+    var micWrap = null, micBtn = null, micRing = null, voiceTimerEl = null, voiceNoteEl = null, voiceResultEl = null;
+    var voiceResultTimer = null;
+    // true while recording or while the post-capture result/undo panel is shown: suppresses the
+    // periodic re-render (loadToday -> renderLoggedIn wipes wrap.innerHTML, which would otherwise
+    // yank the mic/result UI out from under an in-progress recording or a just-shown undo button).
+    var voiceUiActive = false;
 
     function text(key, fallback) { return L[key] || fallback; }
 
@@ -264,36 +290,166 @@
       });
       row.appendChild(btn);
       if (settings.voice) {
-        var mic = N.el('button', 'nna-icon-btn pl-mic');
-        mic.type = 'button';
-        mic.title = text('plannerVoice', 'Голосом');
-        mic.appendChild(N.svg('M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z'));
-        mic.addEventListener('click', function () { toggleRecording(mic); });
-        row.appendChild(mic);
+        micWrap = N.el('div', 'pl-mic-wrap');
+        micRing = N.el('div', 'pl-mic-ring');
+        micBtn = N.el('button', 'nna-icon-btn pl-mic');
+        micBtn.type = 'button';
+        micBtn.title = text('plannerVoice', 'Голосом');
+        micBtn.appendChild(N.svg('M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z'));
+        micBtn.addEventListener('click', function () { toggleRecording(); });
+        micWrap.appendChild(micRing); micWrap.appendChild(micBtn);
+        voiceTimerEl = N.el('div', 'pl-voice-timer', '0:00');
+        row.appendChild(micWrap);
+        row.appendChild(voiceTimerEl);
       }
       wrap.appendChild(row);
+      if (settings.voice) {
+        voiceNoteEl = N.el('div', 'pl-voice-note is-hidden', '');
+        wrap.appendChild(voiceNoteEl);
+      }
+      voiceResultEl = N.el('div', 'pl-voice-result is-hidden');
+      wrap.appendChild(voiceResultEl);
+      // a recording (or an undo panel) in progress when this render happened survives a re-render
+      // only via voiceUiActive guarding loadToday(); on first render there is nothing to restore.
     }
 
-    function toggleRecording(btn) {
-      if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { N.toast(text('plannerError', 'ОШИБКА')); return; }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+    // ---- recording lifecycle --------------------------------------------------------------------
+    // is-hidden (display:none) takes the note fully out of the flex flow while empty, not just
+    // invisible, so it never costs the block flex height/gap it doesn't need (see ensureStyle()).
+    function setVoiceNote(msg) {
+      if (!voiceNoteEl) return;
+      voiceNoteEl.textContent = msg || '';
+      voiceNoteEl.classList.toggle('is-hidden', !msg);
+    }
+
+    function resolveCaptureDeviceId() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve(null);
+      return N.get('/audio/capture-device').catch(function () { return { name: null }; }).then(function (pref) {
+        var wantName = pref && pref.name;
+        if (!wantName) return null;
+        return navigator.mediaDevices.enumerateDevices().then(function (list) {
+          var found = list.filter(function (d) { return d.kind === 'audioinput' && d.label === wantName; })[0];
+          return found ? found.deviceId : null; // no label match (no permission yet, or renamed device): fall back to default
+        }).catch(function () { return null; });
+      });
+    }
+
+    function toggleRecording() {
+      if (recorder && recorder.state === 'recording') { finishRecording(true); return; }
+      startRecording();
+    }
+
+    function startRecording() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setVoiceNote(text('plannerNoMic', 'НЕТ МИКРОФОНА'));
+        N.toast(text('plannerNoMic', 'НЕТ МИКРОФОНА'));
+        return;
+      }
+      resolveCaptureDeviceId().then(function (deviceId) {
+        var constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+        return navigator.mediaDevices.getUserMedia(constraints);
+      }).then(function (stream) {
         var chunks = [];
-        recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        } catch (e) {
+          stream.getTracks().forEach(function (t) { t.stop(); });
+          setVoiceNote(text('plannerMicError', 'ОШИБКА МИКРОФОНА'));
+          N.toast(text('plannerMicError', 'ОШИБКА МИКРОФОНА'));
+          return;
+        }
+        recStream = stream;
+        recSend = false;
         recorder.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         recorder.onstop = function () {
-          btn.classList.remove('is-rec');
-          clearTimeout(recTimer);
+          stopLevelMeter();
+          if (recTickId != null) { clearInterval(recTickId); recTickId = null; }
+          micUiReset();
           stream.getTracks().forEach(function (t) { t.stop(); });
+          var send = recSend;
+          recorder = null; recStream = null;
+          if (!send) { voiceUiActive = false; return; }
           var blob = new Blob(chunks, { type: 'audio/webm' });
           N.toast(text('plannerSending', 'ОТПРАВЛЯЮ'));
           blobToBase64(blob).then(function (b64) { sendVoice(b64); });
         };
         recorder.start();
-        btn.classList.add('is-rec');
+        recStartAt = Date.now();
+        voiceUiActive = true;
+        setVoiceNote('');
+        if (micWrap) micWrap.classList.add('is-rec');
+        if (micBtn) micBtn.classList.add('is-rec');
+        if (voiceTimerEl) { voiceTimerEl.textContent = '0:00'; voiceTimerEl.classList.add('is-show'); }
+        startLevelMeter(stream);
+        recTickId = ctx.setInterval(updateVoiceTimer, 1000);
         N.toast(text('plannerRecording', 'ЗАПИСЬ · НАЖМИ ЕЩЁ РАЗ, ЧТОБЫ ОТПРАВИТЬ'));
-        recTimer = ctx.setTimeout(function () { if (recorder && recorder.state === 'recording') recorder.stop(); }, 30000);
-      }).catch(function () { N.toast(text('plannerError', 'ОШИБКА МИКРОФОНА')); });
+        recTimer = ctx.setTimeout(function () { finishRecording(true); }, 30000);
+      }).catch(function (err) {
+        var denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+        var msg = denied ? text('plannerMicDenied', 'НЕТ ДОСТУПА К МИКРОФОНУ') : text('plannerNoMic', 'НЕТ МИКРОФОНА');
+        setVoiceNote(msg);
+        N.toast(msg);
+      });
+    }
+
+    function finishRecording(send) {
+      if (!recorder || recorder.state !== 'recording') return;
+      recSend = send;
+      recorder.stop();
+    }
+
+    function micUiReset() {
+      clearTimeout(recTimer);
+      if (micWrap) micWrap.classList.remove('is-rec');
+      if (micBtn) micBtn.classList.remove('is-rec');
+      if (micRing) micRing.style.transform = 'scale(1)';
+      if (voiceTimerEl) voiceTimerEl.classList.remove('is-show');
+    }
+
+    function updateVoiceTimer() {
+      if (!voiceTimerEl) return;
+      var s = Math.max(0, Math.floor((Date.now() - recStartAt) / 1000));
+      voiceTimerEl.textContent = Math.floor(s / 60) + ':' + N.pad2(s % 60);
+    }
+
+    // clicking anywhere outside the mic button while recording cancels without sending
+    ctx.on(document, 'click', function (e) {
+      if (!recorder || recorder.state !== 'recording') return;
+      if (micWrap && micWrap.contains(e.target)) return; // the mic button's own handler sends instead
+      finishRecording(false);
+    }, true);
+
+    // ---- input level -> pulsing ring (scale 1.0-1.6, opacity via .is-rec) ------------------------
+    function startLevelMeter(stream) {
+      try {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+        var source = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        levelData = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+        levelActive = true;
+        ctx.raf(levelLoop);
+      } catch (e) { /* no AudioContext (or blocked): ring just stays static while recording */ }
+    }
+    function levelLoop() {
+      if (!levelActive || !analyser) return;
+      analyser.getByteFrequencyData(levelData);
+      var sum = 0, i;
+      for (i = 0; i < levelData.length; i++) sum += levelData[i];
+      var avg = sum / levelData.length / 255;
+      var scale = 1 + Math.min(1, avg * 1.6) * 0.6;
+      if (micRing) micRing.style.transform = 'scale(' + scale.toFixed(3) + ')';
+      ctx.raf(levelLoop);
+    }
+    function stopLevelMeter() {
+      levelActive = false;
+      analyser = null;
+      levelData = null;
+      if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
     }
 
     function blobToBase64(blob) {
@@ -309,23 +465,71 @@
     }
 
     function sendVoice(audioBase64) {
+      voiceUiActive = true;
       fetch(helper.url + '/planner/capture?t=' + encodeURIComponent(helper.token), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio_base64: audioBase64, mime: 'audio/webm' }),
       }).then(function (r) { return r.json().then(function (j) { return { status: r.status, json: j }; }); })
-        .then(function (res) { handleCaptureResult(res.status, res.json); tick(); })
-        .catch(function () { N.toast(text('plannerError', 'ОШИБКА')); });
+        .then(function (res) { handleCaptureResult(res.status, res.json); })
+        .catch(function () { voiceUiActive = false; N.toast(text('plannerError', 'ОШИБКА')); tick(); });
     }
 
+    // ---- shared result handling: both mic capture (sendVoice) and text capture via InputWindow
+    // (onHostMessage 'captured') land here, so both get the recognized-text + undo panel. ----------
     function handleCaptureResult(status, json) {
-      if (status === 429 || (json && json.error === 'limit')) { N.toast(text('plannerLimit', 'ЛИМИТ ИИ НА СЕГОДНЯ')); return; }
-      if (json && json.ok) {
-        var n = (json.entries || []).length;
-        N.toast(n ? text('plannerRecorded', 'ЗАПИСАНО') + ': ' + n : text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ'));
+      if (status === 429 || (json && json.error === 'limit')) {
+        voiceUiActive = false;
+        N.toast(text('plannerLimit', 'ЛИМИТ ИИ НА СЕГОДНЯ'));
+        tick();
         return;
       }
+      if (json && json.ok) {
+        showVoiceResult(json);
+        return;
+      }
+      voiceUiActive = false;
       N.toast(json && (json.message || json.error || json.reason) ? String(json.message || json.error || json.reason).toUpperCase() : text('plannerError', 'ОШИБКА'));
+      tick();
+    }
+
+    function showVoiceResult(json) {
+      var entries = json.entries || [];
+      var recognized = entries.length
+        ? entries.map(function (e) { return e.title || ''; }).filter(Boolean).join(' · ')
+        : text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ');
+      N.toast(entries.length ? text('plannerRecorded', 'ЗАПИСАНО') + ': ' + entries.length : text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ'));
+
+      voiceUiActive = true;
+      if (voiceResultEl) {
+        voiceResultEl.textContent = '';
+        voiceResultEl.appendChild(N.el('div', 'pl-voice-result-text', recognized || '—'));
+        var batchId = json.batch_id;
+        if (batchId && entries.length) {
+          var row = N.el('div', 'pl-voice-result-row');
+          var undo = N.el('button', 'nna-btn pl-voice-undo', text('plannerUndo', 'ОТМЕНИТЬ'));
+          undo.type = 'button';
+          undo.addEventListener('click', function () {
+            clearTimeout(voiceResultTimer);
+            N.post('/planner/undo?batch=' + encodeURIComponent(batchId)).then(function () {
+              N.toast(text('plannerUndone', 'ОТМЕНЕНО'));
+              hideVoiceResult();
+            }).catch(function () { N.toast(text('plannerError', 'ОШИБКА')); });
+          });
+          row.appendChild(undo);
+          voiceResultEl.appendChild(row);
+        }
+        voiceResultEl.classList.remove('is-hidden');
+        voiceResultEl.classList.add('is-show');
+      }
+      clearTimeout(voiceResultTimer);
+      voiceResultTimer = ctx.setTimeout(hideVoiceResult, 5000);
+    }
+
+    function hideVoiceResult() {
+      if (voiceResultEl) { voiceResultEl.classList.remove('is-show'); voiceResultEl.classList.add('is-hidden'); }
+      voiceUiActive = false;
+      tick();
     }
 
     // ---- logged-in layout ----------------------------------------------------------------------
@@ -350,6 +554,10 @@
     }
 
     function loadToday() {
+      // a re-render wipes wrap.innerHTML, which would yank the mic/result UI out from under an
+      // in-progress recording or a just-shown undo panel; hideVoiceResult()/the cancel path call
+      // tick() again once voiceUiActive clears, so nothing here is missed, just deferred a few seconds.
+      if (voiceUiActive) return;
       N.get('/planner/today').then(function (data) {
         renderLoggedIn(data);
       }).catch(function () {
@@ -372,12 +580,9 @@
       if (!payload || payload.type !== 'planner') return;
       if (payload.event === 'changed' || payload.event === 'login') { tick(); return; }
       if (payload.event === 'captured') {
-        if (payload.ok) {
-          var n = (payload.entries || []).length;
-          N.toast(n ? text('plannerRecorded', 'ЗАПИСАНО') + ': ' + n : text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ'));
-        } else if (payload.error === 'limit') N.toast(text('plannerLimit', 'ЛИМИТ ИИ НА СЕГОДНЯ'));
-        else N.toast(text('plannerError', 'ОШИБКА'));
-        tick();
+        // same shape as the direct /planner/capture response (ok, entries, batch_id, error/reason);
+        // shown through the same recognized-text + undo panel as a mic capture (handleCaptureResult).
+        handleCaptureResult(payload.error === 'limit' ? 429 : 200, payload);
       }
     }
 
