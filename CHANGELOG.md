@@ -16,10 +16,11 @@ First public release.
   folder graphs, weather, events, photo folders, config delivery, and a live WASAPI audio
   spectrum over WebSocket.
 - Ten built-in widgets: audio equalizer, photos, focus timer, weather and clocks, events,
-  launcher, folder graph, system stats, media player, and an NNA Planner placeholder block.
+  launcher, folder graph, system stats, media player, and the NNA Planner block.
 - Settings window with mouse-driven layout editing (drag/resize blocks on a grid), per-widget
   settings forms, appearance, planner and general tabs.
-- NNA Planner desktop login design (Telegram Login Widget, DPAPI-protected local session) and
-  its Supabase edge function, ahead of the local API routes that will back it.
+- NNA Planner integration: desktop login through a Telegram Login Widget, a DPAPI-protected
+  local session, the `auth-telegram-widget` Supabase edge function, and local API routes serving
+  today's tasks, meetings, habits, money and a morning briefing, plus text/voice capture.
 - Packaging with Velopack: signed-free `Setup.exe` and portable `.zip` from one build, with
   self-update from GitHub Releases.

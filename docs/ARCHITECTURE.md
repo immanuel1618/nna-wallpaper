@@ -95,17 +95,20 @@ Every request other than `GET`/`HEAD` must carry the app's API token as the `X-T
 | `/edit` | POST | OpenService | opens the settings window on a given tab |
 | `/widgets` | GET | WidgetsService | manifests of every installed widget (built-in and user) |
 | `/audio` | WebSocket | AudioService | ~30 frames/second of 64-band spectrum data per channel, for the equalizer widget |
+| `/planner/status` | GET | PlannerService | current NNA Planner login state |
+| `/planner/today` | GET | PlannerService | today's/overdue tasks, meetings, habits, money, briefing (cached 30 s) |
+| `/planner/done`, `/planner/habit` | POST | PlannerService | mark a task or habit done/checked |
+| `/planner/capture` | POST | PlannerService | add an entry by text or voice |
+| `/planner/input` | POST | PlannerService | open the top-level text-entry window (InputWindow) at a widget's on-screen position |
+| `/planner/login`, `/planner/logout` | GET/POST | PlannerService | open the login window / clear the local session |
+| `/planner/callback` | GET | PlannerService | receives the Telegram Login Widget redirect from the login page (no token required) |
+| `/planner/test-delete` | POST | PlannerService | test-only: delete a captured test entry |
 | `/app/exit` | POST | host | stop the running instance |
 | `/app/reload` | POST | host | reload configuration and refresh wallpaper pages |
 | `/test/event`, `/test/events`, `/test/log` | POST/GET | host | test-only endpoints used by the contract tests (`--headless`) |
 | `/wallpaper/`, `/settings/`, `/widgets/` | GET | host | static file serving for the wallpaper page, settings page and widget folders |
 
-The NNA Planner endpoints described in [docs/PLANNER.md](PLANNER.md) (`/planner/status`,
-`/planner/today`, `/planner/done`, `/planner/habit`, `/planner/capture`, `/planner/login`,
-`/planner/logout`, `/planner/callback`) are part of the designed contract that the settings page
-and the Planner widget already call, but are not yet registered on the host in this build — the
-desktop Planner block currently renders as a placeholder. See [docs/PLANNER.md](PLANNER.md) for
-the full design.
+See [docs/PLANNER.md](PLANNER.md) for the full NNA Planner login flow and data model.
 
 ### Sensors and integrations
 
@@ -239,11 +242,11 @@ WebView2:
 `/open`, `/edit`, `/widgets`, `/audio` (WebSocket), `/app/exit`, `/app/reload`,
 `/test/*` (только для тестов), статика `/wallpaper/`, `/settings/`, `/widgets/`.
 
-Маршруты планировщика (`/planner/status`, `/planner/today`, `/planner/done`, `/planner/habit`,
-`/planner/capture`, `/planner/login`, `/planner/logout`, `/planner/callback`) — часть
-спроектированного контракта (см. [docs/PLANNER.md](PLANNER.md)), который уже вызывают окно
-настроек и виджет планировщика, но который ещё не зарегистрирован на хосте в этой сборке: блок
-планировщика на рабочем столе сейчас выводит заглушку.
+Маршруты планировщика — `/planner/status`, `/planner/today`, `/planner/done`, `/planner/habit`,
+`/planner/capture`, `/planner/input` (открывает окно ввода текста InputWindow), `/planner/login`,
+`/planner/logout`, `/planner/callback` (принимает редирект от Telegram Login Widget) и
+`/planner/test-delete` (только для тестов) — реализованы; подробности в
+[docs/PLANNER.md](PLANNER.md).
 
 ## Распространение
 

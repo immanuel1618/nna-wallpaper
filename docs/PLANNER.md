@@ -8,10 +8,8 @@ repository; this repository only ships reference copies of the pieces that are s
 desktop login (`planner/edge/auth-telegram-widget/index.ts`, `planner/site/login.html`,
 `planner/test-widget-auth.mjs`).
 
-**Status in this build:** the login window, the settings window's Planner tab, and the desktop
-`planner` widget all call the local API routes described below, but the host does not implement
-them yet — the desktop block currently shows a placeholder ("NNA PLANNER — SOON"). The sections
-below describe the intended, designed contract.
+The login window, the settings window's Planner tab, and the desktop `planner` widget all use the
+local API routes described below, backed by `PlannerService` on the host.
 
 ## 1. Login: a Telegram Login Widget, not a Mini App
 
@@ -65,30 +63,33 @@ row-level-security policy, or plan/quota logic.
 - All calls to Supabase are made by the host process itself, not by any page — the local API never
   exposes the access token to a widget.
 
-## 4. Local API surface (designed, see status note above)
+## 4. Local API surface
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/planner/status` | GET | current login state |
-| `/planner/today` | GET | today's and overdue tasks, upcoming meetings, habits, money spent today, a morning briefing |
+| `/planner/status` | GET | current login state and profile |
+| `/planner/today` | GET | today's and overdue tasks, upcoming meetings, habits, money spent today, a morning briefing (cached for 30 seconds) |
 | `/planner/done` | POST | mark a task done / not done |
 | `/planner/habit` | POST | mark a habit checked / unchecked for today |
 | `/planner/capture` | POST | add an entry by text or voice, forwarded to the same capture endpoint the Telegram bot uses |
+| `/planner/input` | POST | open the top-level text-entry window (InputWindow) at a given on-screen position |
 | `/planner/login` | GET | open the login window |
 | `/planner/logout` | POST | clear the local session |
-| `/planner/callback` | GET | receives the redirect from the login page after a successful Telegram sign-in |
+| `/planner/callback` | GET | receives the redirect from the login page after a successful Telegram sign-in (no API token required — this is the one unauthenticated write path, and it only accepts the widget's signed fields, which the edge function verifies) |
+| `/planner/test-delete` | POST | test-only: delete a captured test entry |
 
-"Today" and "overdue" are computed by the host using the user's own profile timezone, not UTC.
+"Today" and "overdue" are computed by the host using the user's own profile timezone, not UTC. A
+background timer refreshes the access token about a minute before other work would need it.
 
 ## 5. Desktop block
 
-Once signed in, the `planner` widget is meant to show: tasks due today and overdue, the next few
-meetings, habits (checked/unchecked today), money spent today by category, and a short morning
-briefing built from the same data. Clicking a task or habit toggles it. A text field opens a small
-top-level input window (since a wallpaper window cannot reliably keep keyboard focus); a
-microphone button records voice with the page's own `MediaRecorder` and sends it the same way.
-Which of these sections are shown is controlled from the settings window's Planner tab
-(`app.json`'s `planner.show` list).
+Once signed in, the `planner` widget shows: a short morning briefing, tasks due today and
+overdue, the next few meetings, habits (checked/unchecked today), and money spent today by
+category. Clicking a task or habit toggles it. Clicking the text field calls `/planner/input`,
+which opens a small top-level input window at that position (a wallpaper window cannot reliably
+keep keyboard focus); a microphone button records voice with the page's own `MediaRecorder` and
+sends it through `/planner/capture` the same way. Which of these sections are shown is controlled
+from the settings window's Planner tab (`app.json`'s `planner.show` list).
 
 ## Security notes
 
@@ -111,10 +112,8 @@ Telegram-ботом и веб-приложением. Здесь описан в
 десктопного входа (`planner/edge/auth-telegram-widget/index.ts`, `planner/site/login.html`,
 `planner/test-widget-auth.mjs`).
 
-**Статус в этой сборке:** окно входа, вкладка «Планировщик» в настройках и виджет `planner` уже
-обращаются к точкам локального API, описанным ниже, но хост их пока не реализует — блок на
-рабочем столе сейчас показывает заглушку «NNA PLANNER — SOON». Ниже описан спроектированный
-контракт.
+Окно входа, вкладка «Планировщик» в настройках и виджет `planner` используют точки локального
+API, описанные ниже; на хосте их обслуживает `PlannerService`.
 
 ## 1. Вход: Telegram Login Widget, а не Mini App
 
@@ -151,20 +150,25 @@ SHA-256 от токена бота (не HMAC), затем HMAC-SHA256 по ст
 несколько минут до истечения; при ошибке — статус «войти заново». Все обращения к Supabase делает
 сам хост, ни одна страница не видит access-токен напрямую.
 
-## 4. Точки локального API (спроектированы, статус — см. выше)
+## 4. Точки локального API
 
-`GET /planner/status`, `GET /planner/today`, `POST /planner/done`, `POST /planner/habit`,
-`POST /planner/capture`, `GET /planner/login`, `POST /planner/logout`, `GET /planner/callback`.
-«Сегодня» и «просрочено» хост считает по часовому поясу профиля пользователя, не по UTC.
+`GET /planner/status`, `GET /planner/today` (кеш 30 секунд), `POST /planner/done`,
+`POST /planner/habit`, `POST /planner/capture`, `POST /planner/input` (открывает окно ввода
+InputWindow в заданной точке экрана), `GET /planner/login`, `POST /planner/logout`,
+`GET /planner/callback` (принимает редирект от Telegram, без токена — проверку делает edge-функция
+по подписи), `POST /planner/test-delete` (только для тестов). «Сегодня» и «просрочено» хост
+считает по часовому поясу профиля пользователя, не по UTC; фоновый таймер обновляет токен доступа
+заранее.
 
 ## 5. Блок на рабочем столе
 
-После входа виджет `planner` должен показывать задачи на сегодня и просроченные, ближайшие
-встречи, привычки (отмечено ли сегодня), траты за день по категориям и короткий утренний брифинг
-по тем же данным. Клик по задаче или привычке переключает её. Поле ввода текста открывает
-отдельное маленькое top-level окно (окно обоев не может надёжно удерживать фокус клавиатуры);
-кнопка микрофона пишет голос через `MediaRecorder` самой страницы. Какие блоки показывать —
-настраивается во вкладке «Планировщик» (список `planner.show` в `app.json`).
+После входа виджет `planner` показывает короткий утренний брифинг, задачи на сегодня и
+просроченные, ближайшие встречи, привычки (отмечено ли сегодня) и траты за день по категориям.
+Клик по задаче или привычке переключает её. Клик по полю ввода вызывает `/planner/input`, которое
+открывает отдельное маленькое top-level окно в этой точке экрана (окно обоев не может надёжно
+удерживать фокус клавиатуры); кнопка микрофона пишет голос через `MediaRecorder` самой страницы и
+отправляет его через `/planner/capture`. Какие блоки показывать — настраивается во вкладке
+«Планировщик» (список `planner.show` в `app.json`).
 
 ## Замечания по безопасности
 

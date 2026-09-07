@@ -68,9 +68,7 @@ settings window's widget list is refreshed.
 | `player` | Player | module | media |
 | `planner` | NNA Planner | module | planner |
 
-The `planner` widget currently renders a placeholder ("NNA PLANNER — SOON") pending the local API
-routes described in [docs/PLANNER.md](PLANNER.md); its manifest and settings-window integration
-are already in place.
+See [docs/PLANNER.md](PLANNER.md) for the `planner` widget's data flow and login handling.
 
 ## Lifecycle, kind = module
 
@@ -162,8 +160,7 @@ timezone, list (со схемой item), text`. Окно настроек стр
 `weather` (погода и часы, needs: weather), `events` (события, needs: events, config), `launch`
 (запуск, needs: launch, config), `graph` (граф папок, needs: graph, open), `stats` (системные
 показатели, needs: stats), `player` (медиаплеер, needs: media), `planner` (блок NNA Planner,
-needs: planner — сейчас выводит заглушку «NNA PLANNER — SOON» до появления соответствующих точек
-локального API, см. [docs/PLANNER.md](PLANNER.md)).
+needs: planner, см. [docs/PLANNER.md](PLANNER.md)).
 
 ## Жизненный цикл kind = module
 
