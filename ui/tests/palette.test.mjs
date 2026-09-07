@@ -55,6 +55,7 @@ const targets = new Set([
   path.join(repoRoot, "wallpaper", "layout.css"),
   path.join(repoRoot, "settings", "design-system.css"),
   path.join(repoRoot, "topbar", "bar.css"),
+  path.join(repoRoot, "dock", "dock.css"),
 ]);
 
 test("scanned file set is non-empty (sanity check for the glob above)", () => {

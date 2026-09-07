@@ -37,5 +37,17 @@
       { "id": "weather", "side": "right" },
       { "id": "stats", "side": "right" }
     ]
+  },
+  "dock": {
+    "enabled": true,
+    "monitors": "all",
+    "size": 55,
+    "magnify": true,
+    "magnifyMax": 1.6,
+    "autoHide": false,
+    "reserveSpace": false,
+    "showTrash": true,
+    "showRunning": true,
+    "style": { "mode": "acrylic", "color": "#0B0B0B", "opacity": 0.6 }
   }
 }

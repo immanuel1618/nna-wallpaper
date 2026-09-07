@@ -61,6 +61,7 @@ public sealed class HostServices : IDisposable
         Add(new Services.ConfigApiService(_ctx));
         Add(new Planner.PlannerService(_ctx));
         Add(new Services.WindowsService(_ctx));
+        Add(new Services.DockService(_ctx));
     }
 
     private void Add(object service)
