@@ -45,4 +45,7 @@ public sealed class HeadlessHostApp : IHostApp
             return false;
         }
     }
+
+    public void RequestTextInput(string target, int screenX, int screenY, string? placeholder, Action<string> onSubmit) { }
+
 }

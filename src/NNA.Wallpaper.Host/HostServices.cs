@@ -25,7 +25,7 @@ public sealed class HostServices : IDisposable
         Api.Map("GET", "/test/events", TestEvents);
         Api.Map("GET", "/test/log", TestLog);
         Api.Map("POST", "/app/exit", req => { _ctx.App.RequestExit(); return req.Json(new { ok = true }); });
-        Api.Map("POST", "/app/reload", req => { _ctx.App.ReloadWallpaper(); return req.Json(new { ok = true }); });
+        Api.Map("POST", "/app/reload", req => { _ctx.Config.Load(); _ctx.App.ReloadWallpaper(); return req.Json(new { ok = true }); });
 
         // Static web roots shipped with the app; user widgets folder is searched after built-ins.
         Api.MapStatic("/wallpaper/", ctx.Paths.WebRoot("wallpaper"));
