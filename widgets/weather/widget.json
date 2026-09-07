@@ -7,9 +7,19 @@
   "defaultSize": { "cols": 1, "rows": 8 },
   "minSize": { "cols": 1, "rows": 2 },
   "needs": ["weather"],
+  "description": { "ru": "Погода и часы нескольких городов.", "en": "Weather and clocks for several cities." },
+  "icon": "weather",
+  "groups": [
+    { "id": "refresh", "label": { "ru": "Обновление", "en": "Refresh" }, "keys": ["refreshMin"] },
+    { "id": "clocksGroup", "label": { "ru": "Часы", "en": "Clocks" }, "keys": ["clocks"] }
+  ],
   "settings": [
-    { "key": "refreshMin", "type": "number", "label": "Обновление, мин", "default": 10, "min": 1, "max": 120 },
-    { "key": "clocks", "type": "list", "label": "Часы", "item": { "label": "string", "tz": "timezone" },
+    { "key": "refreshMin", "type": "number", "default": 10, "min": 1, "max": 120,
+      "label": { "ru": "Обновление, мин", "en": "Refresh, min" },
+      "help": { "ru": "Как часто запрашивать погоду заново.", "en": "How often to refetch the weather." } },
+    { "key": "clocks", "type": "list", "item": { "label": "string", "tz": "timezone" },
+      "label": { "ru": "Часы", "en": "Clocks" },
+      "help": { "ru": "Список городов и часовых поясов для дополнительных часов.", "en": "Cities and time zones shown as extra clocks." },
       "default": [
         { "label": "MOSCOW", "tz": "Europe/Moscow" },
         { "label": "LOS ANGELES", "tz": "America/Los_Angeles" },

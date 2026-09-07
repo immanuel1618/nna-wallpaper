@@ -54,6 +54,7 @@ const targets = new Set([
   path.join(repoRoot, "wallpaper", "nna-blocks.css"),
   path.join(repoRoot, "wallpaper", "layout.css"),
   path.join(repoRoot, "settings", "design-system.css"),
+  path.join(repoRoot, "settings", "blocks.css"),
   path.join(repoRoot, "topbar", "bar.css"),
   path.join(repoRoot, "topbar", "popup", "popup.css"),
   path.join(repoRoot, "dock", "dock.css"),

@@ -7,12 +7,30 @@
   "needs": ["pins"],
   "defaultSize": { "cols": 1, "rows": 12 },
   "minSize": { "cols": 1, "rows": 3 },
+  "description": { "ru": "Слайд-шоу фотографий из выбранной папки.", "en": "A slideshow of photos from a chosen folder." },
+  "icon": "photo",
+  "groups": [
+    { "id": "source", "label": { "ru": "Источник", "en": "Source" }, "keys": ["folder", "order"] },
+    { "id": "playback", "label": { "ru": "Показ", "en": "Playback" }, "keys": ["intervalMin", "fadeMs", "zoom", "zoomScale"] }
+  ],
   "settings": [
-    { "key": "folder", "type": "path", "label": "Папка с фото", "default": "" },
-    { "key": "intervalMin", "type": "number", "label": "Смена, мин", "default": 10, "min": 1, "max": 1440 },
-    { "key": "order", "type": "select", "label": "Порядок", "options": ["sequential", "random"], "default": "sequential" },
-    { "key": "fadeMs", "type": "number", "label": "Затухание, мс", "default": 1400 },
-    { "key": "zoom", "type": "bool", "label": "Медленный зум", "default": true },
-    { "key": "zoomScale", "type": "number", "label": "Масштаб зума", "default": 1.08 }
+    { "key": "folder", "type": "path", "default": "",
+      "label": { "ru": "Папка с фото", "en": "Photo folder" },
+      "help": { "ru": "Папка на диске, откуда берутся снимки.", "en": "The disk folder photos are taken from." } },
+    { "key": "intervalMin", "type": "number", "default": 10, "min": 1, "max": 1440,
+      "label": { "ru": "Смена, мин", "en": "Change, min" },
+      "help": { "ru": "Через сколько минут показывается следующее фото.", "en": "How many minutes before the next photo shows." } },
+    { "key": "order", "type": "select", "options": ["sequential", "random"], "default": "sequential",
+      "label": { "ru": "Порядок", "en": "Order" },
+      "help": { "ru": "По очереди или в случайном порядке.", "en": "In sequence or shuffled." } },
+    { "key": "fadeMs", "type": "number", "default": 1400,
+      "label": { "ru": "Затухание, мс", "en": "Fade, ms" },
+      "help": { "ru": "Длительность плавного перехода между фото.", "en": "Duration of the crossfade between photos." } },
+    { "key": "zoom", "type": "bool", "default": true,
+      "label": { "ru": "Медленный зум", "en": "Slow zoom" },
+      "help": { "ru": "Плавно увеличивать фото, пока оно показывается.", "en": "Slowly zoom into the photo while it is shown." } },
+    { "key": "zoomScale", "type": "number", "default": 1.08,
+      "label": { "ru": "Масштаб зума", "en": "Zoom scale" },
+      "help": { "ru": "Во сколько раз увеличивается фото за время показа.", "en": "How much the photo grows over the time it is shown." } }
   ]
 }

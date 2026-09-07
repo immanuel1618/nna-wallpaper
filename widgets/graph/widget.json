@@ -3,49 +3,28 @@
   "name": "Graph",
   "version": "1.0.0",
   "author": "NNA1618",
-  "entry": {
-    "kind": "module",
-    "path": "widget.js",
-    "export": "graph"
-  },
-  "defaultSize": {
-    "cols": 1,
-    "rows": 8
-  },
-  "minSize": {
-    "cols": 1,
-    "rows": 2
-  },
-  "needs": [
-    "graph",
-    "open"
+  "entry": { "kind": "module", "path": "widget.js", "export": "graph" },
+  "defaultSize": { "cols": 1, "rows": 8 },
+  "minSize": { "cols": 1, "rows": 2 },
+  "needs": ["graph", "open"],
+  "description": { "ru": "Карта связей графа заметок graphify.", "en": "A node map from a graphify notes graph." },
+  "icon": "graph",
+  "groups": [
+    { "id": "source", "label": { "ru": "Источник", "en": "Source" }, "keys": ["start", "titles"] },
+    { "id": "display", "label": { "ru": "Отображение", "en": "Display" }, "keys": ["openOnClick", "maxLabelLen"] }
   ],
   "settings": [
-    {
-      "key": "start",
-      "type": "string",
-      "label": "Стартовый граф",
-      "default": "h"
-    },
-    {
-      "key": "openOnClick",
-      "type": "bool",
-      "label": "Открывать файл по клику",
-      "default": true
-    },
-    {
-      "key": "maxLabelLen",
-      "type": "number",
-      "label": "Максимальная длина подписи",
-      "default": 26,
-      "min": 8,
-      "max": 64
-    },
-    {
-      "key": "titles",
-      "type": "text",
-      "label": "Подписи источников (JSON: {\"h\":\"...\",\"e\":\"...\"})",
-      "default": ""
-    }
+    { "key": "start", "type": "string", "default": "h",
+      "label": { "ru": "Стартовый граф", "en": "Starting graph" },
+      "help": { "ru": "Идентификатор графа, который открывается первым.", "en": "The id of the graph that opens first." } },
+    { "key": "openOnClick", "type": "bool", "default": true,
+      "label": { "ru": "Открывать файл по клику", "en": "Open file on click" },
+      "help": { "ru": "Клик по узлу открывает связанный файл на диске.", "en": "Clicking a node opens the linked file on disk." } },
+    { "key": "maxLabelLen", "type": "number", "default": 26, "min": 8, "max": 64,
+      "label": { "ru": "Максимальная длина подписи", "en": "Maximum label length" },
+      "help": { "ru": "После скольки символов подпись узла обрезается.", "en": "How many characters before a node label is cut off." } },
+    { "key": "titles", "type": "text", "default": "",
+      "label": { "ru": "Подписи источников", "en": "Source titles" },
+      "help": { "ru": "Свои названия для графов в формате JSON, например {\"h\":\"Дом\"}.", "en": "Custom names for graphs as JSON, e.g. {\"h\":\"Home\"}." } }
   ]
 }
