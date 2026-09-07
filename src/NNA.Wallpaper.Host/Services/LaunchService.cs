@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
 
 namespace NNA.Wallpaper.Host.Services;
@@ -132,9 +133,18 @@ public sealed class LaunchService : IHostService
 
     // --------------------------------------------------------------------------- POST /launch/item, /launch/group
 
+    /// <summary>
+    /// <c>newInstance</c> (query <c>?newInstance=true</c> or JSON body <c>{"newInstance":true}</c>,
+    /// default false): when false and a window for the item is already open, that window is raised
+    /// instead of starting a new process; a launched item is also chased for up to 5s so its window
+    /// can be raised once it appears. Response keeps the original <c>ok</c>/<c>launched</c>/<c>failed</c>
+    /// id arrays and adds <c>activated</c> (ids whose window was raised) and <c>windows</c> (id -&gt; hwnd,
+    /// for those in <c>activated</c>).
+    /// </summary>
     private async Task DoLaunch(ApiRequest req, string kind)
     {
         var id = req.Query("id") ?? "";
+        var newInstance = await ReadNewInstance(req).ConfigureAwait(false);
         var cfg = LoadConfig();
 
         List<string> ids;
@@ -155,6 +165,8 @@ public sealed class LaunchService : IHostService
 
         var done = new List<string>();
         var failed = new List<string>();
+        var activated = new List<string>();
+        var windows = new JsonObject();
         foreach (var itemId in ids)
         {
             if (!cfg.Items.TryGetValue(itemId, out var item))
@@ -164,8 +176,13 @@ public sealed class LaunchService : IHostService
             }
             try
             {
-                if (StartItem(item)) done.Add(itemId);
-                else failed.Add(itemId);
+                var result = await LaunchOrActivate(item, newInstance).ConfigureAwait(false);
+                if (result.Launched) done.Add(itemId); else failed.Add(itemId);
+                if (result.Activated)
+                {
+                    activated.Add(itemId);
+                    if (result.Hwnd is long h) windows[itemId] = h;
+                }
             }
             catch (Exception ex)
             {
@@ -175,31 +192,101 @@ public sealed class LaunchService : IHostService
             await Task.Delay(250).ConfigureAwait(false);
         }
 
-        _ctx.Log.Info($"launch {kind} {id} ok=[{string.Join(',', done)}] failed=[{string.Join(',', failed)}]");
-        await req.Json(new { ok = failed.Count == 0, launched = done, failed = failed }).ConfigureAwait(false);
+        _ctx.Log.Info($"launch {kind} {id} ok=[{string.Join(',', done)}] failed=[{string.Join(',', failed)}] activated=[{string.Join(',', activated)}] newInstance={newInstance}");
+        await req.Json(new JsonObject
+        {
+            ["ok"] = failed.Count == 0,
+            ["launched"] = new JsonArray(done.Select(x => (JsonNode)x).ToArray()),
+            ["failed"] = new JsonArray(failed.Select(x => (JsonNode)x).ToArray()),
+            ["activated"] = new JsonArray(activated.Select(x => (JsonNode)x).ToArray()),
+            ["windows"] = windows,
+        }).ConfigureAwait(false);
     }
 
-    /// <summary>Launches one item. Check order matches helper.py: aumid, then cmd(+args), then open.</summary>
-    private bool StartItem(LaunchItem item)
+    private static async Task<bool> ReadNewInstance(ApiRequest req)
     {
-        if (!string.IsNullOrEmpty(item.Aumid)) return ActivateByAumid(item.Aumid);
+        if (ParseBool(req.Query("newInstance"))) return true;
+
+        var body = await req.ReadBodyAsync().ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(body)) return false;
+        if (Json.ParseNode(body) is JsonObject obj
+            && obj.TryGetPropertyValue("newInstance", out var node)
+            && node is JsonValue v)
+        {
+            if (v.TryGetValue(out bool b)) return b;
+            if (v.TryGetValue(out string? s)) return ParseBool(s);
+        }
+        return false;
+    }
+
+    private static bool ParseBool(string? s) =>
+        !string.IsNullOrEmpty(s) && (s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase));
+
+    private readonly record struct LaunchResult(bool Launched, bool Activated, long? Hwnd);
+
+    /// <summary>
+    /// Raises an already-open window when one matches and <paramref name="newInstance"/> is false;
+    /// otherwise starts the item and, for items we can match (aumid or cmd — not "open"), waits up
+    /// to 5s (polling every 250ms) for its window to appear and raises it too.
+    /// </summary>
+    private async Task<LaunchResult> LaunchOrActivate(LaunchItem item, bool newInstance)
+    {
+        var ws = WindowsService.Current;
+        bool canMatch = !string.IsNullOrEmpty(item.Aumid) || !string.IsNullOrEmpty(item.Cmd);
+
+        if (!newInstance && canMatch && ws is not null)
+        {
+            var existing = ws.FindForItem(item.Aumid, item.Cmd);
+            if (existing is not null)
+            {
+                bool activated = WindowActivator.Activate((HWND)(nint)existing.Hwnd, _ctx.Log);
+                return new LaunchResult(true, activated, existing.Hwnd);
+            }
+        }
+
+        var (started, pid) = StartItem(item);
+        if (!started) return new LaunchResult(false, false, null);
+
+        if (canMatch && ws is not null)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(250).ConfigureAwait(false);
+                var found = !string.IsNullOrEmpty(item.Aumid)
+                    ? ws.FindForItem(item.Aumid, null)
+                    : pid is int p ? ws.FindByPidTree(p) : null;
+                if (found is not null)
+                {
+                    bool activated = WindowActivator.Activate((HWND)(nint)found.Hwnd, _ctx.Log);
+                    return new LaunchResult(true, activated, found.Hwnd);
+                }
+            }
+        }
+        return new LaunchResult(true, false, null);
+    }
+
+    /// <summary>Starts one item. Check order matches helper.py: aumid, then cmd(+args), then open. Returns the started process's pid for "cmd" items (used to chase its window).</summary>
+    private (bool ok, int? pid) StartItem(LaunchItem item)
+    {
+        if (!string.IsNullOrEmpty(item.Aumid)) return (ActivateByAumid(item.Aumid), null);
 
         if (!string.IsNullOrEmpty(item.Cmd))
         {
             var psi = new ProcessStartInfo(item.Cmd) { UseShellExecute = false, CreateNoWindow = true };
             foreach (var a in item.Args) psi.ArgumentList.Add(a);
             if (!string.IsNullOrEmpty(item.Cwd)) psi.WorkingDirectory = item.Cwd;
-            Process.Start(psi);
-            return true;
+            var proc = Process.Start(psi);
+            return (true, proc?.Id);
         }
 
         if (!string.IsNullOrEmpty(item.Open))
         {
             Process.Start(new ProcessStartInfo(item.Open) { UseShellExecute = true });
-            return true;
+            return (true, null);
         }
 
-        return false;
+        return (false, null);
     }
 
     private bool ActivateByAumid(string aumid)

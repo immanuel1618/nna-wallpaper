@@ -139,7 +139,8 @@ internal static class IconExtractor
         }
     }
 
-    private static bool SaveAtomic(Bitmap bitmap, string outFile)
+    /// <summary>Saves <paramref name="bitmap"/> as a PNG atomically. Shared with WindowsService's icon route.</summary>
+    internal static bool SaveAtomic(Bitmap bitmap, string outFile)
     {
         var dir = Path.GetDirectoryName(outFile);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
