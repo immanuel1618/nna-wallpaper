@@ -4,6 +4,21 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-07
+
+### Changed
+- NNA Planner block redesigned to match the other blocks: task counter, briefing, meetings,
+  habit chips, money, add button and voice button.
+- Text input window opens next to the block on the right monitor (monitor lookup made tolerant).
+- Tray "Check for updates" now checks, downloads and applies updates through Velopack; new
+  `POST /app/update` route.
+- Local API refuses requests whose `Host` header does not name the loopback listener.
+- `/test/*` endpoints are registered only in `--headless` and `--test-engine` runs.
+- Graph widget source labels come from its settings instead of being hard-coded.
+
+### Fixed
+- Pause/resume race on fast window switches.
+
 ## [0.1.0] - 2026-09-07
 
 First public release.

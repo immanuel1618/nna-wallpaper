@@ -21,9 +21,12 @@ public sealed class HostServices : IDisposable
         // Core endpoints owned by the host itself.
         Api.Map("GET", "/health", Health);
         Api.Map("GET", "/config", GetConfig);
-        Api.Map("POST", "/test/event", TestEvent);
-        Api.Map("GET", "/test/events", TestEvents);
-        Api.Map("GET", "/test/log", TestLog);
+        if (ctx.TestEndpoints)
+        {
+            Api.Map("POST", "/test/event", TestEvent);
+            Api.Map("GET", "/test/events", TestEvents);
+            Api.Map("GET", "/test/log", TestLog);
+        }
         Api.Map("POST", "/app/exit", req => { _ctx.App.RequestExit(); return req.Json(new { ok = true }); });
         Api.Map("POST", "/app/reload", req => { _ctx.Config.Load(); _ctx.App.ReloadWallpaper(); return req.Json(new { ok = true }); });
 

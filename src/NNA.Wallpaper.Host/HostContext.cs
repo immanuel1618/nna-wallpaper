@@ -43,6 +43,8 @@ public sealed class HostContext
     public Log Log { get; }
     public int Port { get; }
     public IHostApp App { get; set; }
+    /// <summary>Register /test/* endpoints (headless and --test-engine runs only).</summary>
+    public bool TestEndpoints { get; set; }
     public DateTime Started { get; } = DateTime.UtcNow;
 
     /// <summary>Extra /health fields contributed by services (e.g. "gpu", "media").</summary>

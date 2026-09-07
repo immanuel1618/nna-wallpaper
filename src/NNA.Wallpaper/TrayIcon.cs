@@ -88,8 +88,28 @@ public sealed class TrayIcon : IDisposable
         }
     }
 
-    private void CheckUpdates() =>
-        ShowBalloon("NNA Wallpaper", _ru ? "Обновления появятся в релизе" : "Updates will be available in a release build");
+    private async void CheckUpdates()
+    {
+        var check = await Updates.CheckAsync(_host).ConfigureAwait(true);
+        if (!check.ok)
+        {
+            ShowBalloon("NNA Wallpaper", (_ru ? "Не удалось проверить обновления: " : "Update check failed: ") + check.error, BalloonIcon.Error);
+            return;
+        }
+        if (check.installed != true)
+        {
+            ShowBalloon("NNA Wallpaper", _ru ? "Сборка без установщика: обновления вручную" : "Unpacked build: update manually");
+            return;
+        }
+        if (check.available is null)
+        {
+            ShowBalloon("NNA Wallpaper", (_ru ? "Обновлений нет, версия " : "Up to date, version ") + check.current);
+            return;
+        }
+        ShowBalloon("NNA Wallpaper", (_ru ? "Скачиваю обновление " : "Downloading update ") + check.available + (_ru ? ", приложение перезапустится" : ", the app will restart"));
+        var apply = await Updates.ApplyAsync(_host).ConfigureAwait(true);
+        if (!apply.ok) ShowBalloon("NNA Wallpaper", (_ru ? "Обновление не удалось: " : "Update failed: ") + apply.error, BalloonIcon.Error);
+    }
 
     private void ExitApp() => _host.App.RequestExit();
 

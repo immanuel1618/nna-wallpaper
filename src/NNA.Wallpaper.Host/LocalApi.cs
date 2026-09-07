@@ -170,6 +170,13 @@ public sealed class LocalApi : IDisposable
             // Only our own pages (served from this loopback origin) may talk to the API from a browser
             // context. A foreign Origin (any web page open in a browser) is refused outright, so the
             // API token handed to the wallpaper page through /config can never be read cross-origin.
+            var hostHeader = http.Request.Headers["Host"] ?? "";
+            if (!IsOwnHost(hostHeader))
+            {
+                _ctx.Log.Warn("refused foreign host header " + hostHeader + " on " + req.Method + " " + req.Path);
+                await req.Json(new { error = "forbidden host" }, 403).ConfigureAwait(false);
+                return;
+            }
             var origin = http.Request.Headers["Origin"];
             if (!string.IsNullOrEmpty(origin))
             {
@@ -221,6 +228,17 @@ public sealed class LocalApi : IDisposable
             _ctx.Log.Error(req.Method + " " + req.Path, ex);
             try { await req.Json(new { error = ex.Message }, 500).ConfigureAwait(false); } catch { }
         }
+    }
+
+    /// <summary>Host header must name this loopback listener (guards against DNS rebinding).</summary>
+    private bool IsOwnHost(string host)
+    {
+        if (string.IsNullOrEmpty(host)) return true; // HTTP/1.0 clients without Host
+        var h = host.Trim();
+        return h.Equals("127.0.0.1:" + _ctx.Port, StringComparison.OrdinalIgnoreCase)
+            || h.Equals("localhost:" + _ctx.Port, StringComparison.OrdinalIgnoreCase)
+            || h.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || h.Equals("localhost", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsOwnOrigin(string origin) =>

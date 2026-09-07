@@ -4,7 +4,8 @@
 (function () {
   'use strict';
   var N = window.NNA, C = N.config, G = C.graph || {}, L = C.labels || {};
-  var TITLE = { h: 'H:\\MEMORY\\VAULT', e: 'E:\\DB_PLATFORM' };
+  var TITLE = { h: 'H:', e: 'E:' };
+  try { var _t = typeof G.titles === 'string' ? JSON.parse(G.titles || '{}') : G.titles; if (_t && typeof _t === 'object') TITLE = Object.assign(TITLE, _t); } catch (e) {}
 
   N.graph = function (mount) {
     var b = N.block('graph', L.graph || 'GRAPH', { needsHelper: true });

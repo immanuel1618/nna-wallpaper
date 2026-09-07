@@ -34,10 +34,14 @@ Start-Sleep -Milliseconds 700
 $events = Invoke-RestMethod "http://127.0.0.1:$Port/test/events"
 $clicks = @($events | Where-Object { $_.type -eq "click" })
 "events after: $($events.Count); clicks: $($clicks.Count)"
+if ($events.Count -le $before) { "FAIL no new events after the click (before=$before after=$($events.Count))"; exit 1 }
 if ($clicks.Count -gt 0) {
   $last = $clicks[-1]
   "last click: monitor=$($last.monitor) x=$($last.x) y=$($last.y)"
-  "PASS click reached the wallpaper page"
+  if ($last.monitor -notlike "*$($s.DeviceName)*") { "FAIL click landed on another monitor: $($last.monitor)"; exit 1 }
+  $relX = $X - $s.Bounds.X; $relY = $Y - $s.Bounds.Y
+  if ([math]::Abs($last.x - $relX) -gt 40 -or [math]::Abs($last.y - $relY) -gt 40) { "FAIL click position off by more than 40 px (expected $relX,$relY)"; exit 1 }
+  "PASS click reached the wallpaper page at the expected position"
   exit 0
 }
 "FAIL no click event recorded"

@@ -148,7 +148,7 @@ async function main() {
     if (ok) {
       console.log(`  access_token length: ${r.json.access_token.length}, profile.id: ${r.json.profile.id}`);
     }
-    record(1, ok, '200 c access_token/refresh_token/profile', `${r.status} ${JSON.stringify(r.json)}`);
+    record(1, ok, '200 c access_token/refresh_token/profile', `${r.status} ${JSON.stringify({ ...r.json, access_token: r.json?.access_token ? `<${r.json.access_token.length} chars>` : undefined, refresh_token: r.json?.refresh_token ? "<hidden>" : undefined })}`);
   }
 
   // 2. испорченный hash (последний символ заменён) → 401

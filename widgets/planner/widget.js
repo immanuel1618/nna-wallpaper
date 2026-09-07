@@ -1,10 +1,12 @@
-/* NNA1618 — NNA Planner block: login/offline states, briefing, tasks, meetings, habits, money,
- * a text-capture field (opens InputWindow through the host) and an optional voice button. */
+/* NNA1618 — NNA Planner block (TASKS): login / logged-in states, today's tasks with done-toggle,
+ * briefing, meetings, habits, money, a text-capture field (opens the host InputWindow) and an
+ * optional voice button. Layout follows the SYSTEM block: two columns, display numbers, mono labels. */
 (function () {
   'use strict';
   var N = window.NNA, C = N.config, L = C.labels || {};
   var helper = window.NNA_HELPER || { url: 'http://127.0.0.1:1618', token: '' };
   var DEFAULT_SHOW = ['briefing', 'tasks', 'meetings', 'habits', 'money'];
+  var MONTHS = ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'];
 
   function resolveShow() {
     var cfg = window.NNA_CONFIG || {};
@@ -23,6 +25,7 @@
     return {
       refreshSec: (s.refreshSec > 0) ? s.refreshSec : 60,
       voice: s.voice !== false,
+      maxTasks: (s.maxTasks > 0) ? s.maxTasks : 6,
     };
   }
 
@@ -31,29 +34,65 @@
     var style = N.el('style', null, null);
     style.id = 'nna-planner-style';
     style.textContent =
-      '.nna-planner{position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;padding:0 8px;overflow:hidden}' +
-      '.nna-planner .pl-brief{font-size:12px;color:var(--fg-body);line-height:1.5}' +
-      '.nna-planner .pl-section{display:flex;flex-direction:column;gap:8px;min-height:0}' +
-      '.nna-planner .pl-h{font-size:9px;color:var(--fg-muted);letter-spacing:0.28em}' +
-      '.nna-planner .pl-list{display:flex;flex-direction:column;gap:8px;overflow:hidden}' +
-      '.nna-planner .pl-row{display:flex;align-items:center;gap:10px;cursor:pointer}' +
-      '.nna-planner .pl-check{width:14px;height:14px;border-radius:50%;border:1px solid var(--border);flex:none}' +
-      '.nna-planner .pl-row.is-done .pl-check{background:var(--fg)}' +
+      '.nna-tasks{container-type:size}' +
+      '.nna-planner{position:absolute;inset:64px 44px 40px;display:flex;flex-direction:column;gap:22px;min-height:0}' +
+      '.nna-planner .pl-grid{flex:1;min-height:0;display:grid;grid-template-columns:1.15fr 1fr;gap:44px}' +
+      '.nna-planner .pl-col{display:flex;flex-direction:column;gap:20px;min-width:0;min-height:0}' +
+      '.nna-planner .pl-sec{display:flex;flex-direction:column;gap:10px;min-height:0}' +
+      '.nna-planner .pl-sec.is-grow{flex:1;min-height:0}' +
+      '.nna-planner .pl-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px}' +
+      '.nna-planner .pl-k{font-size:11px;color:var(--fg-muted);letter-spacing:0.18em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-v{font-size:64px}' +
+      '.nna-planner .pl-sub{font-size:11px;color:var(--fg-body);letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-list{display:flex;flex-direction:column;gap:16px;overflow:hidden;min-height:0}' +
+      '.nna-planner .pl-row{display:flex;align-items:center;gap:14px;cursor:pointer;min-width:0}' +
+      '.nna-planner .pl-row:hover .pl-title{color:var(--fg)}' +
+      '.nna-planner .pl-check{width:16px;height:16px;border-radius:50%;border:1px solid var(--border);flex:none;position:relative;transition:background 0.2s}' +
+      '.nna-planner .pl-row.is-done .pl-check{background:var(--fg);border-color:var(--fg)}' +
       '.nna-planner .pl-row.is-done .pl-title{text-decoration:line-through;color:var(--fg-muted)}' +
-      '.nna-planner .pl-title{font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-      '.nna-planner .pl-time{font-size:10px;color:var(--fg-muted);font-family:var(--font-mono)}' +
-      '.nna-planner .pl-tag{font-size:8px;letter-spacing:0.14em;color:#fff;background:rgba(200,40,40,0.6);padding:2px 6px;border-radius:6px;flex:none}' +
-      '.nna-planner .pl-empty{font-size:11px;color:var(--fg-muted)}' +
-      '.nna-planner .pl-money{font-size:12px}' +
-      '.nna-planner .pl-money .pl-cat{display:flex;justify-content:space-between;font-size:10px;color:var(--fg-body);margin-top:4px}' +
-      '.nna-planner .pl-add{margin-top:auto;display:flex;gap:8px;align-items:center}' +
-      '.nna-planner .pl-add-field{flex:1;font-size:10px;letter-spacing:0.14em;color:var(--fg-muted);border:1px solid rgba(67,67,67,0.7);border-radius:10px;padding:10px 12px;cursor:text}' +
-      '.nna-planner .pl-mic{width:34px;height:34px;border-radius:50%;border:1px solid rgba(67,67,67,0.7);background:transparent;color:var(--fg);flex:none;cursor:pointer}' +
-      '.nna-planner .pl-mic.is-rec{background:rgba(200,40,40,0.5);border-color:transparent}' +
-      '.nna-planner .pl-login{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;height:100%}' +
-      '.nna-planner .pl-login-btn{padding:11px 20px;font-size:10px;letter-spacing:0.2em;border:1px solid rgba(67,67,67,0.8);border-radius:12px;background:transparent;color:var(--fg);cursor:pointer}' +
-      '.nna-planner .pl-login-btn:hover{background:var(--btn-hover,rgba(255,255,255,0.06))}';
+      '.nna-planner .pl-title{font-size:15px;color:var(--fg-body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color 0.2s}' +
+      '.nna-planner .pl-time{font-size:10px;color:var(--fg-muted);letter-spacing:0.16em;font-family:var(--font-mono);flex:none}' +
+      '.nna-planner .pl-time.is-over{color:var(--fg)}' +
+      '.nna-planner .pl-more{font-size:10px;color:var(--fg-muted);letter-spacing:0.18em;font-family:var(--font-mono);text-transform:uppercase}' +
+      '.nna-planner .pl-empty{font-size:11px;color:var(--fg-muted);letter-spacing:0.18em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-brief{font-size:12px;color:var(--fg-body);line-height:1.55;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}' +
+      '.nna-planner .pl-meet{display:flex;align-items:baseline;gap:14px;min-width:0}' +
+      '.nna-planner .pl-meet-t{font-family:var(--font-display);font-size:22px;color:var(--fg);flex:none;font-variant-numeric:tabular-nums}' +
+      '.nna-planner .pl-meet-n{font-size:13px;color:var(--fg-body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.nna-planner .pl-chips{display:flex;flex-wrap:wrap;gap:8px}' +
+      '.nna-planner .pl-chip{padding:9px 14px;font-size:10px}' +
+      '.nna-planner .pl-money-v{font-size:38px}' +
+      '.nna-planner .pl-cats{display:flex;flex-direction:column;gap:6px}' +
+      '.nna-planner .pl-cat{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--fg-body);letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono)}' +
+      '.nna-planner .pl-add{display:flex;gap:12px;align-items:center;flex:none}' +
+      '.nna-planner .pl-add-btn{flex:1;justify-content:flex-start;text-align:left;padding:14px 22px;font-size:11px}' +
+      '.nna-planner .pl-mic{width:44px;height:44px;flex:none}' +
+      '.nna-planner .pl-mic svg{width:18px;height:18px;fill:currentColor}' +
+      '.nna-planner .pl-mic.is-rec{background:var(--fg);color:var(--bg-surface);border-color:var(--fg)}' +
+      '.nna-planner .pl-login{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}' +
+      '.nna-planner .pl-login .pl-brand{font-size:92px;font-size:16cqh}' +
+      '.nna-planner .pl-login .pl-hint{font-size:12px;color:var(--fg-muted);letter-spacing:0.4em;font-family:var(--font-mono);text-transform:uppercase}' +
+      '.nna-planner .pl-login .nna-btn{padding:14px 26px;font-size:11px}';
     document.head.appendChild(style);
+  }
+
+  function pad2(n) { n = Math.floor(n); return (n < 10 ? '0' : '') + n; }
+  function fmtTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d.getTime())) return '';
+    var now = new Date();
+    var same = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    if (same) return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return pad2(d.getDate()) + ' ' + MONTHS[d.getMonth()];
+  }
+  function fmtMoney(minor) {
+    var v = Math.round((minor || 0) / 100);
+    var s = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return (v < 0 ? '−' : '') + s + ' ₽';
+  }
+  function todayLabel() {
+    var d = new Date();
+    return pad2(d.getDate()) + ' ' + MONTHS[d.getMonth()];
   }
 
   window.NNA = window.NNA || {};
@@ -63,131 +102,171 @@
     ensureStyle();
     var settings = resolveSettings(ctx);
     var monitorId = resolveMonitorId();
-    var b = N.block('tasks', { text: L.tasks || 'TASKS', strong: 'NNA PLANNER' });
+    var b = N.block('tasks', { text: L.tasks || 'TASKS', strong: L.tasksSoon || 'NNA PLANNER' });
+    var corner = N.el('div', 'nna-corner', '');
+    b.root.appendChild(corner);
     var wrap = N.el('div', 'nna-planner');
     b.body.appendChild(wrap);
     mount.appendChild(b.root);
 
     var loggedIn = null; // tri-state: null = unknown yet
+    var profile = null;
     var recorder = null, recTimer = null;
+    var lastData = null;
 
     function text(key, fallback) { return L[key] || fallback; }
 
+    // ---- login state ---------------------------------------------------------------------------
     function renderLogin() {
       wrap.innerHTML = '';
+      corner.textContent = '';
       var box = N.el('div', 'pl-login');
-      var title = N.el('div', 'ta-title nna-big', text('plannerBrand', 'NNA PLANNER'));
-      var btn = N.el('button', 'pl-login-btn', text('plannerLogin', 'ВОЙТИ'));
+      var title = N.el('div', 'pl-brand nna-big', text('plannerBrand', 'NNA PLANNER'));
+      var hint = N.el('div', 'pl-hint', text('plannerHint', 'ЗАДАЧИ · ВСТРЕЧИ · ДЕНЬГИ'));
+      var btn = N.el('button', 'nna-btn', text('plannerLogin', 'ВОЙТИ ЧЕРЕЗ TELEGRAM'));
+      btn.type = 'button';
       btn.addEventListener('click', function () { N.post('/planner/login').catch(function () {}); });
-      box.appendChild(title); box.appendChild(btn);
+      box.appendChild(title); box.appendChild(hint); box.appendChild(btn);
       wrap.appendChild(box);
     }
 
-    function renderBriefing(data) {
-      var sec = N.el('div', 'pl-section');
-      sec.appendChild(N.el('div', 'pl-brief', data.briefing || ''));
-      wrap.appendChild(sec);
+    // ---- sections ------------------------------------------------------------------------------
+    function section(label, grow) {
+      var sec = N.el('div', 'pl-sec' + (grow ? ' is-grow' : ''));
+      if (label) sec.appendChild(N.el('div', 'pl-k', label));
+      return sec;
     }
 
-    function renderTasks(data) {
-      var sec = N.el('div', 'pl-section');
-      sec.appendChild(N.el('div', 'pl-h', text('plannerTasks', 'ЗАДАЧИ')));
-      var list = N.el('div', 'pl-list');
+    function renderTasks(data, col) {
       var tasks = (data.tasks || []).slice().sort(function (a, b2) {
-        if (a.overdue !== b2.overdue) return a.overdue ? -1 : 1;
-        return 0;
+        if (!!a.overdue !== !!b2.overdue) return a.overdue ? -1 : 1;
+        return String(a.due_at || '~').localeCompare(String(b2.due_at || '~'));
       });
-      if (!tasks.length) list.appendChild(N.el('div', 'pl-empty', text('plannerNoTasks', 'Нет задач')));
-      tasks.forEach(function (t) {
+      var open = tasks.filter(function (t) { return t.state !== 'done'; });
+      var overdue = open.filter(function (t) { return t.overdue; }).length;
+
+      var sec = section(null, true);
+      var head = N.el('div', 'pl-head');
+      head.appendChild(N.el('div', 'pl-k', text('plannerTasks', 'ЗАДАЧИ · СЕГОДНЯ')));
+      head.appendChild(N.el('div', 'pl-v nna-big', String(open.length)));
+      sec.appendChild(head);
+      sec.appendChild(N.el('div', 'pl-sub', overdue
+        ? overdue + ' ' + text('plannerOverdue', 'ПРОСРОЧЕНО')
+        : (open.length ? text('plannerOnTrack', 'ВСЁ В СРОК') : text('plannerFree', 'ДЕНЬ СВОБОДЕН'))));
+
+      var list = N.el('div', 'pl-list');
+      if (!open.length) {
+        list.appendChild(N.el('div', 'pl-empty', text('plannerNoTasks', 'ЗАДАЧ НА СЕГОДНЯ НЕТ')));
+      }
+      open.slice(0, settings.maxTasks).forEach(function (t) {
         var row = N.el('div', 'pl-row' + (t.state === 'done' ? ' is-done' : ''));
         row.appendChild(N.el('i', 'pl-check'));
-        row.appendChild(N.el('span', 'pl-title', t.title));
-        if (t.overdue) row.appendChild(N.el('span', 'pl-tag', text('plannerOverdue', 'ПРОСРОЧЕНО')));
+        row.appendChild(N.el('span', 'pl-title', t.title || ''));
+        var when = t.overdue ? text('plannerOverdueShort', 'ПРОСРОЧЕНО') : fmtTime(t.due_at);
+        if (when) row.appendChild(N.el('span', 'pl-time' + (t.overdue ? ' is-over' : ''), when));
+        row.title = t.title || '';
         row.addEventListener('click', function () {
           var willBeDone = !row.classList.contains('is-done');
           row.classList.toggle('is-done', willBeDone);
-          N.post('/planner/done?id=' + encodeURIComponent(t.id) + '&done=' + (willBeDone ? '1' : '0'))
-            .then(function () { tick(); })
-            .catch(function () { row.classList.toggle('is-done', !willBeDone); N.toast(text('plannerError', 'Ошибка')); });
+          N.post('/planner/done?id=' + encodeURIComponent(t.id) + '&done=' + (willBeDone ? 1 : 0))
+            .then(function () { setTimeout(tick, 600); })
+            .catch(function () { row.classList.toggle('is-done', !willBeDone); N.toast(text('plannerError', 'ОШИБКА')); });
         });
         list.appendChild(row);
       });
+      if (open.length > settings.maxTasks) {
+        list.appendChild(N.el('div', 'pl-more', '+ ' + (open.length - settings.maxTasks)));
+      }
       sec.appendChild(list);
-      wrap.appendChild(sec);
+      col.appendChild(sec);
     }
 
-    function renderMeetings(data) {
-      var meetings = data.meetings || [];
-      if (!meetings.length) return;
-      var sec = N.el('div', 'pl-section');
-      sec.appendChild(N.el('div', 'pl-h', text('plannerMeetings', 'ВСТРЕЧИ')));
-      var list = N.el('div', 'pl-list');
+    function renderBriefing(data, col) {
+      var sec = section(text('plannerBriefing', 'БРИФИНГ'));
+      var p = N.el('div', 'pl-brief', data.briefing || text('plannerNoBriefing', '—'));
+      p.title = data.briefing || '';
+      sec.appendChild(p);
+      col.appendChild(sec);
+    }
+
+    function renderMeetings(data, col) {
+      var meetings = (data.meetings || []).slice(0, 3);
+      var sec = section(text('plannerMeetings', 'ВСТРЕЧИ'));
+      if (!meetings.length) sec.appendChild(N.el('div', 'pl-empty', text('plannerNoMeetings', 'НЕТ ВСТРЕЧ')));
       meetings.forEach(function (m) {
-        var row = N.el('div', 'pl-row');
-        var d = new Date(m.starts_at);
-        row.appendChild(N.el('span', 'pl-time', N.pad2(d.getHours()) + ':' + N.pad2(d.getMinutes())));
-        row.appendChild(N.el('span', 'pl-title', m.title));
-        list.appendChild(row);
+        var row = N.el('div', 'pl-meet');
+        row.appendChild(N.el('span', 'pl-meet-t', fmtTime(m.starts_at) || '—'));
+        var name = N.el('span', 'pl-meet-n', m.title || '');
+        name.title = m.title || '';
+        row.appendChild(name);
+        sec.appendChild(row);
       });
-      sec.appendChild(list);
-      wrap.appendChild(sec);
+      col.appendChild(sec);
     }
 
-    function renderHabits(data) {
+    function renderHabits(data, col) {
       var habits = data.habits || [];
-      if (!habits.length) return;
-      var sec = N.el('div', 'pl-section');
-      sec.appendChild(N.el('div', 'pl-h', text('plannerHabits', 'ПРИВЫЧКИ')));
-      var list = N.el('div', 'pl-list');
+      var sec = section(text('plannerHabits', 'ПРИВЫЧКИ'));
+      if (!habits.length) { sec.appendChild(N.el('div', 'pl-empty', text('plannerNoHabits', 'НЕТ ПРИВЫЧЕК'))); col.appendChild(sec); return; }
+      var chips = N.el('div', 'pl-chips');
       habits.forEach(function (h) {
-        var row = N.el('div', 'pl-row' + (h.checkedToday ? ' is-done' : ''));
-        row.appendChild(N.el('i', 'pl-check'));
-        row.appendChild(N.el('span', 'pl-title', h.title));
-        row.addEventListener('click', function () {
-          var next = !row.classList.contains('is-done');
-          row.classList.toggle('is-done', next);
-          N.post('/planner/habit?id=' + encodeURIComponent(h.id) + '&checked=' + (next ? '1' : '0'))
-            .then(function () { tick(); })
-            .catch(function () { row.classList.toggle('is-done', !next); N.toast(text('plannerError', 'Ошибка')); });
+        var chip = N.el('button', 'nna-btn pl-chip' + (h.checkedToday ? ' is-on' : ''), h.title || '');
+        chip.type = 'button';
+        chip.addEventListener('click', function () {
+          var next = !chip.classList.contains('is-on');
+          chip.classList.toggle('is-on', next);
+          N.post('/planner/habit?id=' + encodeURIComponent(h.id) + '&checked=' + (next ? 1 : 0))
+            .then(function () { setTimeout(tick, 600); })
+            .catch(function () { chip.classList.toggle('is-on', !next); N.toast(text('plannerError', 'ОШИБКА')); });
         });
-        list.appendChild(row);
+        chips.appendChild(chip);
       });
-      sec.appendChild(list);
-      wrap.appendChild(sec);
+      sec.appendChild(chips);
+      col.appendChild(sec);
     }
 
-    function renderMoney(data) {
-      var money = data.money || { spent_minor: 0, by_category: {} };
-      var sec = N.el('div', 'pl-section');
-      sec.appendChild(N.el('div', 'pl-h', text('plannerMoney', 'ТРАТЫ')));
-      var box = N.el('div', 'pl-money');
-      var rub = Math.round((money.spent_minor || 0) / 100);
-      box.appendChild(N.el('div', null, rub.toLocaleString('ru-RU') + ' ₽'));
+    function renderMoney(data, col) {
+      var money = data.money || {};
+      var sec = section(text('plannerMoney', 'ДЕНЬГИ · СЕГОДНЯ'));
+      var head = N.el('div', 'pl-head');
+      head.appendChild(N.el('div', 'pl-money-v nna-big', fmtMoney(money.spent_minor)));
+      if (money.income_minor) head.appendChild(N.el('div', 'pl-sub', '+ ' + fmtMoney(money.income_minor)));
+      sec.appendChild(head);
       var cats = money.by_category || {};
-      Object.keys(cats).forEach(function (k) {
-        var line = N.el('div', 'pl-cat');
-        line.appendChild(N.el('span', null, k));
-        line.appendChild(N.el('span', null, Math.round(cats[k] / 100).toLocaleString('ru-RU') + ' ₽'));
-        box.appendChild(line);
-      });
-      sec.appendChild(box);
-      wrap.appendChild(sec);
+      var keys = Object.keys(cats).sort(function (a, b2) { return (cats[b2] || 0) - (cats[a] || 0); }).slice(0, 3);
+      if (keys.length) {
+        var list = N.el('div', 'pl-cats');
+        keys.forEach(function (k) {
+          var row = N.el('div', 'pl-cat');
+          row.appendChild(N.el('span', null, k));
+          row.appendChild(N.el('span', null, fmtMoney(cats[k])));
+          list.appendChild(row);
+        });
+        sec.appendChild(list);
+      } else {
+        sec.appendChild(N.el('div', 'pl-empty', text('plannerNoSpend', 'ТРАТ НЕТ')));
+      }
+      col.appendChild(sec);
     }
 
+    // ---- capture: text through the host InputWindow, voice through MediaRecorder ------------------
     function renderAdd() {
       var row = N.el('div', 'pl-add');
-      var field = N.el('div', 'pl-add-field', text('plannerAdd', '+ ДОБАВИТЬ'));
-      row.appendChild(field);
-      field.addEventListener('click', function () {
-        var r = field.getBoundingClientRect();
-        var px = Math.round(r.left + r.width / 2);
-        var py = Math.round(r.top + r.height / 2);
+      var btn = N.el('button', 'nna-btn pl-add-btn', text('plannerAdd', '+ ЗАДАЧА, ВСТРЕЧА ИЛИ ТРАТА'));
+      btn.type = 'button';
+      btn.addEventListener('click', function () {
+        var r = btn.getBoundingClientRect();
+        var px = Math.round(r.left + 24);
+        var py = Math.round(r.top - 8);
         N.post('/planner/input?monitor=' + encodeURIComponent(monitorId) +
-          '&x=' + px + '&y=' + py + '&placeholder=' + encodeURIComponent(text('plannerPlaceholder', 'Что сделать?')))
-          .catch(function () {});
+          '&x=' + px + '&y=' + py + '&placeholder=' + encodeURIComponent(text('plannerPlaceholder', 'Что сделать, когда, сколько?')))
+          .catch(function () { N.toast(text('plannerError', 'ОШИБКА')); });
       });
+      row.appendChild(btn);
       if (settings.voice) {
-        var mic = N.el('button', 'pl-mic');
+        var mic = N.el('button', 'nna-icon-btn pl-mic');
+        mic.type = 'button';
+        mic.title = text('plannerVoice', 'Голосом');
         mic.appendChild(N.svg('M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z'));
         mic.addEventListener('click', function () { toggleRecording(mic); });
         row.appendChild(mic);
@@ -197,7 +276,7 @@
 
     function toggleRecording(btn) {
       if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { N.toast(text('plannerError', 'Ошибка')); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { N.toast(text('plannerError', 'ОШИБКА')); return; }
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
         var chunks = [];
         recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
@@ -207,12 +286,14 @@
           clearTimeout(recTimer);
           stream.getTracks().forEach(function (t) { t.stop(); });
           var blob = new Blob(chunks, { type: 'audio/webm' });
+          N.toast(text('plannerSending', 'ОТПРАВЛЯЮ'));
           blobToBase64(blob).then(function (b64) { sendVoice(b64); });
         };
         recorder.start();
         btn.classList.add('is-rec');
+        N.toast(text('plannerRecording', 'ЗАПИСЬ · НАЖМИ ЕЩЁ РАЗ, ЧТОБЫ ОТПРАВИТЬ'));
         recTimer = setTimeout(function () { if (recorder && recorder.state === 'recording') recorder.stop(); }, 30000);
-      }).catch(function () { N.toast(text('plannerError', 'Ошибка')); });
+      }).catch(function () { N.toast(text('plannerError', 'ОШИБКА МИКРОФОНА')); });
     }
 
     function blobToBase64(blob) {
@@ -234,25 +315,37 @@
         body: JSON.stringify({ audio_base64: audioBase64, mime: 'audio/webm' }),
       }).then(function (r) { return r.json().then(function (j) { return { status: r.status, json: j }; }); })
         .then(function (res) { handleCaptureResult(res.status, res.json); tick(); })
-        .catch(function () { N.toast(text('plannerError', 'Ошибка')); });
+        .catch(function () { N.toast(text('plannerError', 'ОШИБКА')); });
     }
 
     function handleCaptureResult(status, json) {
-      if (status === 429 || (json && json.error === 'limit')) { N.toast(text('plannerLimit', 'Лимит ИИ на сегодня')); return; }
-      if (json && json.ok) { N.toast((text('plannerRecorded', 'Записано') || 'Записано') + ': ' + ((json.entries || []).length)); return; }
-      N.toast(json && (json.message || json.error) ? String(json.message || json.error) : text('plannerError', 'Ошибка'));
+      if (status === 429 || (json && json.error === 'limit')) { N.toast(text('plannerLimit', 'ЛИМИТ ИИ НА СЕГОДНЯ')); return; }
+      if (json && json.ok) {
+        var n = (json.entries || []).length;
+        N.toast(n ? text('plannerRecorded', 'ЗАПИСАНО') + ': ' + n : text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ'));
+        return;
+      }
+      N.toast(json && (json.message || json.error || json.reason) ? String(json.message || json.error || json.reason).toUpperCase() : text('plannerError', 'ОШИБКА'));
     }
 
+    // ---- logged-in layout ----------------------------------------------------------------------
     function renderLoggedIn(data) {
+      lastData = data;
       wrap.innerHTML = '';
+      corner.textContent = ((profile && profile.display_name) ? String(profile.display_name).toUpperCase() + ' · ' : '') + todayLabel();
       var show = resolveShow();
-      show.forEach(function (id) {
-        if (id === 'briefing') renderBriefing(data);
-        else if (id === 'tasks') renderTasks(data);
-        else if (id === 'meetings') renderMeetings(data);
-        else if (id === 'habits') renderHabits(data);
-        else if (id === 'money') renderMoney(data);
-      });
+      var grid = N.el('div', 'pl-grid');
+      var left = N.el('div', 'pl-col');
+      var right = N.el('div', 'pl-col');
+      grid.appendChild(left); grid.appendChild(right);
+      wrap.appendChild(grid);
+
+      if (show.indexOf('tasks') !== -1) renderTasks(data, left);
+      else renderBriefing(data, left);
+      if (show.indexOf('briefing') !== -1 && show.indexOf('tasks') !== -1) renderBriefing(data, right);
+      if (show.indexOf('meetings') !== -1) renderMeetings(data, right);
+      if (show.indexOf('habits') !== -1) renderHabits(data, right);
+      if (show.indexOf('money') !== -1) renderMoney(data, right);
       renderAdd();
     }
 
@@ -260,19 +353,18 @@
       N.get('/planner/today').then(function (data) {
         renderLoggedIn(data);
       }).catch(function () {
-        // 401 or transient failure: fall back to the login view on the next status check.
+        // 401 or transient failure: the next status check decides between login and retry.
       });
     }
 
     function tick() {
       N.get('/planner/status').then(function (s) {
-        var was = loggedIn;
         loggedIn = !!s.loggedIn;
+        profile = s.profile || null;
         if (!loggedIn) { renderLogin(); return; }
-        if (was !== true) { loadToday(); return; }
         loadToday();
       }).catch(function () {
-        // helper offline: keep last render, global .nna-offline dims the page.
+        // host offline: keep the last render; the page-wide .nna-offline class dims everything.
       });
     }
 
@@ -280,9 +372,11 @@
       if (!payload || payload.type !== 'planner') return;
       if (payload.event === 'changed' || payload.event === 'login') { tick(); return; }
       if (payload.event === 'captured') {
-        if (payload.ok) N.toast((text('plannerRecorded', 'Записано')) + ': ' + ((payload.entries || []).length));
-        else if (payload.error === 'limit') N.toast(text('plannerLimit', 'Лимит ИИ на сегодня'));
-        else N.toast(text('plannerError', 'Ошибка'));
+        if (payload.ok) {
+          var n = (payload.entries || []).length;
+          N.toast(n ? text('plannerRecorded', 'ЗАПИСАНО') + ': ' + n : text('plannerNothing', 'НИЧЕГО НЕ РАЗОБРАЛ'));
+        } else if (payload.error === 'limit') N.toast(text('plannerLimit', 'ЛИМИТ ИИ НА СЕГОДНЯ'));
+        else N.toast(text('plannerError', 'ОШИБКА'));
         tick();
       }
     }

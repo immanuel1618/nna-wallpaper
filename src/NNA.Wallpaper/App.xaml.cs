@@ -60,7 +60,10 @@ public partial class App : Application
         config.Load();
         var port = Args.Port ?? config.App.ApiPort;
 
-        Host = new HostContext(paths, config, log, port, new HeadlessHostApp(Dispatcher, Shutdown));
+        Host = new HostContext(paths, config, log, port, new HeadlessHostApp(Dispatcher, Shutdown))
+        {
+            TestEndpoints = Args.Headless || Args.TestEngine,
+        };
         try
         {
             Services = new HostServices(Host);
@@ -187,6 +190,7 @@ public partial class App : Application
         });
 
         api.Map("POST", "/app/check-updates", async req => await req.Json(await Updates.CheckAsync(Host!).ConfigureAwait(false)).ConfigureAwait(false));
+        api.Map("POST", "/app/update", async req => await req.Json(await Updates.ApplyAsync(Host!).ConfigureAwait(false)).ConfigureAwait(false));
 
         api.Map("POST", "/app/login", req =>
         {

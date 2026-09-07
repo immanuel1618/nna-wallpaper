@@ -160,9 +160,12 @@ public sealed class WallpaperWindow : IDisposable
         try { _controller?.CoreWebView2.PostWebMessageAsJson(json); } catch (Exception ex) { _log.Error("post message", ex); }
     }
 
+    private bool _pauseBusy;
+
     public async void SetPaused(bool paused)
     {
-        if (_controller is null || Paused == paused) return;
+        if (_controller is null || Paused == paused || _pauseBusy) return;
+        _pauseBusy = true;
         Paused = paused;
         try
         {
@@ -182,6 +185,10 @@ public sealed class WallpaperWindow : IDisposable
         catch (Exception ex)
         {
             _log.Warn($"pause {Monitor.Id}: {ex.Message}");
+        }
+        finally
+        {
+            _pauseBusy = false;
         }
     }
 

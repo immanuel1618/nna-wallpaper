@@ -329,12 +329,27 @@ public sealed class PlannerService : Services.IHostService, IDisposable
             return;
         }
         var placeholder = req.Query("placeholder");
-        var monitor = _ctx.App.Monitors.FirstOrDefault(m => string.Equals(m.id, monitorId, StringComparison.OrdinalIgnoreCase));
+        var monitor = FindMonitor(monitorId);
+        if (monitor is null)
+        {
+            _ctx.Log.Warn("planner input: monitor '" + monitorId + "' not found among [" + string.Join(", ", _ctx.App.Monitors.Select(m => m.id)) + "]; using primary origin");
+        }
         var screenX = (monitor?.x ?? 0) + x;
         var screenY = (monitor?.y ?? 0) + y;
 
         _ctx.App.RequestTextInput("planner", screenX, screenY, placeholder, text => OnInputSubmitted(text, monitorId));
         await req.Json(new { ok = true }).ConfigureAwait(false);
+    }
+
+    /// <summary>Monitor by id: exact, then with slashes normalised, then by the trailing "|WxH" size.</summary>
+    private MonitorStatus? FindMonitor(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        static string Norm(string s) => s.Replace('/', '\\').Trim();
+        var mons = _ctx.App.Monitors;
+        return mons.FirstOrDefault(m => string.Equals(m.id, id, StringComparison.OrdinalIgnoreCase))
+            ?? mons.FirstOrDefault(m => string.Equals(Norm(m.id), Norm(id), StringComparison.OrdinalIgnoreCase))
+            ?? (id.Contains('|') ? mons.FirstOrDefault(m => m.id.EndsWith(id[id.LastIndexOf('|')..], StringComparison.OrdinalIgnoreCase)) : null);
     }
 
     /// <summary>Callback from InputWindow; runs off the API request thread, so errors are only logged/posted, never thrown.</summary>
