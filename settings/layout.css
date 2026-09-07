@@ -1,0 +1,128 @@
+/* settings/layout.css — "Layout" page (α): monitor cards, grid parameters, the canvas
+   (minimap + editable grid + palette) and the Apply/Cancel/Undo/Redo/Reset action bar. Loaded
+   from settings/index.html after design-system.css; tokens only, see ui/tests/palette.test.mjs. */
+
+/* Normal document flow top to bottom (monitor cards, grid params, canvas, action bar) — the
+   whole page scrolls inside main-body's own `overflow: auto` (design-system.css) when a short
+   window can't fit everything. The action bar deliberately does NOT use `position: sticky` to
+   stay "pinned" while scrolling: a sticky element keeps its flow height but paints pinned to the
+   viewport edge, so on a page this tall it would visually collide with whatever else has scrolled
+   into that same screen region (in practice, the canvas) — a plain in-flow bar avoids that. */
+.lay-page { display: flex; flex-direction: column; gap: var(--gap); max-width: 1040px; }
+
+/* ── monitor cards ────────────────────────────────────────────────────── */
+.lay-mon-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.lay-mon-card {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 13px; min-width: 200px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: 10px 13px; cursor: pointer;
+}
+.lay-mon-card:hover { border-color: var(--line-strong); }
+.lay-mon-card.sel { border-color: var(--fg); background: var(--chip); }
+.lay-mon-card .t { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; }
+.lay-mon-card .name { color: var(--fg); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lay-mon-card .tag { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+/* ── grid parameters ─────────────────────────────────────────────────── */
+.lay-grid-fields { display: flex; flex-wrap: wrap; gap: 10px; }
+.lay-grid-fields .field { width: 96px; }
+
+/* ── canvas wrap: minimap + stage(+palette) ──────────────────────────── */
+.lay-canvas-wrap { display: flex; flex-direction: column; gap: 10px; }
+
+.lay-minimap { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); }
+.lay-minimap-mon {
+  position: absolute; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--chip);
+  display: flex; align-items: flex-end; padding: 4px; cursor: pointer; overflow: hidden;
+}
+.lay-minimap-mon:hover { border-color: var(--fg); }
+.lay-minimap-mon.sel { border-color: var(--fg); background: var(--chip-hi); }
+.lay-minimap-mon.off { opacity: .45; }
+.lay-minimap-label {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lay-minimap-mon.sel .lay-minimap-label { color: var(--fg); }
+
+.lay-body { display: flex; gap: var(--gap); }
+/* align-items/justify-content are flex-start, not center: a centered flex item that is bigger
+   than its (possibly scroll-constrained) container overflows symmetrically on both sides, which
+   breaks scrollTop/scrollIntoView — the browser has no "negative" scroll position to reach the
+   part that overflowed above/left of the container's own box. Starting from the top-left keeps
+   the whole grid within normal, scrollable-from-zero territory; .lay-grid centers itself inside
+   via margin instead (see below) so it still looks centered when it fits without overflowing. */
+.lay-stage {
+  flex: 1 1 auto; min-width: 0; min-height: 280px; display: flex; align-items: flex-start; justify-content: flex-start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: 21px; overflow: auto; outline: none;
+}
+.lay-stage:focus-visible { border-color: var(--fg); }
+
+/* ── grid: lines, reserved bars, blocks ──────────────────────────────── */
+.lay-grid { position: relative; background: var(--raised); border: 1px solid var(--line); flex: 0 0 auto; margin: auto; }
+.lay-gridline { position: absolute; background: var(--line); pointer-events: none; }
+.lay-gridline-v { top: 0; bottom: 0; width: 1px; }
+.lay-gridline-h { left: 0; right: 0; height: 1px; }
+.lay-reserved {
+  position: absolute; left: 0; right: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(45deg, rgba(128, 128, 128, .18) 0 6px, transparent 6px 12px);
+}
+.lay-reserved-top { top: 0; }
+.lay-reserved-bottom { bottom: 0; }
+
+.lay-blocks { position: absolute; inset: 0; z-index: 2; }
+.lay-block {
+  position: absolute; background: var(--chip); border: 1px solid var(--line-strong); border-radius: 8px;
+  display: flex; flex-direction: column; user-select: none; touch-action: none;
+}
+.lay-block:hover, .lay-block.sel { border-color: var(--fg); background: var(--chip-hi); }
+.lay-block.bad { border-color: var(--bad); background: rgba(140, 26, 37, .18); }
+.lay-block.dragging, .lay-block.resizing { z-index: 3; box-shadow: 0 8px 21px rgba(0, 0, 0, .4); }
+.lay-block-head { display: flex; align-items: center; gap: 6px; padding: 6px 6px 0 7px; cursor: grab; }
+.lay-block.dragging .lay-block-head { cursor: grabbing; }
+.lay-block-icon { flex: 0 0 auto; width: 13px; height: 13px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.lay-block-icon svg { width: 13px; height: 13px; }
+.lay-block-name {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg);
+}
+.lay-block-del { flex: 0 0 auto; color: var(--muted); font-family: var(--mono); font-size: 13px; line-height: 1; padding: 2px 4px; }
+.lay-block-del:hover { color: var(--bad); }
+.lay-block-handle {
+  position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); border-radius: 0 0 6px 0;
+}
+.lay-block:hover .lay-block-handle, .lay-block.sel .lay-block-handle { border-color: var(--fg); }
+.lay-block-ghost {
+  position: absolute; z-index: 1; border: 1px dashed var(--fg); border-radius: 8px;
+  background: rgba(255, 255, 255, .08); pointer-events: none;
+}
+
+/* ── palette ──────────────────────────────────────────────────────────── */
+.lay-palette { flex: 0 0 200px; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.lay-palette-title {
+  font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+}
+.lay-palette-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 5px; overflow: auto; }
+.lay-palette-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
+  background: var(--chip); border: 1px solid var(--line); cursor: pointer;
+}
+.lay-palette-item:hover { border-color: var(--line-strong); }
+.lay-palette-item .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--fg); }
+.lay-palette-item .lay-block-icon { color: var(--muted); }
+.lay-palette-item.no-room { border-color: var(--bad); animation: lay-shake .5s; }
+@keyframes lay-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+/* ── action bar ───────────────────────────────────────────────────────── */
+.lay-actions {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-card); padding: 13px;
+}
+.lay-conflict-note { font-family: var(--mono); font-size: 11px; color: var(--bad); flex: 1 1 100%; }

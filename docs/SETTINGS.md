@@ -134,7 +134,11 @@ the right — the owner's chosen reference is macOS, the palette/type stay on to
 | `settings/dom.js` | `el()` (the same tiny DOM builder that used to be copy-pasted in `app.js`/`forms.js`/`taskbar-tab.js`), `groupCard(id, title, ...rows)`, `settingRow(title, help, control)` — the "card with rows" building blocks every new page uses. |
 | `settings/icons.js` | inline-SVG line icons (16x16, 1.5px stroke, no icon sets) — one per sidebar page plus a few utility glyphs (search, drag handle, trash, folder, check). |
 | `settings/i18n.js` | the ru/en dictionary + `makeT()`/`detectLang()` (unchanged shape) plus `SAVED_MARKERS` (both languages' "Saved" string, used by `api.js`'s `setStatus` to light the pill green without a separate flag). |
-| `settings/forms.js`, `settings/taskbar-tab.js`, `settings/layout-editor.js`, `settings/layout-model.js` | unchanged internals, reused by the pages below. `layout-editor.js`/`layout-model.js` belong to the next stage (block-card redesign) and were left untouched. |
+| `settings/forms.js`, `settings/taskbar-tab.js` | unchanged internals, reused by the pages below. |
+| `settings/layout-editor.js` | the Layout page's controller (`mountLayoutTab`): per-monitor working state, undo/redo history, the throttled `/layout/preview` channel, Apply/Cancel/Reset — see "Layout: canvas, live preview, Apply/Cancel/Undo" below. |
+| `settings/layout-model.js` | pure layout math shared with `settings/tests/layout-model.test.mjs` (`node --test`, no DOM): `clampToGrid`/`moveBlock`/`resizeBlock`/`validate`/`findOverlaps`/`findFreeSlot`/`addBlock`/`removeBlock`/`createHistory`/`defaultLayoutFor`. |
+| `settings/layout-canvas.js` | the canvas: monitor minimap, the editable grid (drag/resize/select/delete, keyboard shortcuts), and the widget palette — presentational only, reports intents to `layout-editor.js` via a small `actions` callback set. |
+| `settings/layout.css` | the Layout page's own stylesheet (`.lay-*` classes), loaded from `settings/index.html` after `design-system.css`. |
 | `settings/pages/*.js` | one module per sidebar page (see the table below). |
 | `settings/app.js` | now a one-line `import "./shell.js"` — kept only so `<script src="app.js">` still resolves if anything external still points at it. |
 
@@ -142,7 +146,7 @@ the right — the owner's chosen reference is macOS, the palette/type stay on to
 
 | # | Greek | Page key | Module | Notes |
 |---|---|---|---|---|
-| 1 | α | `layout` | `pages/layout.js` | thin wrapper around `layout-editor.js`'s `mountLayoutTab` — unchanged, owned by the next stage. |
+| 1 | α | `layout` | `pages/layout.js` | thin wrapper owning this page's own ru/en dictionary (`i18n.js` was being edited by another agent this stage) that delegates to `layout-editor.js`'s `mountLayoutTab` — see "Layout: canvas, live preview, Apply/Cancel/Undo" below. |
 | 2 | β | `blocks` | `pages/blocks.js` | widget/launch/events row list (icon + on/off toggle) on the left, `forms.js`-generated form on the right. The toggle flips `widgetSettings[id].enabled` (default true) — a forward-compatible flag, not read by any widget yet; full preview cards are a later stage. |
 | 3 | γ | `appearance` | `pages/appearance.js` | dim/radius/gap/pad/blur/fps/pause — the old geometry-only γ tab, rebuilt on `NNAUI.slider`/`NNAUI.toggle`. |
 | 4 | δ | `topbar` | `pages/topbar.js` | new page: our own always-on-top bar (`app.topBar`). Enable/monitors/height, style (segmented mode + color + opacity), auto-hide/reserve-space, and a drag-and-drop module editor across three zones (left/center/right, HTML5 DnD). Replaces the inline "top bar" section the old ζ tab used to render. |
@@ -152,6 +156,75 @@ the right — the owner's chosen reference is macOS, the palette/type stay on to
 | 8 | θ | `planner` | `pages/planner.js` | login status + what-to-show — old δ tab, carried over near-verbatim; redesign is a later stage. |
 | 9 | ι | `general` | `pages/general.js` | autostart, language, API port, updates, **microphone pick** (new — `GET/PUT /audio/capture-device`, used by the planner voice block), import from folder, data/log folders. |
 | 10 | κ | `about` | `pages/about.js` | new page: mark (`settings/assets/mark-white-64.png`, copied from `H:\brand\nna1618_mark_v2\png\nna1618_mark_white_64.png`), name, live version (`GET /health`), the `NNA1618 CLUSTER` signature, links (repository/releases/licenses/changelog), MIT note, "check updates" button. |
+
+### Layout: canvas, live preview, Apply/Cancel/Undo (owner decision D16)
+
+The Layout page (`pages/layout.js` + `layout-editor.js` + `layout-canvas.js` + `layout-model.js` +
+`layout.css`) is a monitor/grid/block editor built on live, flicker-free preview instead of
+autosave: every structural edit streams to the wallpaper via `POST /layout/preview` while you work,
+and only **Apply** writes it to `monitors.json`.
+
+- **Monitor source**: `liveMonitors` from `GET /config/full` is fetched once at shell boot and can
+  go stale, so the page re-fetches `GET /health` on every visit for fresh `id/name/width/height/x/y`
+  (same shape). `IHostApp.Monitors` is always empty under `--headless` (see `HeadlessHostApp.cs`),
+  so when there is still no live monitor after that, the page synthesizes one per entry in
+  `monitors.json` by parsing `"{name}|{w}x{h}"` out of its `id` and arranging them left to right —
+  this is what makes the page (and `tests/layout-editor-probe.mjs`) usable/testable headless, and
+  also keeps a temporarily-unplugged monitor's layout editable.
+- **Canvas** (`layout-canvas.js`, presentational only): a minimap of every monitor in its real
+  mutual position (hidden when there is only one), and a big editable grid for the selected
+  monitor — thin `Slate` grid lines honoring `colWeights`/`gap`/`pad`, hatched `Steel` bars for a
+  reserved top bar/dock (`app.topBar`/`app.dock`) when enabled, block cards (icon from
+  `settings/icons.js` by widget id, else the first letter; delete button; a single bottom-right
+  resize handle), a widget palette on the right (click adds via `layout-model.js`'s `addBlock`
+  auto-placement), and keyboard shortcuts on the focused canvas (arrows move, Shift+arrows resize,
+  Delete/Backspace removes, Ctrl+Z/Ctrl+Y undo/redo). Dragging shows a dashed "ghost" at the
+  snapped target cell while the card itself follows the pointer. It never mutates model state or
+  re-renders itself mid-gesture — see the `onBlockSelect` note in `layout-editor.js` below.
+- **Model** (`layout-model.js`, pure, DOM-free, `node --test`-covered): `clampToGrid`, `moveBlock`,
+  `resizeBlock`, `findOverlaps`/`validate`, `findFreeSlot`, `addBlock`, `removeBlock`, and
+  `createHistory(limit=55)` — a small deep-cloning undo/redo stack.
+- **Controller** (`layout-editor.js`): owns one working layout record per monitor (seeded from
+  `monitors.json`, defaulted via `defaultLayoutFor` for a monitor with no saved entry), a
+  `lastApplied` snapshot per monitor (the on-disk baseline), and a `layout-model` history per
+  monitor. Every structural change is throttled (80ms, leading+trailing) to `POST /layout/preview
+  {monitorId, blocks}` — nothing is sent on page open. **Apply** validates every monitor
+  client-side first (disabled otherwise), then `PUT /config {monitors:{...}}` (a 400 shows the
+  server's message via `onStatus` and leaves the working edit and its preview alone — no silent
+  revert). **Cancel** restores the selected monitor to `lastApplied` and re-sends its preview
+  immediately (not throttled) so the desktop snaps back. **Reset to default** asks
+  `NNAUI.dialog` for confirmation, then loads `GET /config/defaults?monitor=<id>` (falling back to
+  the same `defaultLayoutFor` the host's `LayoutResolver.cs` uses) into the working layout —
+  still just a preview until Apply. Leaving the page (or closing the window) with unapplied edits
+  re-previews every dirty monitor's `lastApplied` blocks so the desktop matches disk again — shell.js
+  has no page-lifecycle hook, so this is done with a `MutationObserver` watching the page root for
+  disconnection, plus a `beforeunload` listener as a backstop.
+  - **Why `onBlockSelect` never re-renders**: it fires from inside the block/handle's own
+    `pointerdown` handler in `layout-canvas.js`, *before* that handler calls
+    `setPointerCapture`/wires its `pointermove`/`pointerup` listeners. A synchronous full canvas
+    re-render at that point (`canvas.update()` rebuilds `.lay-grid`'s `innerHTML`) replaces the
+    very DOM node the gesture is about to capture, which implicitly releases pointer capture per
+    spec and silently breaks every drag/resize before it starts. The block/handle's own
+    `pointerup` always ends in a `commit: true` `onBlockMove`/`onBlockResize` call, which does
+    re-render — the `.sel` highlight lands right after release instead of before.
+- **CSS note**: `.lay-actions` (Apply/Cancel/Undo/Redo/Reset) is a normal in-flow bottom bar, not
+  `position: sticky` — a sticky element keeps its flow height but paints pinned to the viewport
+  edge, which on this page's height can visually collide with the canvas once the page scrolls.
+  Likewise `.lay-stage` aligns its grid `flex-start` (not `center`): a centered flex child taller
+  than its (possibly short) container overflows symmetrically on both sides, and browsers cannot
+  scroll to the part that overflowed *above*/*left of* the container's own box — `scrollIntoView`
+  and manual `scrollTop` both silently no-op. `.lay-grid` uses `margin: auto` instead, which still
+  centers it when it fits without any overflow-side effects.
+- **Probe**: `tests/layout-editor-probe.mjs [port]` (default 1633) starts its own throwaway
+  `--headless` host (own `--data` tmp dir seeded from a copy of `%LOCALAPPDATA%\NNA Wallpaper\config\`
+  plus a deterministic two-monitor `monitors.json` fixture — the owner's real vertical monitor is
+  single-column, which makes "drag one cell right" meaningless), drives it over CDP in headless
+  Edge at a forced 1100x720 viewport (`Emulation.setDeviceMetricsOverride` — `--headless=new`'s
+  `--window-size` is not reliable for the actual content viewport), and checks: drag STATS one
+  cell right (`/events/stats.sent` grows within ~400ms, DOM moves), Cancel (DOM reverts), drag +
+  Apply (`/config/full` persists, a `monitors.json.bak-*` appears), delete (DOM removes), Ctrl+Z
+  (DOM restores). Screenshots go to `H:\night-runs\nna-wallpaper-2\shots\stage4-layout-*.png`.
+  Stops its own host by PID; never touches the owner's live instance on 1618.
 
 ### `?tab=` compatibility
 
@@ -262,15 +335,20 @@ where the old tabs used them, dark theme, default size 1100x720, minimum 900x600
 блоки «карточка с группой строк», на которых построены новые страницы. `settings/icons.js` —
 inline-SVG линейные иконки (16×16, 1.5px), без готовых наборов. `settings/i18n.js` — тот же
 словарь ru/en плюс `SAVED_MARKERS` (строки «Сохранено»/«Saved» для подсветки плашки зелёным).
-`settings/forms.js`, `settings/taskbar-tab.js`, `settings/layout-editor.js`,
-`settings/layout-model.js` — без изменений логики (последние два — зона следующего этапа,
-редизайн карточек блоков). `settings/pages/*.js` — по одному модулю на страницу сайдбара.
+`settings/forms.js`, `settings/taskbar-tab.js` — без изменений логики. `settings/layout-editor.js` —
+контроллер страницы «Раскладка» (состояние по монитору, история отмены, троттлинг
+`/layout/preview`, Применить/Отменить/Сброс). `settings/layout-model.js` — чистая математика
+раскладки, покрыта `settings/tests/layout-model.test.mjs`. `settings/layout-canvas.js` — холст
+(мониторы, сетка, перетаскивание/растягивание, палитра виджетов), только представление. Детали —
+в разделе «Раскладка: холст, живой предпросмотр, Применить/Отменить/Отмена» ниже.
+`settings/pages/*.js` — по одному модулю на страницу сайдбара.
 `settings/app.js` — теперь `import "./shell.js"` в одну строку, оставлен для обратной
 совместимости.
 
 ### Страницы (порядок в сайдбаре)
 
-1. **Раскладка (α)** — `pages/layout.js`, обёртка над `layout-editor.js` без изменений.
+1. **Раскладка (α)** — `pages/layout.js`, тонкая обёртка (свой словарь ru/en, т.к. `i18n.js`
+   параллельно правит другой агент), делегирует `layout-editor.js`. Подробности — ниже.
 2. **Блоки (β)** — `pages/blocks.js`, список виджетов/запуска/событий строками (иконка +
    переключатель) слева, форма справа. Переключатель — `widgetSettings[id].enabled` (по умолчанию
    включён), на перспективу; ни один виджет пока его не читает.
@@ -292,6 +370,78 @@ inline-SVG линейные иконки (16×16, 1.5px), без готовых 
 10. **О программе (κ)** — новая страница `pages/about.js`: знак (`settings/assets/mark-white-64.png`,
     копия `H:\brand\nna1618_mark_v2\png\nna1618_mark_white_64.png`), версия из `/health`, подпись
     `NNA1618 CLUSTER`, ссылки, MIT.
+
+### Раскладка: холст, живой предпросмотр, Применить/Отменить/Отмена (решение владельца D16)
+
+Страница «Раскладка» (`pages/layout.js` + `layout-editor.js` + `layout-canvas.js` +
+`layout-model.js` + `layout.css`) — редактор мониторов/сетки/блоков на живом предпросмотре без
+автосохранения: каждое структурное изменение течёт на обои через `POST /layout/preview` сразу же,
+на диск пишет только кнопка **Применить**.
+
+- **Источник мониторов**: `liveMonitors` из `GET /config/full` получен один раз при загрузке окна
+  и может устареть, поэтому страница при каждом открытии дополнительно опрашивает `GET /health` за
+  свежими `id/name/width/height/x/y`. `IHostApp.Monitors` всегда пуст под `--headless` (см.
+  `HeadlessHostApp.cs`) — если живых мониторов всё равно нет, страница собирает их из
+  `monitors.json`, разбирая `id` вида `"{имя}|{ш}x{в}"` и расставляя слева направо; это и делает
+  страницу тестируемой без реального экрана (`tests/layout-editor-probe.mjs`), а заодно позволяет
+  редактировать раскладку временно отключённого монитора.
+- **Холст** (`layout-canvas.js`, только представление): миниатюра всех мониторов в реальном
+  взаимном расположении (скрыта при одном мониторе), крупная редактируемая сетка выбранного —
+  тонкие линии Slate с учётом `colWeights`/`gap`/`pad`, штриховка Steel для резерва верхней
+  строки/дока (`app.topBar`/`app.dock`), карточки блоков (иконка из `settings/icons.js` по id
+  виджета, иначе первая буква; кнопка удаления; одна ручка изменения размера в правом нижнем
+  углу), палитра виджетов справа (клик добавляет через авто-размещение `layout-model.js`
+  `addBlock`), клавиатура на сфокусированном холсте (стрелки — двигать, Shift+стрелки — менять
+  размер, Delete/Backspace — удалить, Ctrl+Z/Ctrl+Y — отмена/повтор). Перетаскивание рисует
+  штриховую тень-цель в снапнутой ячейке, сама карточка следует за курсором. Холст никогда не
+  меняет модель и не перерисовывает себя посреди жеста — см. заметку про `onBlockSelect` ниже.
+- **Модель** (`layout-model.js`, чистые функции, без DOM, покрыта `node --test`): `clampToGrid`,
+  `moveBlock`, `resizeBlock`, `findOverlaps`/`validate`, `findFreeSlot`, `addBlock`, `removeBlock`,
+  `createHistory(limit=55)` — небольшой стек отмены/повтора с глубоким клонированием снимков.
+- **Контроллер** (`layout-editor.js`): держит рабочую раскладку на каждый монитор (из
+  `monitors.json`, для монитора без записи — `defaultLayoutFor`), снимок `lastApplied` на монитор
+  (то, что реально на диске) и историю `layout-model` на монитор. Любое структурное изменение идёт
+  с троттлингом (80 мс, по переднему и заднему фронту) в `POST /layout/preview {monitorId,
+  blocks}` — при открытии страницы ничего не шлётся. **Применить** сначала проверяет валидность
+  всех мониторов на клиенте (иначе кнопка недоступна), затем `PUT /config {monitors:{...}}`
+  (при 400 текст ошибки показывается через `onStatus`, рабочее состояние и его предпросмотр не
+  сбрасываются). **Отменить** возвращает выбранный монитор к `lastApplied` и сразу (без
+  троттлинга) шлёт его предпросмотр, чтобы стол вернулся немедленно. **Сброс к умолчанию** просит
+  подтверждение через `NNAUI.dialog`, затем грузит `GET /config/defaults?monitor=<id>` (при ошибке
+  — тот же `defaultLayoutFor`, что и `LayoutResolver.cs` на хосте) в рабочую раскладку — тоже
+  только предпросмотр, до нажатия Применить. Уход со страницы (или закрытие окна) с неприменёнными
+  правками возвращает предпросмотр каждого «грязного» монитора к его `lastApplied` — у `shell.js`
+  нет хука жизненного цикла страницы, поэтому это сделано через `MutationObserver` за отключением
+  корня страницы от документа плюс `beforeunload` как страховка.
+  - **Почему `onBlockSelect` никогда не перерисовывает**: он вызывается изнутри обработчика
+    `pointerdown` самого блока/ручки в `layout-canvas.js`, ДО того как этот обработчик вызовет
+    `setPointerCapture` и подключит свои `pointermove`/`pointerup`. Синхронная полная перерисовка
+    холста в этот момент (`canvas.update()` перестраивает `innerHTML` у `.lay-grid`) заменяет тот
+    самый DOM-узел, на который жест только собирается захватить указатель — по спецификации это
+    неявно снимает захват указателя и молча ломает любое перетаскивание/изменение размера ещё до
+    его начала. Собственный `pointerup` блока/ручки всегда заканчивается вызовом
+    `onBlockMove`/`onBlockResize` с `commit: true`, который и перерисовывает — подсветка `.sel`
+    появляется сразу после отпускания, а не до него.
+- **Заметка про CSS**: `.lay-actions` (Применить/Отменить/Отмена последнего/Повторить/Сброс) —
+  обычная панель в потоке документа, не `position: sticky` — липкий элемент сохраняет высоту в
+  потоке, но рисуется прижатым к краю окна просмотра, из-за чего на высоте этой страницы он мог
+  визуально наложиться на холст при прокрутке. Аналогично `.lay-stage` выравнивает сетку по
+  `flex-start`, а не по центру: отцентрированный flex-элемент выше своего (возможно невысокого)
+  контейнера переполняет его симметрично с обеих сторон, а браузер не может прокрутить к части,
+  вышедшей ЗА пределы контейнера сверху/слева — `scrollIntoView` и ручной `scrollTop` в этом случае
+  молча ничего не делают. `.lay-grid` вместо этого использует `margin: auto` — по-прежнему
+  центрируется, когда помещается, без побочных эффектов переполнения.
+- **Проба**: `tests/layout-editor-probe.mjs [port]` (по умолчанию 1633) поднимает свой временный
+  `--headless`-хост (свой `--data`, копия `%LOCALAPPDATA%\NNA Wallpaper\config\` плюс
+  детерминированная заглушка `monitors.json` на два монитора — у настоящего вертикального монитора
+  владельца всего одна колонка, «сдвинуть на ячейку вправо» там бессмысленно), водит его по CDP в
+  headless Edge с принудительным вьюпортом 1100×720 (`Emulation.setDeviceMetricsOverride` —
+  `--window-size` у `--headless=new` не всегда даёт нужный вьюпорт контента), проверяет:
+  перетаскивание STATS на ячейку вправо (`/events/stats.sent` растёт за ~400 мс, блок сдвигается в
+  DOM), Отменить (блок возвращается), перетаскивание + Применить (`/config/full` меняется,
+  появляется `monitors.json.bak-*`), удаление (блок исчезает), Ctrl+Z (блок возвращается).
+  Скриншоты — в `H:\night-runs\nna-wallpaper-2\shots\stage4-layout-*.png`. Останавливает свой хост
+  по PID, экземпляр владельца на 1618 не трогает.
 
 ### Совместимость `?tab=`
 

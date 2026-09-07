@@ -8,6 +8,10 @@ import {
   findOverlaps,
   validateLayout,
   findFreeSlot,
+  addBlock,
+  removeBlock,
+  validate,
+  createHistory,
   defaultLayoutFor,
   defaultMain,
   defaultVertical,
@@ -127,4 +131,98 @@ test("defaultLayoutFor mirrors LayoutResolver: landscape -> main, portrait -> ve
 
   assert.equal(validateLayout({ cols: landscape.grid.cols, rows: landscape.grid.rows, blocks: landscape.blocks }).ok, true);
   assert.equal(validateLayout({ cols: portrait.grid.cols, rows: portrait.grid.rows, blocks: portrait.blocks }).ok, true);
+});
+
+test("addBlock places a new block in the first free slot and does not mutate the input", () => {
+  const layout = sampleLayout(); // 3 cols x 8 rows, top 4 rows fully occupied across all columns
+  const { layout: next, added, index } = addBlock(layout, "stats", { colSpan: 1, rowSpan: 1 });
+  assert.equal(added, true);
+  assert.equal(index, 3);
+  assert.equal(next.blocks.length, 4);
+  assert.deepEqual(next.blocks[3], { widget: "stats", col: 1, row: 5, colSpan: 1, rowSpan: 1 });
+  assert.equal(layout.blocks.length, 3); // original untouched
+
+  // default size is 1x1 when no size is given
+  const { layout: next2 } = addBlock(layout, "eq");
+  assert.deepEqual(next2.blocks[3].colSpan, 1);
+  assert.deepEqual(next2.blocks[3].rowSpan, 1);
+});
+
+test("addBlock reports added:false and returns the same layout reference when there is no room", () => {
+  const fullLayout = { cols: 1, rows: 1, blocks: [{ widget: "x", col: 1, colSpan: 1, row: 1, rowSpan: 1 }] };
+  const result = addBlock(fullLayout, "y", { colSpan: 1, rowSpan: 1 });
+  assert.equal(result.added, false);
+  assert.equal(result.index, -1);
+  assert.equal(result.layout, fullLayout);
+});
+
+test("removeBlock drops the block at index and does not mutate the input", () => {
+  const layout = sampleLayout();
+  const next = removeBlock(layout, 1);
+  assert.equal(next.blocks.length, 2);
+  assert.deepEqual(next.blocks.map((b) => b.widget), ["eq", "weather"]);
+  assert.equal(layout.blocks.length, 3); // original untouched
+
+  // out-of-range index is a no-op clone
+  const untouched = removeBlock(layout, 99);
+  assert.deepEqual(untouched.blocks.map((b) => b.widget), ["eq", "focus", "weather"]);
+});
+
+test("validate is the same check as validateLayout", () => {
+  const ok = sampleLayout();
+  assert.deepEqual(validate(ok), validateLayout(ok));
+  const bad = moveBlock(ok, 1, 1, 1);
+  assert.deepEqual(validate(bad), validateLayout(bad));
+});
+
+test("createHistory: push records undo steps, undo/redo walk them, push after undo drops the redo branch", () => {
+  const h = createHistory(55);
+  h.init({ n: 0 });
+  h.push({ n: 1 });
+  h.push({ n: 2 });
+  h.push({ n: 3 });
+  assert.equal(h.current.n, 3);
+  assert.equal(h.canUndo(), true);
+  assert.equal(h.canRedo(), false);
+
+  assert.equal(h.undo().n, 2);
+  assert.equal(h.undo().n, 1);
+  assert.equal(h.canRedo(), true);
+  assert.equal(h.redo().n, 2);
+
+  // pushing a new state after undoing drops the abandoned redo branch
+  h.push({ n: 99 });
+  assert.equal(h.canRedo(), false);
+  assert.equal(h.current.n, 99);
+
+  // undo() on an empty past stack is a no-op that returns the current state
+  const empty = createHistory();
+  empty.init({ n: "start" });
+  assert.equal(empty.undo().n, "start");
+  assert.equal(empty.canUndo(), false);
+});
+
+test("createHistory: caps the undo stack at `limit` past states", () => {
+  const h = createHistory(3);
+  h.init({ n: 0 });
+  for (let i = 1; i <= 10; i++) h.push({ n: i });
+  // only the last 3 past states survive; undoing further than that just stops at the oldest kept
+  assert.equal(h.undo().n, 9);
+  assert.equal(h.undo().n, 8);
+  assert.equal(h.undo().n, 7);
+  assert.equal(h.canUndo(), false);
+});
+
+test("createHistory: snapshots are deep clones, not references to caller-owned objects", () => {
+  const h = createHistory();
+  const state = { blocks: [{ widget: "eq" }] };
+  h.init(state);
+  state.blocks[0].widget = "mutated-after-init";
+  assert.equal(h.current.blocks[0].widget, "eq");
+
+  const pushed = { blocks: [{ widget: "focus" }] };
+  h.push(pushed);
+  pushed.blocks[0].widget = "mutated-after-push";
+  h.push({ blocks: [] });
+  assert.equal(h.undo().blocks[0].widget, "focus");
 });
