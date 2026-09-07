@@ -4,6 +4,26 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-07
+
+### Added
+- Design system v3 (`ui/`): brand palette tokens, Roboto Flex + JetBrains Mono (SIL OFL, bundled),
+  type roles and Fibonacci spacing, own UI components (select, toggle, slider, segmented, popover,
+  menu, tooltip, dialog, scrollbars) shared by the wallpaper page, settings and top bar.
+- Live updates channel: WebSocket `/events` (`config-changed`, `layout-preview`), `POST /layout/preview`,
+  `GET /events/stats`. Settings changes reach the wallpaper page as messages; only the affected block
+  is re-rendered. Widget lifecycle (`ctx.setInterval/setTimeout/raf/on/onDispose`).
+
+### Changed
+- The wallpaper page is no longer reloaded on every settings change (`app.liveUpdates`, default true);
+  a full reload happens only when the set of monitors changes.
+- One brand theme: the page no longer applies `theme.palette`/`theme.fonts`; old font names in
+  `app.json` are migrated to the v3 pair.
+- Kharkiv Tone and DM Mono removed.
+
+### Fixed
+- CI smoke test compared the version with a stale literal.
+
 ## [0.2.0] - 2026-09-07
 
 ### Added
