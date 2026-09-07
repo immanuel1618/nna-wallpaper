@@ -5,7 +5,14 @@
   'use strict';
   var N = window.NNA, C = N.config, L = C.labels || {}, EV = C.events || {};
   var PER = EV.perPage || 3;
-  var MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  var MONTHS_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+  // Русское склонение "1 день / 2 дня / 5 дней" — тот же приём, что для дисков в
+  // widgets/stats/widget.js (ключи *_1/*_2/*_5 в wallpaper/i18n.js).
+  function pluralKey(base, n) {
+    var m10 = n % 10, m100 = n % 100;
+    return (m10 === 1 && m100 !== 11) ? base + '_1' : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? base + '_2' : base + '_5';
+  }
 
   N.events = function (mount, ctx) {
     var b = N.block('events', L.events || 'EVENTS', { needsHelper: true });
@@ -40,11 +47,11 @@
         var d = parseDate(e.date); if (!d) return;
         var past = d.getTime() < now - 86400000;
         if (past) return;
-        out.push({ kind: 'event', label: e.label || 'EVENT', at: d });
+        out.push({ kind: 'event', label: e.label || N.t('evEvent', 'EVENT'), at: d });
       });
       (data.daily || []).forEach(function (e) {
         var d = nextDaily(e.time); if (!d) return;
-        out.push({ kind: 'daily', label: e.label || 'DAILY', at: d, time: e.time });
+        out.push({ kind: 'daily', label: e.label || N.t('evDaily', 'DAILY'), at: d, time: e.time });
       });
       out.sort(function (a, c) { return a.at - c.at; });
       items = out;
@@ -52,7 +59,7 @@
       if (page >= pages) page = pages - 1;
       renderPage();
     }
-    function fmtDate(d) { return N.pad2(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+    function fmtDate(d) { var months = N.t('months', MONTHS_EN); return N.pad2(d.getDate()) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear(); }
     function renderPage() {
       list.textContent = ''; cards = [];
       var pages = Math.max(1, Math.ceil(items.length / PER));
@@ -68,7 +75,7 @@
         var k = N.el('div', 'ev-k nna-mono', it.label);
         var v = N.el('div', 'ev-v nna-big', '');
         var u = N.el('div', 'ev-u nna-mono', '');
-        var s = N.el('div', 'ev-s nna-mono', it.kind === 'daily' ? 'DAILY · ' + it.time : fmtDate(it.at));
+        var s = N.el('div', 'ev-s nna-mono', it.kind === 'daily' ? N.t('evDaily', 'DAILY') + ' · ' + it.time : fmtDate(it.at));
         card.appendChild(k); card.appendChild(v); card.appendChild(u); card.appendChild(s);
         list.appendChild(card);
         cards.push({ it: it, v: v, u: u });
@@ -83,11 +90,11 @@
         var s = Math.max(0, Math.floor(diff / 1000));
         var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
         if (c.it.kind === 'event') {
-          if (d >= 1) { c.v.textContent = d < 100 ? N.pad2(d) : String(d); c.u.textContent = d === 1 ? 'DAY' : 'DAYS'; }
-          else { c.v.textContent = N.pad2(h) + ':' + N.pad2(m); c.u.textContent = diff <= 0 ? 'TODAY' : 'HOURS LEFT'; }
+          if (d >= 1) { c.v.textContent = d < 100 ? N.pad2(d) : String(d); c.u.textContent = N.t(pluralKey('evDay', d), d === 1 ? 'DAY' : 'DAYS'); }
+          else { c.v.textContent = N.pad2(h) + ':' + N.pad2(m); c.u.textContent = diff <= 0 ? N.t('evToday', 'TODAY') : N.t('evHoursLeft', 'HOURS LEFT'); }
         } else {
           c.v.textContent = h > 0 ? N.pad2(h) + ':' + N.pad2(m) : N.pad2(m) + ':' + N.pad2(r);
-          c.u.textContent = h > 0 ? 'H : M' : 'M : S';
+          c.u.textContent = h > 0 ? N.t('evHM', 'H : M') : N.t('evMS', 'M : S');
         }
       });
     }
@@ -105,7 +112,7 @@
     prev.addEventListener('click', function () { if (page > 0) { page--; renderPage(); } });
     next.addEventListener('click', function () { if ((page + 1) * PER < items.length) { page++; renderPage(); } });
     edit.addEventListener('click', function () {
-      N.post('/edit?what=events').then(function (r) { N.toast(r && r.ok ? 'OPENING EVENTS.JSON' : (r && r.error) || N.t('failed', 'FAILED')); },
+      N.post('/edit?what=events').then(function (r) { N.toast(r && r.ok ? N.t('eventsOpening', 'OPENING EVENTS.JSON') : (r && r.error) || N.t('failed', 'FAILED')); },
         function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); });
     });
 

@@ -42,7 +42,7 @@
         btn.classList.remove('is-busy');
         var ok = !!(r && r.ok);
         flash(btn, ok);
-        if (ok) N.toast((kind === 'group' ? 'GROUP ' : '') + label + ' · LAUNCHED');
+        if (ok) N.toast((kind === 'group' ? N.t('launchGroup', 'GROUP') + ' ' : '') + label + ' · ' + N.t('launchLaunched', 'LAUNCHED'));
         else N.toast(label + ' · ' + ((r && r.failed && r.failed.length) ? N.t('failed', 'FAILED') + ': ' + r.failed.join(', ').toUpperCase() : (r && r.error) || N.t('failed', 'FAILED')));
       }, function () {
         btn.classList.remove('is-busy');
@@ -146,7 +146,7 @@
       });
     }
     edit.addEventListener('click', function () {
-      N.post('/edit?what=launch').then(function (r) { N.toast(r && r.ok ? 'OPENING LAUNCH.JSON' : (r && r.error) || N.t('failed', 'FAILED')); },
+      N.post('/edit?what=launch').then(function (r) { N.toast(r && r.ok ? N.t('launchOpening', 'OPENING LAUNCH.JSON') : (r && r.error) || N.t('failed', 'FAILED')); },
         function () { N.toast(N.t('helperOffline', 'HELPER OFFLINE')); });
     });
 
