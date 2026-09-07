@@ -48,15 +48,16 @@ public sealed class DesktopHost
         var ex = PInvoke.GetWindowLong(Progman, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
         NewDesktop = (ex & WS_EX_NOREDIRECTIONBITMAP) != 0;
 
-        // Ask explorer to create the wallpaper worker layer (safe in both modes). Retry once after 500 ms.
-        for (var attempt = 0; attempt < 2; attempt++)
+        // Look for an existing worker layer first; ask explorer to create one (0x052C) only when it is
+        // missing, so an already-present layer is never duplicated. Retry once after 500 ms.
+        Locate();
+        for (var attempt = 0; attempt < 2 && WorkerW == HWND.Null; attempt++)
         {
             nuint result = 0;
             PInvoke.SendMessageTimeout(Progman, WM_SPAWN_WORKER, (WPARAM)0xD, (LPARAM)0x1,
                 SEND_MESSAGE_TIMEOUT_FLAGS.SMTO_NORMAL, 1000, &result);
-            Locate();
-            if (WorkerW != HWND.Null) break;
             Thread.Sleep(500);
+            Locate();
         }
 
         _log.Info($"desktop: mode={Mode} progman=0x{(nint)Progman:X} workerw=0x{(nint)WorkerW:X} defview=0x{(nint)DefView:X}");

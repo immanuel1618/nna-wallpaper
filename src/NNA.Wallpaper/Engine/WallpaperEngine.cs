@@ -80,7 +80,6 @@ public sealed class WallpaperEngine : IHostApp, IDisposable
         _log.Info("webview2 runtime " + _env.BrowserVersionString);
 
         await CreateWindowsAsync();
-        DesktopHost.RefreshDesktop();
 
         _input = new InputBridge(_desktop, () => _windows, _log);
         _input.Start();
@@ -174,7 +173,11 @@ public sealed class WallpaperEngine : IHostApp, IDisposable
         if (_disposed || _reattaching) return;
         var parentAlive = _desktop.IsAlive();
         var windowsAlive = _windows.Count > 0 && _windows.All(w => w.IsAlive);
-        if (parentAlive && windowsAlive) return;
+        if (parentAlive && windowsAlive)
+        {
+            foreach (var w in _windows) w.EnsureBottom(); // keep the surface below the icon layer
+            return;
+        }
         _ = ReattachAsync(parentAlive ? "wallpaper window destroyed" : "desktop layer destroyed");
     }
 

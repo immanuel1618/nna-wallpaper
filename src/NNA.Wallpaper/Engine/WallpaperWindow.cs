@@ -196,6 +196,14 @@ public sealed class WallpaperWindow : IDisposable
 
     public bool IsAlive => Hwnd != HWND.Null && PInvoke.IsWindow(Hwnd);
 
+    /// <summary>Re-assert the bottom z-order position without moving or activating the window.</summary>
+    public void EnsureBottom()
+    {
+        if (!IsAlive) return;
+        PInvoke.SetWindowPos(Hwnd, HwndBottom, 0, 0, 0, 0,
+            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+    }
+
     /// <summary>Re-read the monitor rectangle (after display change) and move the window accordingly.</summary>
     public void Update(MonitorInfo monitor)
     {
