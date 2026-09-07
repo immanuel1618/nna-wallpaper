@@ -51,6 +51,7 @@ public sealed class ApiRequest
         // Every response: browsers must not MIME-sniff a served file (e.g. a widget icon) into
         // something executable and run it as such.
         Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.Headers["X-Frame-Options"] = "DENY"; // our pages are never framed; blocks clickjacking from a browser tab
         if (cacheControl is not null) Response.Headers["Cache-Control"] = cacheControl;
         Response.ContentLength64 = data.Length;
         try

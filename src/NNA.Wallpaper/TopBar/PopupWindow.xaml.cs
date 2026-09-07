@@ -114,19 +114,26 @@ public partial class PopupWindow : Window
 
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        JsonNode? d;
-        try { d = JsonNode.Parse(e.WebMessageAsJson); }
-        catch { return; }
-        var type = d?["type"]?.GetValue<string>();
-        if (type == "size")
+        // A malformed message (non-numeric width, wrong shape) must never throw out of a WebView2
+        // event handler: that would take the whole process down (same guard as DockWindow).
+        try
         {
-            var w = d!["width"]?.GetValue<double>() ?? 320;
-            var h = d["height"]?.GetValue<double>() ?? 200;
-            Dispatcher.BeginInvoke(() => Reposition(w, h));
+            var d = JsonNode.Parse(e.WebMessageAsJson);
+            var type = d?["type"]?.GetValue<string>();
+            if (type == "size")
+            {
+                var w = d!["width"] is JsonValue wv && wv.TryGetValue<double>(out var wd) ? wd : 320;
+                var h = d["height"] is JsonValue hv && hv.TryGetValue<double>(out var hd) ? hd : 200;
+                Dispatcher.BeginInvoke(() => Reposition(w, h));
+            }
+            else if (type == "close")
+            {
+                Dispatcher.BeginInvoke(SafeClose);
+            }
         }
-        else if (type == "close")
+        catch (Exception ex)
         {
-            Dispatcher.BeginInvoke(SafeClose);
+            _ctx.Log.Warn("popup web message ignored: " + ex.Message);
         }
     }
 
@@ -175,7 +182,7 @@ public partial class PopupWindow : Window
             // comes from a window region. The system owns the region after SetWindowRgn.
             var r = (int)Math.Round(13 * _scale) * 2;
             var rgn = PInvoke.CreateRoundRectRgn(0, 0, wPx + 1, hPx + 1, r, r);
-            if (!rgn.IsNull) PInvoke.SetWindowRgn(hwnd, rgn, true);
+            if (!rgn.IsNull && PInvoke.SetWindowRgn(hwnd, rgn, true) == 0) PInvoke.DeleteObject(rgn);
         }
     }
 

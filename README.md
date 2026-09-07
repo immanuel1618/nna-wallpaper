@@ -157,6 +157,7 @@ API token as the `X-Token` header or a `t` query parameter. Full route reference
   - `planner-session.json`: the NNA Planner login session, encrypted with Windows DPAPI for the
     current user.
   - `cache/avatar.jpg`: your cached Telegram avatar, once signed in.
+  - `cache/preview-<id>.png`: live block previews for the settings page, refreshed every 10 minutes.
   - `cursors-backup.json`: your original cursor scheme, saved before the first cursor apply.
   - `taskbar-backup.json`: your original Windows taskbar registry values, saved before the first
     taskbar style is applied.
@@ -343,6 +344,7 @@ Start) или когда курсор реально над ней. См. раз
   - `planner-session.json`: сессия входа в NNA Planner, зашифрована Windows DPAPI для текущего
     пользователя.
   - `cache/avatar.jpg`: кэш вашего аватара из Telegram после входа.
+  - `cache/preview-<id>.png`: живые превью блоков для окна настроек, обновляются раз в 10 минут.
   - `cursors-backup.json`: исходная схема курсоров, сохранённая перед первым применением.
   - `taskbar-backup.json`: исходные значения реестра панели задач Windows, сохранённые перед
     первым применением стиля.

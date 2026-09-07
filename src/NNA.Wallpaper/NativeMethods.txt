@@ -106,3 +106,4 @@ WindowFromPoint
 // Popup window rounded corners (PopupWindow).
 CreateRoundRectRgn
 SetWindowRgn
+DeleteObject

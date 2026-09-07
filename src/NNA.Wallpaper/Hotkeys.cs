@@ -162,6 +162,17 @@ public sealed class Hotkeys : IDisposable
 
     private void OnHotkeyPressed()
     {
+        try { OnHotkeyPressedCore(); }
+        catch (Exception ex)
+        {
+            _ctx.Log.Error("hotkey press failed", ex);
+            try { _pollTimer?.Stop(); _pollTimer = null; _safetyTimer?.Stop(); _safetyTimer = null; } catch { }
+            BroadcastRec(false);
+        }
+    }
+
+    private void OnHotkeyPressedCore()
+    {
         if (_pollTimer is not null) return; // a press is already being handled
 
         if (_testAudioPath is not null)
@@ -234,7 +245,9 @@ public sealed class Hotkeys : IDisposable
         if (_dispatcher.CheckAccess()) StopTimers();
         else _dispatcher.Invoke(StopTimers);
 
-        var bytes = _voice?.Stop();
+        byte[]? bytes = null;
+        try { bytes = _voice?.Stop(); }
+        catch (Exception ex) { _ctx.Log.Error("voice capture stop failed", ex); }
         BroadcastRec(false);
         SendCaptured(bytes, source);
     }

@@ -12,7 +12,7 @@ Source of truth: `src/NNA.Wallpaper.Host/HostServices.cs`, `src/NNA.Wallpaper.Ho
 `src/NNA.Wallpaper/App.xaml.cs` (`RegisterAppRoutes`, for routes that need the WPF shell rather
 than the host library alone). This document only lists routes that exist in that code.
 
-Legend: the **Token** column reads "no" for GET/HEAD (never needed) and "yes" for a POST/PUT/DELETE
+Legend: the **Token** column reads "no" for GET/HEAD and "yes" for a POST/PUT/DELETE. Sensitive GET routes (config, windows, audio sessions, dock, planner, system, cursor, launch, events, widget previews) additionally refuse cross-site browser requests by `Sec-Fetch-Site`; `GET /config` returns the `token` field only to same-origin requests. Every response carries `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY`
 route (the uniform token rule above applies; there are no exceptions to it in the code).
 
 ## Host core
@@ -126,9 +126,9 @@ route (the uniform token rule above applies; there are no exceptions to it in th
 | `/planner/done` | POST | yes | marks a task done, `{ok:bool}` |
 | `/planner/habit` | POST | yes | checks off a habit, `{ok:bool}` |
 | `/planner/capture` | POST | yes | adds an entry by text or voice (base64 audio, 12 MB cap) |
-| `/planner/login` | GET | no | opens the Telegram Login Widget window |
+| `/planner/login` | POST | yes | opens the Telegram Login Widget window (the window mints a one-time `state`) |
 | `/planner/logout` | POST | yes | clears the local session, `{ok:true}` |
-| `/planner/callback` | GET | no | receives the Telegram Login Widget redirect (no token: called by the login page itself, before a session exists) |
+| `/planner/callback` | GET | no | receives the Telegram Login Widget redirect; requires the one-time `state` issued by the login window (403 otherwise) |
 | `/planner/input` | POST | yes | opens the top-level text-entry window (InputWindow) at a widget's screen position |
 | `/planner/test-delete` | POST | yes | test-only: deletes a captured test entry |
 | `/planner/undo` | POST | yes | undoes the last capture within its 5-second window |

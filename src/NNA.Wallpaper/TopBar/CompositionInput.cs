@@ -77,6 +77,9 @@ public sealed class CompositionInput
 
             case PInvoke.WM_MOUSELEAVE:
                 _tracking = false;
+                // During a captured drag the pointer legitimately leaves the window; a Leave here
+                // would kill the gesture inside the page. The button-up ends it instead.
+                if (_leftDown || _middleDown) return true;
                 _comp.SendMouseInput(CoreWebView2MouseEventKind.Leave, CoreWebView2MouseEventVirtualKeys.None, 0, default);
                 return true;
 

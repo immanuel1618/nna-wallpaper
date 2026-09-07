@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
@@ -231,13 +232,11 @@ public sealed class EventsService : IHostService, IDisposable
         }
 
         var bytes = Encoding.UTF8.GetBytes(Json.Serialize(payload));
-        foreach (var ws in snapshot)
+        // Clients are sent to in parallel: one slow client must not delay the others.
+        await Task.WhenAll(snapshot.Select(async ws =>
         {
-            if (!await TrySendAsync(ws, bytes).ConfigureAwait(false))
-            {
-                RemoveClient(ws);
-            }
-        }
+            if (!await TrySendAsync(ws, bytes).ConfigureAwait(false)) RemoveClient(ws);
+        })).ConfigureAwait(false);
     }
 
     /// <summary>

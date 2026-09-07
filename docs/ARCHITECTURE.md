@@ -54,7 +54,7 @@ one WebView2 control:
    window sets `RasterizationScale` from `GetDpiForMonitor` for the monitor it is on, and reacts to
    `WM_DPICHANGED` / display-settings-changed by recomputing it.
 7. Input: mouse and keyboard reach the wallpaper windows because they are real (if invisible)
-   windows in the desktop's window tree: no global hooks are used. Right-click still opens the
+   windows in the desktop's window tree: no global hooks are used for the wallpaper input. The only low-level hook in the app is the optional `WH_KEYBOARD_LL` of the taskbar mode `win-only` (watches the Win key alone, logs nothing, removed on pause and exit; see docs/TASKBAR.md). Right-click still opens the
    normal desktop context menu. Typing into a widget's own input field is not done through the
    wallpaper window at all: it opens a small top-level WPF text-entry window that takes real
    keyboard focus and hands the typed text to the page through `PostWebMessageAsJson`. Voice input
