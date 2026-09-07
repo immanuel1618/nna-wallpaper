@@ -40,6 +40,8 @@ const WINDOWS_TOGGLES = [
 
 function defaultSurfaceStyle() { return { mode: "normal", color: "#0B0B0B", opacity: 0.5 }; }
 
+const WINDOWS_MODES = ["normal", "autohide", "win-only"];
+
 function defaultTaskbar() {
   return {
     enabled: false,
@@ -47,7 +49,11 @@ function defaultTaskbar() {
     normal: defaultSurfaceStyle(),
     maximized: { mode: "opaque", color: "#0B0B0B", opacity: 1 },
     fullscreen: defaultSurfaceStyle(),
-    windows: Object.fromEntries(WINDOWS_TOGGLES.map((k) => [k, null])),
+    // "mode" (not yet a real field on TaskbarWindowsSettings — lands with a parallel branch,
+    // see docs/SETTINGS.md "Панель задач: режим Windows") sits alongside the tri-state toggles
+    // below; until the C# side ships this is accepted by PUT /config and silently dropped, same
+    // as app.dock (see settings/pages/dock.js) — the select still shows "normal" either way.
+    windows: { mode: "normal", ...Object.fromEntries(WINDOWS_TOGGLES.map((k) => [k, null])) },
     secondary: true,
   };
 }
@@ -126,9 +132,11 @@ export function mountTaskbarTab(container, ctx) {
     container.append(
       renderPresetSection(),
       el("div", { class: "hr" }),
-      renderWindowsSection(),
-      el("div", { class: "hr" }),
-      renderTopBarSection());
+      renderWindowsSection());
+    // topBar (our own top bar) now has its own page (settings/pages/topbar.js); this section stays
+    // available for callers that still want it inline (ctx.showTopBar), off by default when unset
+    // so a caller has to opt in explicitly.
+    if (ctx.showTopBar) container.append(el("div", { class: "hr" }), renderTopBarSection());
   }
 
   // ── 1. Preset ─────────────────────────────────────────────────
@@ -296,6 +304,11 @@ export function mountTaskbarTab(container, ctx) {
     box.append(el("div", { class: "setrow" },
       el("div", { class: "main" }, el("div", { class: "t", text: t("taskbarEnabled") })),
       switchEl(!!taskbar.enabled, (on) => { taskbar.enabled = on; })));
+
+    const modeSelect = el("select");
+    for (const m of WINDOWS_MODES) modeSelect.append(el("option", { value: m, selected: m === (taskbar.windows.mode || "normal"), text: t("windowsMode_" + m.replace("-", "")) }));
+    modeSelect.addEventListener("change", (e) => { taskbar.windows.mode = e.target.value; });
+    box.append(el("div", { class: "field" }, el("label", { text: t("windowsModeLabel") }), modeSelect, el("div", { class: "hint", text: t("windowsModeHint") })));
 
     const statusNote = el("div", { class: "hint" });
     box.append(statusNote);
