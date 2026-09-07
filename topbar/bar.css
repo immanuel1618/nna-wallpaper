@@ -84,3 +84,28 @@ html, body {
   text-overflow: ellipsis;
   max-width: 34vw;
 }
+
+/* ---- v2-модули: control/volume/network/battery/layout/nna -------------------------------- */
+.tb-nna svg { display: block; height: 13px; width: 13px; fill: currentColor; }
+.tb-layout { font-size: 10px; letter-spacing: 0.14em; }
+.tb-battery.is-charging .tb-icon { color: var(--white); }
+
+/* ---- tooltip: один переиспользуемый div из TB.tooltip (topbar/bar.js) -------------------- */
+.tb-tooltip {
+  position: fixed;
+  z-index: 1100;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-body);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.tb-tooltip.is-show { opacity: 1; }

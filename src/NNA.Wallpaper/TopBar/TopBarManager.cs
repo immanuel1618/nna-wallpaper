@@ -12,6 +12,7 @@ public sealed class TopBarManager : IDisposable
     private readonly HostContext _ctx;
     private readonly Dispatcher _dispatcher;
     private readonly List<TopBarWindow> _bars = new();
+    private readonly Dictionary<string, PopupWindow> _popups = new();
     private readonly DispatcherTimer _timer;
     private bool _disposed;
 
@@ -40,6 +41,7 @@ public sealed class TopBarManager : IDisposable
             try
             {
                 var bar = new TopBarWindow(_ctx, m, cfg);
+                bar.PopupRequested += OnPopupRequested;
                 bar.Show();
                 _bars.Add(bar);
             }
@@ -86,8 +88,68 @@ public sealed class TopBarManager : IDisposable
 
     private void OnDisplayChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(Apply);
 
+    // ---- popovers --------------------------------------------------------------------------
+
+    private void OnPopupRequested(TopBarWindow bar, string module, double anchorXCss, double anchorWCss)
+        => TogglePopup(bar, module, anchorXCss, anchorWCss);
+
+    /// <summary>Opens the popover for <paramref name="module"/> anchored under the topbar element
+    /// that requested it; a second call for the module already open on that monitor closes it
+    /// instead ("повторный клик по тому же модулю закрывает"). Opening a different module on a
+    /// monitor that already has one open replaces it.</summary>
+    private void TogglePopup(TopBarWindow bar, string module, double anchorXCss, double anchorWCss)
+    {
+        var monitorId = bar.Monitor.Id;
+        if (_popups.TryGetValue(monitorId, out var existing))
+        {
+            var sameModule = string.Equals(existing.Module, module, StringComparison.Ordinal);
+            ClosePopup(monitorId);
+            if (sameModule) return;
+        }
+
+        var scale = bar.Monitor.Scale <= 0 ? 1.0 : bar.Monitor.Scale;
+        var anchorCenterXPhysical = bar.Monitor.Left + (int)Math.Round((anchorXCss + anchorWCss / 2.0) * scale);
+        var topYPhysical = bar.Monitor.Top + bar.HeightPx;
+
+        try
+        {
+            var popup = new PopupWindow(_ctx, bar.Monitor, module, anchorCenterXPhysical, topYPhysical);
+            popup.PopupClosed += OnPopupClosed;
+            _popups[monitorId] = popup;
+            popup.Show();
+        }
+        catch (Exception ex)
+        {
+            _ctx.Log.Error("top bar popup open (" + module + ")", ex);
+        }
+    }
+
+    private void OnPopupClosed(PopupWindow popup)
+    {
+        if (_popups.TryGetValue(popup.MonitorId, out var current) && ReferenceEquals(current, popup))
+            _popups.Remove(popup.MonitorId);
+    }
+
+    private void ClosePopup(string monitorId)
+    {
+        if (!_popups.Remove(monitorId, out var popup)) return;
+        popup.PopupClosed -= OnPopupClosed;
+        try { popup.Close(); } catch { }
+    }
+
+    private void CloseAllPopups()
+    {
+        foreach (var popup in _popups.Values.ToList())
+        {
+            popup.PopupClosed -= OnPopupClosed;
+            try { popup.Close(); } catch { }
+        }
+        _popups.Clear();
+    }
+
     private void Close()
     {
+        CloseAllPopups();
         foreach (var b in _bars)
         {
             try { b.Close(); } catch { }

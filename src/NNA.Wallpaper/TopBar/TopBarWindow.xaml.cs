@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -35,6 +36,12 @@ public partial class TopBarWindow : Window
 
     public MonitorInfo Monitor { get; private set; }
     public int HeightPx => Math.Clamp(_cfg.Height, 20, 64);
+
+    /// <summary>Raised when the page asks to open/toggle a popover: {type:'popup', module, anchorX,
+    /// anchorW} (CSS px, relative to this bar's own client area). anchorX/anchorW let the caller
+    /// (TopBarManager) compute a physical screen X to centre the popup under, without this window
+    /// needing to know anything about popups itself.</summary>
+    public event Action<TopBarWindow, string, double, double>? PopupRequested;
 
     public TopBarWindow(HostContext ctx, MonitorInfo monitor, TopBarSettings cfg)
     {
@@ -153,6 +160,7 @@ public partial class TopBarWindow : Window
             s.IsZoomControlEnabled = false;
             s.AreBrowserAcceleratorKeysEnabled = false;
             Browser.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
+            Browser.CoreWebView2.WebMessageReceived += OnWebMessage;
             Browser.CoreWebView2.Navigate(_ctx.BaseUrl + "/topbar/?monitor=" + Uri.EscapeDataString(Monitor.Id));
         }
         catch (Exception ex)
@@ -164,6 +172,21 @@ public partial class TopBarWindow : Window
     public void Reload()
     {
         try { Browser.CoreWebView2?.Reload(); } catch { }
+    }
+
+    /// <summary>Only handles {type:'popup', ...} — everything else the page sends the host is
+    /// handled elsewhere (currently nothing else posts from the topbar page to the host).</summary>
+    private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        JsonNode? d;
+        try { d = JsonNode.Parse(e.WebMessageAsJson); }
+        catch { return; }
+        if (d?["type"]?.GetValue<string>() != "popup") return;
+        var module = d["module"]?.GetValue<string>();
+        if (string.IsNullOrEmpty(module)) return;
+        var anchorX = d["anchorX"]?.GetValue<double>() ?? 0;
+        var anchorW = d["anchorW"]?.GetValue<double>() ?? 0;
+        PopupRequested?.Invoke(this, module, anchorX, anchorW);
     }
 
     public void PostJson(string json)

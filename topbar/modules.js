@@ -23,6 +23,14 @@
     pause: 'M6 5h4v14H6zm8 0h4v14h-4z'
   };
 
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  function svgTag(tag, attrs) {
+    var el = document.createElementNS(SVG_NS, tag);
+    for (var k in attrs) { if (attrs.hasOwnProperty(k)) el.setAttribute(k, attrs[k]); }
+    return el;
+  }
+  function svgRoot(viewBox) { return svgTag('svg', { viewBox: viewBox || '0 0 24 24' }); }
+
   /* ---- brand: «NNA», клик -> POST /app/settings -------------------------- */
   window.TopBarModules.brand = function (el, ctx) {
     el.classList.add('tb-clickable');
@@ -50,8 +58,10 @@
     };
   };
 
-  /* ---- clock: HH:MM, раз в секунду, без секунд ---------------------------- */
-  window.TopBarModules.clock = function (el) {
+  /* ---- clock: HH:MM, раз в секунду, без секунд; клик -> поповер calendar ---- */
+  window.TopBarModules.clock = function (el, ctx) {
+    el.classList.add('tb-clickable');
+    el.addEventListener('click', function () { ctx.openPopup('calendar'); });
     var timer = null;
     function render() {
       var d = new Date();
@@ -192,5 +202,219 @@
       start: function () { poll(); clearInterval(timer); timer = setInterval(poll, 60000); },
       stop: function () { clearInterval(timer); timer = null; }
     };
+  };
+
+  /* ---- volume: иконка динамика (3 уровня + mute), клик -> поповер volume ------------------
+     Живое обновление по WS-событию 'audio-changed' (без опроса). Колесо над модулем — громкость
+     шагом 2, средняя кнопка — mute; оба идут в PUT /audio/volume напрямую со страницы строки
+     (поповер здесь не нужен — быстрый доступ с самой панели, как в macOS). */
+  window.TopBarModules.volume = function (el, ctx) {
+    el.classList.add('tb-clickable');
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'tb-icon';
+    el.appendChild(iconWrap);
+
+    var state = { volume: 0, muted: false };
+    var wavePaths = [], muteX = null;
+
+    (function build() {
+      var svg = svgRoot('0 0 24 24');
+      svg.appendChild(svgTag('path', { d: 'M4 9 L4 15 L8 15 L13 19 L13 5 L8 9 Z' }));
+      var waves = [
+        'M15.3 9.3 A4 4 0 0 1 15.3 14.7',
+        'M17.3 7.1 A7 7 0 0 1 17.3 16.9',
+        'M19.3 4.9 A10 10 0 0 1 19.3 19.1'
+      ];
+      for (var i = 0; i < waves.length; i++) {
+        var w = svgTag('path', { d: waves[i], fill: 'none', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round' });
+        svg.appendChild(w);
+        wavePaths.push(w);
+      }
+      muteX = svgTag('path', { d: 'M15.6 8.6 L20.6 15.6 M20.6 8.6 L15.6 15.6', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round' });
+      svg.appendChild(muteX);
+      iconWrap.appendChild(svg);
+    })();
+
+    function render() {
+      var level = (state.muted || state.volume <= 0) ? 0 : (state.volume < 34 ? 1 : (state.volume < 67 ? 2 : 3));
+      for (var i = 0; i < wavePaths.length; i++) wavePaths[i].style.display = (i < level) ? '' : 'none';
+      muteX.style.display = state.muted ? '' : 'none';
+    }
+    function setState(s) {
+      if (!s) return;
+      if (typeof s.volume === 'number') state.volume = Math.max(0, Math.min(100, s.volume));
+      if (typeof s.muted === 'boolean') state.muted = s.muted;
+      render();
+    }
+
+    el.addEventListener('click', function () { ctx.openPopup('volume'); });
+    el.addEventListener('mousedown', function (e) { if (e.button === 1) e.preventDefault(); });
+    el.addEventListener('auxclick', function (e) {
+      if (e.button !== 1) return;
+      e.preventDefault();
+      var muted = !state.muted;
+      setState({ muted: muted });
+      ctx.put('/audio/volume', { muted: muted }).catch(function () {});
+    });
+    el.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var v = Math.max(0, Math.min(100, state.volume + (e.deltaY > 0 ? -2 : 2)));
+      setState({ volume: v });
+      ctx.put('/audio/volume', { volume: v }).catch(function () {});
+    }, { passive: false });
+
+    ctx.on('audio-changed', setState);
+
+    return {
+      start: function () { ctx.get('/audio/volume').then(setState, function () {}); },
+      stop: function () {}
+    };
+  };
+
+  /* ---- network: wifi (уровень сигнала) / ethernet / offline, hover -> tooltip с именем ----- */
+  window.TopBarModules.network = function (el, ctx) {
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'tb-icon';
+    el.appendChild(iconWrap);
+    var state = { up: false, kind: 'none', name: '', signal: 0 };
+    var timer = null;
+
+    function buildWifi(level) {
+      iconWrap.innerHTML = '';
+      var svg = svgRoot('0 0 24 24');
+      svg.appendChild(svgTag('circle', { cx: '12', cy: '18', r: '1.6' }));
+      var arcs = [
+        { d: 'M8.3 14.8 A5.2 5.2 0 0 1 15.7 14.8', min: 1 },
+        { d: 'M5.4 11.6 A9.4 9.4 0 0 1 18.6 11.6', min: 2 },
+        { d: 'M2.6 8.5 A13.6 13.6 0 0 1 21.4 8.5', min: 3 }
+      ];
+      for (var i = 0; i < arcs.length; i++) {
+        var p = svgTag('path', { d: arcs[i].d, fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round' });
+        if (level < arcs[i].min) p.style.opacity = '0.32';
+        svg.appendChild(p);
+      }
+      iconWrap.appendChild(svg);
+    }
+    function buildEthernet() {
+      iconWrap.innerHTML = '';
+      var svg = svgRoot('0 0 24 24');
+      svg.appendChild(svgTag('path', { d: 'M6 3v4h2v3h2v3h4v-3h2v-3h2V3h-3v2h-2V3h-4v2H9V3z' }));
+      iconWrap.appendChild(svg);
+    }
+    function buildOff() {
+      iconWrap.innerHTML = '';
+      var svg = svgRoot('0 0 24 24');
+      svg.appendChild(svgTag('circle', { cx: '12', cy: '18', r: '1.6' }));
+      svg.appendChild(svgTag('path', { d: 'M4 4 L20 20', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round' }));
+      iconWrap.appendChild(svg);
+    }
+    function render() {
+      if (!state.up) { buildOff(); return; }
+      if (state.kind === 'ethernet') { buildEthernet(); return; }
+      var level = state.signal >= 67 ? 3 : (state.signal >= 34 ? 2 : (state.signal > 0 ? 1 : 0));
+      buildWifi(level);
+    }
+
+    ctx.tooltip(function () {
+      if (!state.up) return ctx.lang === 'en' ? 'OFFLINE' : 'НЕТ СЕТИ';
+      return state.name || (state.kind === 'ethernet' ? 'ETHERNET' : 'WI-FI');
+    });
+
+    function poll() { ctx.get('/system/network').then(function (s) { state = s || state; render(); }, function () {}); }
+    ctx.on('network-changed', function (msg) { state = msg || state; render(); });
+
+    return {
+      start: function () { poll(); clearInterval(timer); timer = setInterval(poll, 30000); },
+      stop: function () { clearInterval(timer); timer = null; }
+    };
+  };
+
+  /* ---- battery: капсула с заливкой по уровню, скрыт если present:false --------------------- */
+  window.TopBarModules.battery = function (el, ctx) {
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'tb-icon';
+    el.appendChild(iconWrap);
+    var timer = null;
+
+    var svg = svgRoot('0 0 26 16');
+    svg.appendChild(svgTag('rect', { x: '1', y: '1.5', width: '20', height: '13', rx: '2.4', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.4' }));
+    svg.appendChild(svgTag('rect', { x: '21.6', y: '5.5', width: '2', height: '5', rx: '1' }));
+    var fillRect = svgTag('rect', { x: '3', y: '3.5', width: '0', height: '9', rx: '1' });
+    svg.appendChild(fillRect);
+    iconWrap.appendChild(svg);
+
+    function render(s) {
+      if (!s || s.present === false) { ctx.setVisible(false); return; }
+      ctx.setVisible(true);
+      var pct = Math.max(0, Math.min(100, s.percent || 0));
+      fillRect.setAttribute('width', String(Math.round(16 * pct / 100)));
+      el.classList.toggle('is-charging', !!s.charging);
+    }
+    function poll() { ctx.get('/system/battery').then(render, function () { ctx.setVisible(false); }); }
+    ctx.on('battery-changed', render);
+
+    return {
+      start: function () { poll(); clearInterval(timer); timer = setInterval(poll, 30000); },
+      stop: function () { clearInterval(timer); timer = null; }
+    };
+  };
+
+  /* ---- layout: «RU»/«EN», моно 10px (см. .tb-layout в bar.css), опрос раз в 30с ------------ */
+  window.TopBarModules.layout = function (el, ctx) {
+    var timer = null;
+    function render(s) { el.textContent = ((s && s.lang) || 'ru').toUpperCase(); }
+    function poll() { ctx.get('/system/layout').then(render, function () {}); }
+    return {
+      start: function () { poll(); clearInterval(timer); timer = setInterval(poll, 30000); },
+      stop: function () { clearInterval(timer); timer = null; }
+    };
+  };
+
+  /* ---- control: «два переключателя», клик -> поповер Control Center ------------------------ */
+  window.TopBarModules.control = function (el, ctx) {
+    el.classList.add('tb-clickable');
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'tb-icon';
+    var svg = svgRoot('0 0 24 24');
+    svg.appendChild(svgTag('line', { x1: '4', y1: '8', x2: '20', y2: '8', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round' }));
+    svg.appendChild(svgTag('circle', { cx: '9', cy: '8', r: '2.1' }));
+    svg.appendChild(svgTag('line', { x1: '4', y1: '16', x2: '20', y2: '16', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round' }));
+    svg.appendChild(svgTag('circle', { cx: '15', cy: '16', r: '2.1' }));
+    iconWrap.appendChild(svg);
+    el.appendChild(iconWrap);
+    el.addEventListener('click', function () { ctx.openPopup('control'); });
+    return { start: function () {}, stop: function () {} };
+  };
+
+  /* ---- nna: знак кластера (H:\brand\nna1618_mark_v2\nna1618_mark_white.svg), заменяет brand,
+     клик -> поповер-меню NNA («О программе», «Настройки», пауза обоев, обновления, питание) --- */
+  var NNA_MARK_D = 'M 81.13,8.09 C 80.03,8.22 78.70,9.87 72.67,18.66 C 68.89,24.18 67.52,26.04 66.67,26.90 '
+    + 'C 65.57,27.99 63.77,27.91 62.06,26.69 C 61.39,26.21 61.40,26.23 58.35,22.42 C 53.18,15.96 51.41,14.04 50.49,13.91 '
+    + 'C 48.53,13.65 43.48,18.47 42.38,21.65 C 41.69,23.65 42.37,24.98 45.96,28.56 C 47.16,29.76 47.70,30.27 50.17,32.55 '
+    + 'C 52.73,34.91 53.92,36.09 54.50,36.87 C 55.46,38.15 55.48,39.50 54.53,40.11 C 54.46,40.16 54.02,40.56 53.56,41.00 '
+    + 'C 50.14,44.31 48.26,45.88 46.90,46.55 C 44.88,47.55 43.78,47.61 42.45,46.82 C 41.53,46.26 40.72,45.41 34.86,38.82 '
+    + 'C 30.07,33.44 28.61,31.84 27.04,30.28 C 25.50,28.76 25.10,28.49 24.38,28.46 C 21.65,28.37 16.47,33.71 17.05,36.01 '
+    + 'C 17.30,36.98 19.45,39.41 24.53,44.47 C 27.24,47.17 31.84,51.61 33.77,53.39 C 34.26,53.84 34.61,55.06 34.46,55.79 '
+    + 'C 34.24,56.82 33.71,57.47 32.34,58.39 C 29.44,60.34 24.27,63.90 22.48,65.18 C 22.32,65.30 21.68,65.75 21.07,66.18 '
+    + 'C 11.57,72.93 6.44,77.16 5.65,78.90 C 5.33,79.60 5.51,80.74 6.16,82.03 C 8.12,85.93 13.81,90.75 15.92,90.29 '
+    + 'C 17.76,89.89 22.40,85.88 30.16,78.00 C 33.44,74.66 38.94,68.87 40.73,66.87 C 40.87,66.71 40.90,66.69 41.02,66.65 '
+    + 'C 42.10,66.31 43.30,66.64 44.25,67.54 C 44.69,67.95 45.05,68.36 49.39,73.32 C 59.94,85.40 65.59,91.04 67.90,91.81 '
+    + 'C 69.73,92.41 72.75,90.54 75.61,87.02 C 77.82,84.32 78.79,82.08 78.16,81.13 C 77.69,80.42 74.05,77.26 67.23,71.62 '
+    + 'C 64.84,69.63 63.07,68.19 60.07,65.74 C 59.69,65.43 59.18,65.01 58.94,64.82 C 58.11,64.14 56.41,62.76 55.73,62.22 '
+    + 'C 54.74,61.43 54.59,61.27 54.38,60.92 C 53.86,60.02 54.03,58.78 54.87,57.52 C 55.06,57.24 55.06,57.23 56.69,55.49 '
+    + 'C 57.23,54.92 58.50,53.56 59.52,52.48 C 63.47,48.27 63.02,48.72 63.39,48.60 C 64.40,48.27 65.45,48.85 67.10,50.64 '
+    + 'C 67.93,51.55 68.34,52.01 71.76,55.87 C 80.79,66.09 83.80,69.15 85.02,69.39 C 86.20,69.62 88.54,68.06 91.14,65.29 '
+    + 'C 93.70,62.57 94.85,60.60 94.40,59.69 C 93.82,58.51 86.44,51.48 75.08,41.28 C 73.98,40.30 73.98,40.30 73.86,40.04 '
+    + 'C 73.35,38.90 73.42,38.41 74.26,37.24 C 75.33,35.76 75.55,35.54 79.73,31.79 C 82.08,29.69 82.77,29.07 83.57,28.35 '
+    + 'C 89.95,22.60 92.87,19.52 93.35,18.07 C 93.50,17.59 93.44,17.17 93.14,16.54 C 91.72,13.61 84.58,8.37 81.65,8.09 '
+    + 'C 81.38,8.07 81.37,8.07 81.13,8.09';
+
+  window.TopBarModules.nna = function (el, ctx) {
+    el.classList.add('tb-clickable');
+    var svg = svgRoot('0 0 100 100');
+    svg.appendChild(svgTag('path', { d: NNA_MARK_D }));
+    el.appendChild(svg);
+    el.addEventListener('click', function () { ctx.openPopup('nna'); });
+    return { start: function () {}, stop: function () {} };
   };
 })();
