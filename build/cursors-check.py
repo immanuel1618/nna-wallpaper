@@ -18,7 +18,7 @@ import struct
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_ROOT = os.path.join(REPO, "build", "out", "cursors")
+OUT_ROOT = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.path.join(REPO, "build", "out", "cursors")
 VARIANTS = ["mark", "line", "mono"]
 STATIC_ROLES = [
     "arrow", "hand", "ibeam", "size_ns", "size_we", "size_nwse", "size_nesw",
