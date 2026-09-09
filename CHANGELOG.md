@@ -4,6 +4,13 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-09-09
+
+### Changed
+- Taskbar mode `win-only` rebuilt for Windows 11 builds with the XAML taskbar: the tray is hidden with
+  `ShowWindow` and re-shown by the Win key (moving it off-screen is silently ignored by explorer),
+  Start is detected through the documented `IAppVisibility` API, the panel hides again when Start is
+  closed and the pointer leaves it. Live helper `tests/TaskbarLockPreview` (`--variant a|b|c`, `--dry`).
 ## [0.3.6] - 2026-09-09
 
 ### Fixed
