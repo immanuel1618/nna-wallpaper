@@ -227,12 +227,16 @@ public sealed class TaskbarStyler : IDisposable
         changed |= WriteToggle(PersonalizeKey, "EnableTransparency", w.Transparency, onValue: 1, offValue: 0);
         changed |= WriteToggle(AdvancedKey, "UseOLEDTaskbarTransparency", w.OledTransparency, onValue: 1, offValue: 0);
         // Auto-hide: "win-only" drives ABM_SETSTATE itself (TaskbarLock keeps re-asserting it against
-        // its own shields and the Win-tap show/hide cycle); "autohide" is the plain Windows behaviour;
+        // ShowWindow calls and the Win-tap show/hide cycle); "autohide" is the plain Windows behaviour;
         // "normal" keeps the old nullable toggle (null = leave the Windows setting untouched).
         var effMode = w.EffectiveMode();
         if (effMode == "win-only")
         {
-            _lock ??= new TaskbarLock(_ctx, _dispatcher);
+            // TrayHideStrategy.ShowWindow: the only one live measurement found working on the
+            // owner's build 26200 (SetWindowPos on Shell_TrayWnd was a silent no-op there) - see
+            // TaskbarLock.cs class remarks and docs/TASKBAR.md. Re-measure with
+            // tests/TaskbarLockPreview --variant a|b|c before changing this on a different build.
+            _lock ??= new TaskbarLock(_log, _dispatcher, () => _ctx.Config.App.Taskbar.Secondary, IsPaused, TrayHideStrategy.ShowWindow);
             _lock.Start();
         }
         else
@@ -246,6 +250,19 @@ public sealed class TaskbarStyler : IDisposable
         if (!_timer.IsEnabled) _timer.Start();
         Tick();
         _log.Info("taskbar: applied (registry changed=" + changed + ")");
+    }
+
+    /// <summary>True while the wallpaper is paused (SetUserPause, fullscreen, locked session - see
+    /// WallpaperEngine.CheckPause), reported through every monitor's IHostApp.Monitors.paused.
+    /// Passed to <see cref="TaskbarLock"/> as a probe so it stays independent of HostContext.</summary>
+    private bool IsPaused()
+    {
+        try
+        {
+            var monitors = _ctx.App.Monitors;
+            return monitors.Count > 0 && monitors.All(m => m.paused);
+        }
+        catch { return false; }
     }
 
     private static bool WriteToggle(string key, string name, bool? setting, int onValue, int offValue)
@@ -275,7 +292,7 @@ public sealed class TaskbarStyler : IDisposable
     }
 
     /// <summary>Put the Windows settings back exactly as they were before the first Apply. Always
-    /// stops win-only mode first (drops the keyboard hook, closes the shields) even if there is no
+    /// stops win-only mode first (drops the keyboard hook, shows the tray again) even if there is no
     /// backup yet, so /taskbar/reset is a reliable "get my taskbar back" button either way.</summary>
     public bool Reset()
     {
@@ -365,7 +382,7 @@ public sealed class TaskbarStyler : IDisposable
             ["taskbars"] = TaskbarWindows(true).Count,
             ["backup"] = File.Exists(_backupFile),
             ["explorerPid"] = Process.GetProcessesByName("explorer").FirstOrDefault()?.Id,
-            ["lock"] = _lock?.Status() ?? new JsonObject { ["mode"] = "off", ["hookActive"] = false, ["shields"] = 0, ["trayVisible"] = true },
+            ["lock"] = _lock?.Status() ?? new JsonObject { ["mode"] = "off", ["hookActive"] = false, ["shown"] = true, ["appVisibilityActive"] = false },
         };
     }
 

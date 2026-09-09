@@ -108,3 +108,10 @@ CreateRoundRectRgn
 SetWindowRgn
 DeleteObject
 DWM_WINDOW_CORNER_PREFERENCE
+// Taskbar win-only mode, branch B (TaskbarLock.cs): Start-menu detection via the documented
+// IAppVisibility COM API, and keeping the tray off-screen with ShowWindow instead of shields.
+// CLSID_AppVisibility/IID_IAppVisibility are not exposed as named metadata constants, so
+// TaskbarLock.cs declares those two GUIDs itself (values from the Windows SDK shobjidl.h).
+IAppVisibility
+CoCreateInstance
+SHOW_WINDOW_CMD

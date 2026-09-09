@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- B5 branch B dev helper, deliberately NOT added to NNA.Wallpaper.sln: runs the real
+       TaskbarLock (src/NNA.Wallpaper/Taskbar/TaskbarLock.cs) against the machine's real, live
+       Shell_TrayWnd/Shell_SecondaryTrayWnd - there is nowhere else this CAN run, the hide/show is
+       ShowWindow on the actual system taskbar and the Start-menu detection is the actual system
+       IAppVisibility state. It is independent of any running NNA.Wallpaper instance: TaskbarLock's
+       constructor only needs a Log and a Dispatcher (see its own doc comment), not a HostContext,
+       so this helper never touches the owner's config, registry backup, or port 1618 API - it is
+       safe to run whether or not the owner's own instance is up, as long as nobody else on the
+       machine also tries to drive the taskbar or the Win key at the same time. See Program.cs for
+       the safety story (try/finally restore, no restart-explorer) and
+       tests/taskbar-lock-probe.ps1 -UsePreview for the wrapper that launches this and parses its
+       PASS/FAIL output. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>NNA.Wallpaper.TaskbarLockPreview</RootNamespace>
+    <AssemblyName>TaskbarLockPreview</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NNA.Wallpaper\NNA.Wallpaper.csproj" />
+  </ItemGroup>
+
+</Project>

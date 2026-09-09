@@ -40,15 +40,34 @@
   Index into [System.Windows.Forms.Screen]::AllScreens used for the bottom-edge cursor / Shell_TrayWnd
   checks. Defaults to 0 (primary).
 
+.PARAMETER UsePreview
+  Run tests/TaskbarLockPreview.exe (built from this worktree, not part of NNA.Wallpaper.sln)
+  instead of driving a running NNA.Wallpaper instance's /taskbar/* API. TaskbarLockPreview runs
+  the real TaskbarLock class directly against the live Shell_TrayWnd - it needs no running
+  instance at all, no port, no API token, and never touches app.json/the registry backup. Use this
+  to test a specific TrayHideStrategy (-Variant) rather than whatever app.taskbar.windows.mode
+  currently has configured, or when nothing is listening on -Port.
+
+.PARAMETER Variant
+  Only used with -UsePreview: which TrayHideStrategy to pass as TaskbarLockPreview's --variant
+  (a = EdgeOffset, b = FullyOff, c = ShowWindow - see TaskbarLock.cs class remarks and
+  docs/TASKBAR.md for what live measurement found on the owner's build). Defaults to 'a'.
+
 .EXAMPLE
   powershell -File tests\taskbar-lock-probe.ps1 -Port 1618
+
+.EXAMPLE
+  powershell -File tests\taskbar-lock-probe.ps1 -UsePreview -Variant c
 #>
 [CmdletBinding()]
 param(
     [int]$Port = 1618,
     [string]$Token = '',
     [string]$Data = '',
-    [int]$Monitor = 0
+    [int]$Monitor = 0,
+    [switch]$UsePreview,
+    [ValidateSet('a', 'b', 'c')]
+    [string]$Variant = 'a'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -66,6 +85,37 @@ function Write-Fail([string]$Name, [string]$Detail = '') {
 }
 function Write-Skip([string]$Name, [string]$Why) {
     Write-Output ("SKIP " + $Name + ": " + $Why)
+}
+
+# -- -UsePreview: run TaskbarLockPreview.exe instead of the /taskbar/* API flow below ------------
+if ($UsePreview) {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $csproj = Join-Path $PSScriptRoot 'TaskbarLockPreview\TaskbarLockPreview.csproj'
+    if (-not (Test-Path $csproj)) {
+        Write-Fail 'setup' "TaskbarLockPreview.csproj not found at $csproj"
+        Write-Output "PASS=$script:PassCount FAIL=$script:FailCount"
+        exit 1
+    }
+    Write-Output "building TaskbarLockPreview (Release)..."
+    & dotnet build $csproj -c Release -v minimal
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail 'build' "dotnet build exited $LASTEXITCODE"
+        Write-Output "PASS=$script:PassCount FAIL=$script:FailCount"
+        exit 1
+    }
+    $exe = Join-Path $PSScriptRoot 'TaskbarLockPreview\bin\Release\net8.0-windows10.0.19041.0\win-x64\TaskbarLockPreview.exe'
+    if (-not (Test-Path $exe)) {
+        Write-Fail 'setup' "built exe not found at $exe"
+        Write-Output "PASS=$script:PassCount FAIL=$script:FailCount"
+        exit 1
+    }
+    Write-Output "running: $exe --variant $Variant"
+    & $exe --variant $Variant
+    $code = $LASTEXITCODE
+    # TaskbarLockPreview prints its own PASS/FAIL/--- lines directly (relayed above via &); it
+    # already tracks and reports its own PASS=n FAIL=n, so this script's own counters stay at 0
+    # and the exit code is passed straight through rather than re-derived.
+    exit $code
 }
 
 # -- native helpers: cursor, keyboard SendInput, window lookup ----------------------------------
