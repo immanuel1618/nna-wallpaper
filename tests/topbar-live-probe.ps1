@@ -23,10 +23,11 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Exe = (Join-Path $PSScriptRoot ('TopBarPreview'+[char]92+'bin'+[char]92+'Release'+[char]92+'net8.0-windows10.0.19041.0'+[char]92+'win-x64'+[char]92+'TopBarPreview.exe')),
+    [string]$Exe = '',
     [string]$ShotsDir = 'H:\night-runs\nna-wallpaper-2\shots'
 )
 
+if (-not $Exe) { $Exe = Join-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) ('TopBarPreview'+[char]92+'bin'+[char]92+'Release'+[char]92+'net8.0-windows10.0.19041.0'+[char]92+'win-x64'+[char]92+'TopBarPreview.exe') }
 $ErrorActionPreference = 'Continue'
 $script:passed = 0
 $script:failed = 0

@@ -36,11 +36,12 @@
 param(
     [int]$Port = 1625,
     [string]$Data = (Join-Path $env:TEMP 'nna-topbar-probe'),
-    [string]$Exe = (Join-Path (Split-Path $PSScriptRoot -Parent) ('src'+[char]92+'NNA.Wallpaper'+[char]92+'bin'+[char]92+'Release'+[char]92+'net8.0-windows10.0.19041.0'+[char]92+'win-x64'+[char]92+'NNA.Wallpaper.exe')),
+    [string]$Exe = '',
     [string]$ShotsDir = 'H:\night-runs\nna-wallpaper-2\shots',
     [string]$MsEdge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 )
 
+if (-not $Exe) { $Exe = Join-Path (Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent) ('src'+[char]92+'NNA.Wallpaper'+[char]92+'bin'+[char]92+'Release'+[char]92+'net8.0-windows10.0.19041.0'+[char]92+'win-x64'+[char]92+'NNA.Wallpaper.exe') }
 # 'Continue' (not 'Stop'): a native exe (node/python/msedge) writing anything to stderr with
 # 2>&1 redirection turns into a terminating NativeCommandError under 'Stop' even on exit code 0
 # (PowerShell 5.1 quirk) — every native call below checks $LASTEXITCODE explicitly instead, and
