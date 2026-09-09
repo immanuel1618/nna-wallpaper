@@ -54,7 +54,7 @@ Write-Output "baseline: uptime_s=$($health0.uptime_s) events.sent=$($statsBefore
 
 # ---- 20x PUT /config, alternating theme.dim -------------------------------------------------
 # EventsService debounces 50 ms per "what" key (a burst of edits to the same thing collapses to
-# one broadcast — see H:\projects\.wt\live\src\NNA.Wallpaper.Host\Services\EventsService.cs). A
+# one broadcast — see src\NNA.Wallpaper.Host\Services\EventsService.cs). A
 # tight loop over loopback HTTP completes well under 1 ms per request, so without spacing all 20
 # edits would land inside a single 50 ms window and "sent" would only grow by 1 — that would prove
 # the debounce, not the no-reload behaviour. 60 ms > 50 ms puts each edit in its own window, which

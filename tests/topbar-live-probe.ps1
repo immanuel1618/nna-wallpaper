@@ -23,7 +23,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Exe = 'H:\projects\.wt\tb2\tests\TopBarPreview\bin\Release\net8.0-windows10.0.19041.0\win-x64\TopBarPreview.exe',
+    [string]$Exe = (Join-Path $PSScriptRoot ('TopBarPreview'+[char]92+'bin'+[char]92+'Release'+[char]92+'net8.0-windows10.0.19041.0'+[char]92+'win-x64'+[char]92+'TopBarPreview.exe')),
     [string]$ShotsDir = 'H:\night-runs\nna-wallpaper-2\shots'
 )
 

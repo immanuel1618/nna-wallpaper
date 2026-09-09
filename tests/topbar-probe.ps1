@@ -36,7 +36,7 @@
 param(
     [int]$Port = 1625,
     [string]$Data = (Join-Path $env:TEMP 'nna-topbar-probe'),
-    [string]$Exe = 'H:\projects\.wt\tb\src\NNA.Wallpaper\bin\Release\net8.0-windows10.0.19041.0\win-x64\NNA.Wallpaper.exe',
+    [string]$Exe = (Join-Path (Split-Path $PSScriptRoot -Parent) ('src'+[char]92+'NNA.Wallpaper'+[char]92+'bin'+[char]92+'Release'+[char]92+'net8.0-windows10.0.19041.0'+[char]92+'win-x64'+[char]92+'NNA.Wallpaper.exe')),
     [string]$ShotsDir = 'H:\night-runs\nna-wallpaper-2\shots',
     [string]$MsEdge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 )
