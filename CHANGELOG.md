@@ -4,14 +4,16 @@ All notable changes to NNA Wallpaper are documented here.
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-09-09
+
 ### Fixed
-- Wallpaper had no mouse interaction at all (composition hosting): `engine.hosting` default is now
-  `"window"` — composition hosting renders correctly behind the desktop icon layer, but its input
-  never reaches the screen there (a WebView2/DirectComposition limitation tied to the window's
-  top-level ancestor belonging to a different process; see `tests/CompositionBehindIcons/` and
-  `docs/ARCHITECTURE.md`). `InputBridge` now re-sends `WM_MOUSEMOVE` to the current hover target
-  every 60ms while the cursor sits still over it, shortening the window-mode hover-flicker race
-  instead of eliminating it.
+- No interaction with the wallpaper in composition hosting: behind the desktop icons the composition
+  controller delivers input to the page but stops presenting frames when the window's top-level
+  ancestor belongs to another process (WorkerW). Hosting default is `window` again; a 60 ms
+  `WM_MOUSEMOVE` keep-alive keeps hover stable while the pointer rests.
+- `PUT /config` merges nested objects recursively; a partial patch no longer wipes sibling fields.
+- Widget service labels follow the app language (82 keys), week days, months and weather codes localized.
+- Push-to-talk logs capture start and finish.
 
 ## [0.3.5] - 2026-09-08
 
