@@ -84,7 +84,7 @@ public sealed class WallpaperEngine : IHostApp, ICapturesPreview, IDisposable
 
         await CreateWindowsAsync();
 
-        _input = new InputBridge(_desktop, () => _windows, _log);
+        _input = new InputBridge(_desktop, () => _windows, _log, _dispatcher);
         _input.Start();
 
         SystemEvents.DisplaySettingsChanged += OnDisplayChanged;

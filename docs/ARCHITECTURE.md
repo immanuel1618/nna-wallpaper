@@ -60,24 +60,33 @@ one WebView2 control:
    keyboard focus and hands the typed text to the page through `PostWebMessageAsJson`. Voice input
    uses the page's own `MediaRecorder` and needs no window focus.
 
-   WebView2 hosting mode (`app.json` → `engine.hosting`, default `"composition"`): a
-   `CoreWebView2CompositionController` renders into a DirectComposition visual
+   WebView2 hosting mode (`app.json` → `engine.hosting`, default `"window"`): a plain
+   `CoreWebView2Controller` hosts WebView2 with its own `Chrome_WidgetWin_1` child window;
+   `Engine/InputBridge.cs` re-posts Raw Input mouse messages into that window by hand (since the
+   wallpaper window sits behind the desktop icon layer and never receives real mouse messages
+   itself), and Chromium reacts to each forwarded `WM_MOUSEMOVE` by calling
+   `TrackMouseEvent(TME_LEAVE)` on it. The next *real* cursor move anywhere on the desktop makes
+   Windows resolve "window under the cursor" against the actual, unclipped window tree: the icon
+   list `SysListView32`, not the tracked Chromium window: so Windows immediately fires
+   `WM_MOUSELEAVE` at it. Hover state can flip on and off on every real mouse move; `InputBridge`
+   fights this with `HoverKeepAlive`, a 60ms timer that re-sends `WM_MOUSEMOVE` to whichever window
+   is currently hovered (as long as the real cursor is still there) so a spurious Leave gets a fresh
+   Enter again quickly instead of only on the next real cursor motion.
+   `"composition"` (opt-in fallback, kept in case a future WebView2 runtime fixes this) hosts a
+   `CoreWebView2CompositionController` that renders into a DirectComposition visual
    (`DCompositionCreateDevice2` → `CreateTargetForHwnd`/`CreateVisual` → `RootVisualTarget`, see
-   `Engine/CompositionHost.cs`) and receives every mouse event through `SendMouseInput`: it owns no
-   input-receiving HWND at all. This exists because the classic path (`"window"`, kept as a
-   fallback) hosts WebView2 with a plain `CoreWebView2Controller`, which creates its own
-   `Chrome_WidgetWin_1` child window; `Engine/InputBridge.cs` re-posts Raw Input mouse messages into
-   that window by hand (since the wallpaper window sits behind the desktop icon layer and never
-   receives real mouse messages itself), and Chromium reacts to each forwarded `WM_MOUSEMOVE` by
-   calling `TrackMouseEvent(TME_LEAVE)` on it. The next *real* cursor move anywhere on the desktop
-   makes Windows resolve "window under the cursor" against the actual, unclipped window tree: the
-   icon list `SysListView32`, not the tracked Chromium window: so Windows immediately fires
-   `WM_MOUSELEAVE` at it. Hover state flips on and off on every real mouse move: the flicker this
-   hosting mode exists to avoid. In composition mode there is no such child window for
-   `TrackMouseEvent` to race against, so hover is stable; `InputBridge` detects a composition-hosted
-   target (`WallpaperWindow.UsesComposition`) and calls `WallpaperWindow.SendMouse` instead of
-   `PostMessage`, and additionally tracks which window last had pointer-hover state so it can send a
-   single `COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE` exactly when the pointer actually leaves it.
+   `Engine/CompositionHost.cs`) and receives every mouse event through `SendMouseInput` instead of
+   `PostMessage` (it owns no input-receiving HWND at all, so there is no child window for
+   `TrackMouseEvent` to race against). This was the default until the incident writeup in
+   `tests/CompositionBehindIcons/`: composition hosting renders correctly behind the icon layer, but
+   input (hover *and* clicks) never reaches the screen there — DOM/JS events do fire (confirmed with
+   a real `WallpaperWindow` parented under the real `WorkerW`), but the compositor stops flipping new
+   frames to the screen once the window's top-level ancestor belongs to a different process
+   (`explorer.exe` owns `WorkerW`); the identical code against a same-process top-level ancestor
+   (`tests/CompositionProbe`, `TopBar/CompositionInput.cs`) works perfectly. Removing
+   `WS_EX_NOACTIVATE`/`WS_EX_TOOLWINDOW`, calling `CoreWebView2Controller.MoveFocus`,
+   `--disable-features=CalculateNativeWinOcclusion`, and `--disable-backgrounding-occluded-windows`
+   all made no difference.
 8. Pause: every wallpaper window is paused (WebView2's `TrySuspendAsync`, otherwise resumed) when a
    fullscreen or presentation-mode app is detected in front of it, or the session is locked. The
    app also enforces an FPS cap by telling each page how often to render.
@@ -246,25 +255,32 @@ WebView2:
    через `PostWebMessageAsJson`. Голосовой ввод использует `MediaRecorder` самой страницы и фокуса
    не требует.
 
-   Режим хостинга WebView2 (`app.json` → `engine.hosting`, по умолчанию `"composition"`):
+   Режим хостинга WebView2 (`app.json` → `engine.hosting`, по умолчанию `"window"`): WebView2
+   хостится через обычный `CoreWebView2Controller`, который создаёт собственное дочернее окно
+   `Chrome_WidgetWin_1`; `Engine/InputBridge.cs` вручную досылает в него сообщения мыши через Raw
+   Input (окно обоев сидит за слоем иконок и настоящих сообщений мыши не получает), а Chromium в
+   ответ на каждый досланный `WM_MOUSEMOVE` вызывает `TrackMouseEvent(TME_LEAVE)`. При следующем
+   реальном движении курсора Windows определяет «окно под курсором» по настоящему, неусечённому
+   дереву окон рабочего стола: это `SysListView32` (список иконок), а не отслеживаемое окно
+   Chromium: и тут же посылает ему `WM_MOUSELEAVE`. Hover может включаться и выключаться на каждое
+   реальное движение мыши; `InputBridge` борется с этим таймером `HoverKeepAlive` (60 мс): пока
+   курсор стоит над тем же окном, он повторно досылает `WM_MOUSEMOVE`, чтобы случайный Leave тут же
+   сменился новым Enter, не дожидаясь следующего реального движения курсора.
+   `"composition"` (запасной режим, оставлен на случай будущего исправления в рантайме WebView2):
    `CoreWebView2CompositionController` рендерится в визуал DirectComposition
    (`DCompositionCreateDevice2` → `CreateTargetForHwnd`/`CreateVisual` → `RootVisualTarget`, см.
-   `Engine/CompositionHost.cs`), а ввод мыши идёт целиком через `SendMouseInput`: у такого
-   контроллера вообще нет собственного HWND для ввода. Причина: в классическом режиме (`"window"`,
-   оставлен как откат) WebView2 хостится через обычный `CoreWebView2Controller`, который создаёт
-   собственное дочернее окно `Chrome_WidgetWin_1`; `Engine/InputBridge.cs` вручную досылает в него
-   сообщения мыши через Raw Input (окно обоев сидит за слоем иконок и настоящих сообщений мыши не
-   получает), а Chromium в ответ на каждый досланный `WM_MOUSEMOVE` вызывает
-   `TrackMouseEvent(TME_LEAVE)`. При следующем реальном движении курсора Windows определяет «окно
-   под курсором» по настоящему, неусечённому дереву окон рабочего стола: это `SysListView32`
-   (список иконок), а не отслеживаемое окно Chromium,: и тут же посылает ему `WM_MOUSELEAVE`.
-   Hover включается и выключается на каждое реальное движение мыши: это и есть мерцание, ради
-   устранения которого существует режим composition. В нём нет дочернего окна, с которым мог бы
-   конкурировать `TrackMouseEvent`, поэтому hover стабилен; `InputBridge` определяет
-   composition-окно (`WallpaperWindow.UsesComposition`) и вместо `PostMessage` вызывает
-   `WallpaperWindow.SendMouse`, а также помнит, какое окно последним держало hover, чтобы послать
-   ровно одно `COREWEBVIEW2_MOUSE_EVENT_KIND_LEAVE` именно в момент, когда курсор реально его
-   покинул.
+   `Engine/CompositionHost.cs`), а ввод мыши идёт целиком через `SendMouseInput` вместо
+   `PostMessage` (у такого контроллера вообще нет собственного HWND для ввода, поэтому конкурировать
+   с `TrackMouseEvent` нечему). Раньше это было значением по умолчанию — до разбора инцидента в
+   `tests/CompositionBehindIcons/`: composition-хостинг рендерится за слоем иконок корректно, но
+   ввод (и hover, и клики) до экрана там не доходит — DOM/JS-события реально приходят (проверено на
+   настоящем `WallpaperWindow`, дочернем реального `WorkerW`), но компоузер перестаёт отдавать новые
+   кадры на экран, как только окно оказывается дочерним top-level окна из ЧУЖОГО процесса
+   (`WorkerW` принадлежит `explorer.exe`); тот же самый код с top-level предком из своего процесса
+   (`tests/CompositionProbe`, `TopBar/CompositionInput.cs`) работает без проблем. Ни снятие
+   `WS_EX_NOACTIVATE`/`WS_EX_TOOLWINDOW`, ни `CoreWebView2Controller.MoveFocus`, ни
+   `--disable-features=CalculateNativeWinOcclusion`, ни `--disable-backgrounding-occluded-windows`
+   ничего не меняют.
 8. Пауза: окна обоев приостанавливаются (`TrySuspendAsync` WebView2, иначе возобновляются) при
    полноэкранном приложении или презентационном режиме поверх них, а также при блокировке сессии.
    Дополнительно применяется ограничение FPS.

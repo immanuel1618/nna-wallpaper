@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using NNA.Wallpaper.Host;
 using Windows.Win32;
@@ -14,9 +15,11 @@ namespace NNA.Wallpaper.Engine;
 /// Mouse input for wallpaper windows. The desktop icon list sits above the wallpaper layer, so the
 /// wallpaper HWNDs never receive mouse messages themselves. A hidden message-only window registers
 /// Raw Input (RIDEV_INPUTSINK) and, when the pointer is over the bare desktop, re-dispatches the
-/// mouse event to the wallpaper window under the cursor: for a "window"-hosted target that means
-/// <c>PostMessage</c> into its Chromium child (<see cref="WallpaperWindow.InputTarget"/>); for a
-/// "composition"-hosted target (the default — see <see cref="CompositionHost"/>) it means
+/// mouse event to the wallpaper window under the cursor: for a "window"-hosted target (the default —
+/// see <see cref="Host.Config.EngineSettings"/>) that means <c>PostMessage</c> into its Chromium child
+/// (<see cref="WallpaperWindow.InputTarget"/>), plus <see cref="HoverKeepAlive"/> re-sending
+/// WM_MOUSEMOVE on a timer to fight the hover-flicker race documented there; for a
+/// "composition"-hosted target (opt-in fallback — see <see cref="CompositionHost"/>) it means
 /// <see cref="WallpaperWindow.SendMouse"/>, WebView2's own <c>SendMouseInput</c> API, since those
 /// windows have no Chromium child HWND to post into. Right button is never forwarded (desktop
 /// context menu must keep working). Own design from the Raw Input documentation.
@@ -38,6 +41,9 @@ public sealed class InputBridge : IDisposable
     private readonly Func<IReadOnlyList<WallpaperWindow>> _windows;
     private readonly DesktopHost _desktop;
     private HwndSource? _sink;
+    /// <summary>Re-sends WM_MOUSEMOVE to the current window-mode hover target every 60ms while the
+    /// cursor sits still over it — see <see cref="HoverKeepAlive"/>.</summary>
+    private readonly DispatcherTimer _hoverKeepAlive;
     /// <summary>Capture (press/release pairing) and hover (composition-hosted Leave bookkeeping)
     /// state — see <see cref="PointerState{T}"/> for why this is split into its own, Win32-free
     /// class.</summary>
@@ -45,11 +51,12 @@ public sealed class InputBridge : IDisposable
     public long Forwarded { get; private set; }
     public bool Enabled { get; set; } = true;
 
-    public InputBridge(DesktopHost desktop, Func<IReadOnlyList<WallpaperWindow>> windows, Log log)
+    public InputBridge(DesktopHost desktop, Func<IReadOnlyList<WallpaperWindow>> windows, Log log, Dispatcher dispatcher)
     {
         _desktop = desktop;
         _windows = windows;
         _log = log;
+        _hoverKeepAlive = new DispatcherTimer(TimeSpan.FromMilliseconds(60), DispatcherPriority.Background, (_, _) => HoverKeepAlive(), dispatcher);
     }
 
     public unsafe bool Start()
@@ -74,6 +81,7 @@ public sealed class InputBridge : IDisposable
         var ok = PInvoke.RegisterRawInputDevices(new ReadOnlySpan<RAWINPUTDEVICE>(&rid, 1), (uint)sizeof(RAWINPUTDEVICE));
         if (!ok) _log.Error("raw input registration failed: " + Marshal.GetLastWin32Error());
         else _log.Info("raw input registered");
+        _hoverKeepAlive.Start();
         return ok;
     }
 
@@ -173,6 +181,37 @@ public sealed class InputBridge : IDisposable
         {
             Post(hwnd, PInvoke.WM_MOUSEMOVE, Keys(), lparamClient);
         }
+    }
+
+    /// <summary>
+    /// Fights the window-mode hover-flicker race from <see cref="CompositionHost"/>'s doc comment:
+    /// Chromium's own <c>TrackMouseEvent(TME_LEAVE)</c> on the forwarded-to Chromium child window
+    /// races against Windows resolving "window under the cursor" against the real, unclipped desktop
+    /// (the icon list), which fires <c>WM_MOUSELEAVE</c> right after every real cursor move re-arms
+    /// tracking — the block's <c>:hover</c> state flips on/off. This does not eliminate the race (that
+    /// needs composition hosting, which does not work behind the icon layer for a different reason —
+    /// see <see cref="Host.Config.EngineSettings"/>); it shortens the flicker window by re-asserting
+    /// <c>WM_MOUSEMOVE</c> to the same client point every 60ms while the pointer sits still over the
+    /// same window, so a spurious Leave gets a fresh Enter again quickly instead of only on the next
+    /// real cursor motion. Ticks from <see cref="_hoverKeepAlive"/> (started in <see cref="Start"/>).
+    /// A no-op whenever nothing is currently hovered, the hover target is composition-hosted (no
+    /// Chromium child HWND to re-post into), not ready, paused, or the real cursor has actually left
+    /// it or the desktop (real WM_MOUSEMOVE forwarding in <see cref="OnMouse"/> already handles those
+    /// transitions — this only refreshes an unchanged hover).
+    /// </summary>
+    private void HoverKeepAlive()
+    {
+        if (!Enabled) return;
+        var target = _state.HoverWindow;
+        if (target is null || target.UsesComposition || !target.Ready || target.Paused) return;
+        if (!PInvoke.GetCursorPos(out var pt)) return;
+        if (!PointerOnDesktop(pt) || !ReferenceEquals(FindWindow(pt.X, pt.Y), target)) return;
+
+        var hwnd = target.InputTarget();
+        if (hwnd == HWND.Null) return;
+        var client = pt;
+        PInvoke.ScreenToClient(hwnd, ref client);
+        Post(hwnd, PInvoke.WM_MOUSEMOVE, Keys(), MakeLParam(client.X, client.Y));
     }
 
     /// <summary>Same dispatch as the window-mode branch of <see cref="OnMouse"/>, but through
@@ -358,6 +397,7 @@ public sealed class InputBridge : IDisposable
 
     public void Dispose()
     {
+        try { _hoverKeepAlive.Stop(); } catch { }
         try { _sink?.Dispose(); } catch { }
         _sink = null;
     }

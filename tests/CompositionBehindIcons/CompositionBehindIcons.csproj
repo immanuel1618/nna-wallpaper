@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Incident helper (deliberately NOT part of NNA.Wallpaper.sln, same pattern as
+       tests/TopBarPreview and tests/CompositionProbe): reproduces prod composition-hosting
+       conditions for a wallpaper window: a real WallpaperWindow (Engine/WallpaperWindow.cs),
+       hosting="composition", parented to the REAL WorkerW behind the desktop icon layer via
+       Engine/DesktopHost.Attach() (read-only attach, never creates/moves/kills anything), and
+       drives hover/click purely through WallpaperWindow.SendMouse (the same
+       CoreWebView2CompositionController.SendMouseInput path InputBridge.OnMouseComposition uses),
+       with NO real OS cursor movement. tests/CompositionProbe already proved this exact call
+       sequence gives stable hover on an ordinary TOP-LEVEL window; this helper isolates the one
+       remaining variable: "child HWND of the real WorkerW, behind the icon layer, with
+       WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW", to find out whether that alone breaks
+       SendMouseInput delivery. Rectangle is the unobstructed top strip of the owner's portrait
+       monitor (\\.\DISPLAY1, screen x -1440..0, y -603..-403) so it never overlaps real desktop
+       icons or open windows. Uses an isolated scratch data dir (own WebView2 profile + own log
+       file) so it never touches the owner's live instance on :1618.
+       Run with: "dotnet run" against tests/CompositionBehindIcons/CompositionBehindIcons.csproj
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>NNA.Wallpaper.CompositionBehindIcons</RootNamespace>
+    <AssemblyName>CompositionBehindIcons</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NNA.Wallpaper\NNA.Wallpaper.csproj" />
+  </ItemGroup>
+
+</Project>

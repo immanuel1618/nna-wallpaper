@@ -35,14 +35,24 @@ public sealed class AppSettings
     public EngineSettings Engine { get; set; } = new();
 }
 
-/// <summary>Wallpaper engine hosting mode. "composition" (default) hosts WebView2 through
-/// CoreWebView2CompositionController + DirectComposition, so mouse input goes through SendMouseInput
-/// instead of a Chromium child HWND (fixes hover flicker behind the desktop icon layer, see the
-/// "Engine: rendering behind the desktop icons" section of docs/ARCHITECTURE.md). "window" is the
-/// old CoreWebView2Controller/child-HWND path, kept as a fallback switch.</summary>
+/// <summary>Wallpaper engine hosting mode. "window" (default) is the CoreWebView2Controller/child-HWND
+/// path: InputBridge forwards Raw Input mouse messages with PostMessage into WebView2's own
+/// Chrome_WidgetWin_1 child window, and re-sends WM_MOUSEMOVE on a short timer while the cursor sits
+/// still over the same window to keep TrackMouseEvent's hover state from flickering against the real
+/// desktop icon layer above it (see InputBridge.HoverKeepAlive). "composition" hosts WebView2 through
+/// CoreWebView2CompositionController + DirectComposition instead (no child HWND, input goes through
+/// SendMouseInput) -- proven to render correctly behind the icon layer, but input (hover AND clicks)
+/// never reaches the screen there: DOM/JS events do fire (confirmed via a WallpaperWindow-hwnd child
+/// of the real WorkerW, see tests/CompositionBehindIcons), but the compositor stops flipping new
+/// frames to screen once the window's top-level ancestor belongs to a different process (explorer.exe
+/// owns WorkerW) -- the exact same code against a same-process top-level ancestor (tests/CompositionProbe,
+/// TopBar/CompositionInput.cs) works perfectly. Neither WS_EX_NOACTIVATE/WS_EX_TOOLWINDOW removal,
+/// CoreWebView2Controller.MoveFocus, --disable-features=CalculateNativeWinOcclusion, nor
+/// --disable-backgrounding-occluded-windows changed that. Kept as an opt-in fallback switch in case a
+/// future WebView2 runtime fixes cross-process composition targets.</summary>
 public sealed class EngineSettings
 {
-    public string Hosting { get; set; } = "composition";
+    public string Hosting { get; set; } = "window";
 }
 
 /// <summary>One visual style: mode normal|clear|blur|acrylic|opaque, tint colour and opacity 0..1.</summary>
