@@ -101,9 +101,15 @@ for ($i = 1; $i -lt $means.Count; $i++) {
   if ($d -gt $maxDelta) { $maxDelta = $d }
 }
 
-$flicker = $maxDelta -gt $Threshold
+# Flicker means oscillation: two or more jumps above the threshold. A single step (hover engaging
+# once and staying) is a state change, not flicker.
+$jumps = 0
+for ($i = 1; $i -lt $means.Count; $i++) {
+  if ([math]::Abs($means[$i] - $means[$i - 1]) -gt $Threshold) { $jumps++ }
+}
+$flicker = $jumps -ge 2
 $flickerText = if ($flicker) { "yes" } else { "no" }
-"frames={0} maxDelta={1:F2} flicker={2}" -f $frameCount, $maxDelta, $flickerText
+"frames={0} maxDelta={1:F2} jumps={2} flicker={3}" -f $frameCount, $maxDelta, $jumps, $flickerText
 "means: " + (($means | ForEach-Object { "{0:F1}" -f $_ }) -join ", ")
 "frames saved to: $OutDir"
 
